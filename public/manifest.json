@@ -1,0 +1,16 @@
+{
+  "name": "FungiMap",
+  "short_name": "FungiMap",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f2f7f2",
+  "theme_color": "#507e59",
+  "description": "Mapeo colaborativo de hongos silvestres",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3571/3571714.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

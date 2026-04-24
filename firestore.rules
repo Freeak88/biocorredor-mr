@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'DamianFerraro@gmail.com' && request.auth.token.email_verified;
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // --- Logs ---
+    match /logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+    }
+
+    // --- Reports ---
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+    }
+
+    // --- Chat Messages ---
+    match /chat_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // --- Sightings ---
+    function isValidSighting(data) {
+      return data.mushroomName is string && data.mushroomName.size() < 100
+          && data.lat is number
+          && data.lng is number
+          && data.userId == request.auth.uid;
+    }
+
+    function isValidComment(data) {
+      return data.text is string && data.text.size() > 0 && data.text.size() <= 1000
+          && data.userId == request.auth.uid
+          && data.userName is string
+          && data.createdAt == request.time;
+    }
+
+    match /sightings/{sightingId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidSighting(request.resource.data) && isValidId(sightingId);
+      allow update: if isSignedIn() 
+                   && (isOwner(resource.data.userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])))
+                   && isValidSighting(request.resource.data);
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+
+      // --- Comments ---
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn() && isValidComment(request.resource.data) && isValidId(commentId);
+        allow update: if isSignedIn() && isOwner(resource.data.userId) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']));
+        allow delete: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
+      }
+    }
+  }
+}

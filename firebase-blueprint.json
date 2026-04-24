@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "email": { "type": "string" },
+        "points": { "type": "number" },
+        "merits": { "type": "array", "items": { "type": "string" } },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "location": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "email"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A geolocated chat message",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "text", "lat", "lng", "createdAt"]
+    },
+    "Sighting": {
+      "title": "Sighting",
+      "description": "A mushroom sighting record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "mushroomName": { "type": "string" },
+        "description": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["identified", "unconfirmed", "expert_verified"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "mushroomName", "lat", "lng", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a sighting",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "text", "createdAt"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "System logs for user actions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["action", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "User reports for content or users",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "type": { "type": "string", "enum": ["message", "user", "sighting"] },
+        "targetId": { "type": "string" },
+        "reason": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "dismissed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reporterId", "type", "targetId", "reason", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stored user profiles"
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Geolocated chat messages"
+    },
+    "/sightings/{sightingId}": {
+      "schema": "Sighting",
+      "description": "Collection of mushroom sightings"
+    },
+    "/sightings/{sightingId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments attached to sightings"
+    },
+    "/logs/{logId}": {
+      "schema": "Log",
+      "description": "System audit logs"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "User submitted reports"
+    }
+  }
+}

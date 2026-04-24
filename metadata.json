@@ -1,0 +1,11 @@
+{
+  "name": "FungiMap: Mapeo de Hongos Silvestres",
+  "description": "Plataforma colaborativa para registrar, compartir y discutir avistamientos de hongos silvestres mediante mapas interactivos y asistencia de IA.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "realtime_collaboration",
+    "ai_assistant"
+  ]
+}
