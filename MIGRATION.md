@@ -146,3 +146,73 @@ pb.collection('chat_messages').subscribe('*', (e) => { ... });
 // Files
 const url = pb.files.getURL(record, record.images[0]);
 ```
+
+
+## 7. AI / Computer Vision
+
+### FGVC Fungi Classification Competition
+**Status:** Backlog (pending)
+
+**Overview:**
+- Source: FGVCx (Fungi Classification) competition on Kaggle/visipedia
+- Dataset: 100,000+ high-quality classified fungi images
+- Classes: 1500+ fungal species
+- Resolution: 512x512, 224x224, 640x640px
+- Quality: Expert-verified, curated by mycologists
+
+**Use Cases:**
+1. **Image classification** — Identify mushroom species from photo (same as current Gemini integration)
+2. **Feature extraction** — Cap shape, gill attachment, stem type, color patterns
+3. **Pre-training** — Fine-tune generic mushroom model on FGVC data
+4. **Benchmarking** — Compare current Gemini API vs trained local model
+
+**Implementation Approach:**
+- Download FGVC dataset (CSV + images ~5GB)
+- Train MobileNet/EfficientNet on fungal classes
+- Serve via ONNX Runtime (TensorFlow.js)
+- Browser-based inference → no external API calls
+- Faster, cheaper, offline-capable
+
+**Technical Details:**
+- Framework: TensorFlow.js or ONNX Runtime Web
+- Model size: ~10MB (compressed)
+- Inference time: ~100-200ms on browser
+- Accuracy target: Top-5 accuracy > 80%
+
+**Integration with FungiMap:**
+- Replace/supplement Gemini API with local model
+- Add "Modelo IA: Local (FGVC)" toggle in settings
+- Hybrid mode: Fall back to Gemini if species not in FGVC classes
+- Upload model to user's device for offline inference
+
+**Resources:**
+- Dataset: https://www.kaggle.com/c/fgvcx-fungi-classification
+- Paper: https://arxiv.org/abs/1910.09345
+- GitHub implementations: Search "FGVCx" on GitHub
+
+**Comparison with Gemini:**
+| Feature | Gemini API | Local FGVC Model |
+|---------|------------|------------------|
+| Latency | 1-2s | 100-200ms |
+| Cost | Free tier (15K/mo) | One-time (compute + storage) |
+| Privacy | Data sent to Google | On-device |
+| Species | General knowledge | 1500+ fungi classes |
+| Accuracy | Medium (generalist) | High (specialized) |
+
+**Next Steps:**
+1. Download FGVC dataset to /data/fgvc/
+2. Set up TensorFlow.js training pipeline
+3. Train baseline model (MobileNetV2 on fungal classes)
+4. Convert to ONNX for browser inference
+5. Integrate inference hook into NewSightingModal
+6. Add model selection toggle (Local FGVC vs Gemini Cloud)
+
+**Dependencies:**
+- Python: TensorFlow, OpenCV, pandas
+- JS: TensorFlow.js or onnxruntime-web
+- Storage: ~10GB for dataset
+- Compute: GPU for training (optional, CPU for fine-tuning)
+
+---
+
+
