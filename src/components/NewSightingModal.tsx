@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Smartphone } from 'lucide-react';
 import { searchSpecies, validateSpeciesName, ITISValidation } from '../lib/itis-taxonomy';
 import { useITISValidation } from '../hooks/useITISValidation';
+import { fetchIUCNStatus, iucnCategoryText, parseBinomial } from '../lib/iucn';
 
 interface NewSightingModalProps {
   showModal: boolean;
@@ -56,6 +57,31 @@ export default function NewSightingModal({
   resetForm
 }: NewSightingModalProps) {
   const { validation, isValidating, isValid, kingdom, phylum, class: class_, order, family, genus, species, suggestions, error } = useITISValidation(formMushroomName);
+
+  // IUCN conservation status
+  const [iucnStatus, setIucnStatus] = useState<{ category: string; label: string; emoji: string; url: string } | null>(null);
+  const [iucnLoading, setIucnLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isValid || !formMushroomName || formMushroomName.length < 3) {
+      setIucnStatus(null);
+      return;
+    }
+    const binomial = parseBinomial(formMushroomName);
+    if (!binomial) return;
+    const timer = setTimeout(async () => {
+      setIucnLoading(true);
+      const result = await fetchIUCNStatus(binomial.genus, binomial.species);
+      if (result?.latest_category) {
+        const cat = iucnCategoryText(result.latest_category);
+        setIucnStatus({ category: result.latest_category, label: cat.label, emoji: cat.emoji, url: result.latest_url || '' });
+      } else {
+        setIucnStatus(null);
+      }
+      setIucnLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [isValid, formMushroomName]);
 
   if (!showModal) return null;
 
@@ -206,6 +232,23 @@ export default function NewSightingModal({
                           </div>
                         )}
                       </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* IUCN Conservation Status */}
+                {iucnLoading && (
+                  <div className="text-[10px] font-sans text-atlas-ink/50 mt-1">
+                    <span className="animate-pulse">Consultando IUCN...</span>
+                  </div>
+                )}
+                {iucnStatus && !iucnLoading && (
+                  <div className="mt-1 px-2 py-1 rounded text-[10px] font-sans bg-atlas-ink/5 flex items-center gap-2">
+                    <span>{iucnStatus.emoji}</span>
+                    <span className="font-bold">IUCN: {iucnStatus.category}</span>
+                    <span className="text-atlas-ink/60">{iucnStatus.label}</span>
+                    {iucnStatus.url && (
+                      <a href={iucnStatus.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline ml-auto">Ver</a>
                     )}
                   </div>
                 )}
