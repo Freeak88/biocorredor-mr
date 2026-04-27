@@ -1,0 +1,201 @@
+import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Plus, MapPin, Smartphone } from 'lucide-react';
+
+interface NewSightingModalProps {
+  showModal: boolean;
+  setShowModal: (v: boolean) => void;
+  isAddingMode: boolean;
+  setIsAddingMode: (v: boolean) => void;
+  newSightingPos: [number, number] | null;
+  setNewSightingPos: (v: [number, number] | null) => void;
+  formImages: string[];
+  setFormImages: (imgs: string[]) => void;
+  formMushroomName: string;
+  setFormMushroomName: (v: string) => void;
+  formDescription: string;
+  setFormDescription: (v: string) => void;
+  formToxicity: string;
+  setFormToxicity: (v: string) => void;
+  formHabitat: string;
+  setFormHabitat: (v: string) => void;
+  formFeatures: string;
+  setFormFeatures: (v: string) => void;
+  isAiLoading: boolean;
+  handleImageUpload: (file: File) => void;
+  runAiRecognition: () => void;
+  handleAddNewSighting: (e: React.FormEvent) => void;
+  resetForm: () => void;
+}
+
+export default function NewSightingModal({
+  showModal,
+  setShowModal,
+  isAddingMode,
+  setIsAddingMode,
+  newSightingPos,
+  setNewSightingPos,
+  formImages,
+  setFormImages,
+  formMushroomName,
+  setFormMushroomName,
+  formDescription,
+  setFormDescription,
+  formToxicity,
+  setFormToxicity,
+  formHabitat,
+  setFormHabitat,
+  formFeatures,
+  setFormFeatures,
+  isAiLoading,
+  handleImageUpload,
+  runAiRecognition,
+  handleAddNewSighting,
+  resetForm
+}: NewSightingModalProps) {
+  if (!showModal) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-atlas-ink/40 backdrop-blur-md">
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className="bg-atlas-paper w-full max-w-lg shadow-atlas border border-atlas-ink flex flex-col max-h-[90vh]"
+        >
+          <div className="bg-atlas-ink p-8 text-atlas-paper relative overflow-hidden">
+            <div className="absolute inset-0 dotted-bg opacity-10" />
+            <h2 className="text-3xl italic font-serif relative z-10">Nuevo Registro de Campo</h2>
+            <p className="text-[10px] font-sans font-black uppercase tracking-[0.3em] opacity-40 relative z-10 mt-1">Coordenadas: {newSightingPos?.[0].toFixed(4)}, {newSightingPos?.[1].toFixed(4)}</p>
+          </div>
+
+          <form className="p-10 space-y-8 font-serif overflow-y-auto flex-1" onSubmit={handleAddNewSighting}>
+            <div className="space-y-4">
+              <label className="text-[10px] font-sans font-black text-atlas-ink opacity-40 uppercase tracking-widest">Documentación Visual ({formImages.length})</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {formImages.map((img, idx) => (
+                  <div key={idx} className="relative aspect-square border-2 border-atlas-ink overflow-hidden shadow-atlas group">
+                    <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setFormImages(formImages.filter((_, i) => i !== idx))}
+                      className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Plus className="w-3 h-3 rotate-45" />
+                    </button>
+                  </div>
+                ))}
+                <div className="aspect-square border-2 border-dashed border-atlas-ink/30 flex flex-col items-center justify-center gap-2 bg-atlas-stone/10 hover:border-atlas-ink transition-all cursor-pointer relative overflow-hidden group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                  />
+                  <Plus className="w-6 h-6 text-atlas-earth group-hover:scale-110 transition-transform" />
+                  <p className="text-[8px] font-sans font-black uppercase tracking-widest opacity-40 text-center px-2">Añadir Toma</p>
+                </div>
+              </div>
+
+              {formImages.length > 0 && !isAiLoading && (
+                <button
+                  type="button"
+                  onClick={runAiRecognition}
+                  className="w-full py-3 bg-atlas-earth text-atlas-paper font-sans font-black text-[10px] uppercase tracking-[0.2em] hover:bg-atlas-ink transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Smartphone className="w-4 h-4" /> Reconocer con IA
+                </button>
+              )}
+
+              {isAiLoading && (
+                <div className="bg-atlas-paper/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center border-2 border-dashed border-atlas-earth/40 animate-pulse">
+                  <div className="w-8 h-8 border-2 border-atlas-earth border-t-transparent rounded-full animate-spin mb-3"></div>
+                  <p className="font-serif italic text-sm">RECONOCIENDO...</p>
+                  <p className="text-[9px] font-sans font-black uppercase tracking-widest opacity-40 mt-2">Consultando archivos taxonómicos</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4 p-6 bg-atlas-stone/20 border border-atlas-ink/10 relative">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[10px] font-sans font-black uppercase tracking-widest opacity-40 mb-1">Protocolo de Registro</p>
+                  <p className="text-sm italic">
+                    {newSightingPos
+                      ? "Ubicación remota seleccionada. El hallazgo quedará como 'Borrador' hasta su validación física."
+                      : "Se utilizará su ubicación física actual. El hallazgo será validado como 'Hallazgo Local'."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setShowModal(false); setIsAddingMode(true); }}
+                  className="shrink-0 p-3 bg-atlas-paper border border-atlas-ink hover:bg-atlas-stone transition-all group"
+                  title="Cambiar ubicación en el mapa"
+                >
+                  <MapPin className="w-5 h-5 text-atlas-ink group-hover:scale-110 transition-transform" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-sans font-black text-atlas-ink opacity-40 uppercase tracking-widest">Identificación Probable</label>
+                <input
+                  name="mushroomName"
+                  required
+                  value={formMushroomName}
+                  onChange={(e) => setFormMushroomName(e.target.value)}
+                  className="w-full atlas-input !text-xl italic"
+                  placeholder="Identificando..."
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-sans font-black text-atlas-ink opacity-40 uppercase tracking-widest">Nivel de Toxicidad</label>
+                <select
+                  value={formToxicity}
+                  onChange={(e) => setFormToxicity(e.target.value)}
+                  className="w-full atlas-input !text-base italic appearance-none"
+                >
+                  <option value="Desconocido">Desconocido</option>
+                  <option value="Comestible">Comestible</option>
+                  <option value="Tóxico">Tóxico</option>
+                  <option value="Mortal">Mortal</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-sans font-black text-atlas-ink opacity-40 uppercase tracking-widest">Observaciones de Campo</label>
+              <textarea
+                name="description"
+                required
+                rows={4}
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                className="w-full bg-atlas-stone/30 border border-atlas-ink/10 p-6 text-base italic focus:outline-none focus:border-atlas-ink transition-all resize-none"
+                placeholder="Contanos sobre el entorno, el sustrato o detalles específicos del ejemplar..."
+              />
+            </div>
+
+            <div className="pt-6 flex gap-6">
+              <button
+                type="button"
+                onClick={() => { setShowModal(false); setNewSightingPos(null); }}
+                className="flex-1 py-4 text-[10px] font-sans font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity"
+              >
+                Anular Registro
+              </button>
+              <button type="submit" className="flex-[2] atlas-button !py-4 !text-sm">
+                Archivar en el Atlas
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}

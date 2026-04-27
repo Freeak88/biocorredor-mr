@@ -1,0 +1,75 @@
+import React from 'react';
+import { Sprout, Search, LogOut, User } from 'lucide-react';
+
+interface HeaderProps {
+  user: any;
+  isAdmin: boolean;
+  showSidebar: boolean;
+  setShowSidebar: (v: boolean) => void;
+  showChat: boolean;
+  setShowChat: (v: boolean) => void;
+  showAdminPanel: boolean;
+  setShowAdminPanel: (v: boolean) => void;
+  handleLogin: () => void;
+  handleLogout: () => void;
+}
+
+export default function Header({
+  user,
+  isAdmin,
+  showSidebar,
+  setShowSidebar,
+  showChat,
+  setShowChat,
+  showAdminPanel,
+  setShowAdminPanel,
+  handleLogin,
+  handleLogout
+}: HeaderProps) {
+  return (
+    <header className="bg-atlas-paper text-atlas-ink p-3 flex justify-between items-center border-b border-atlas-ink z-50 relative shrink-0">
+      <div className="flex items-center gap-3">
+        <Sprout className="w-6 h-6 text-atlas-ink" />
+        <h1 className="text-xl italic font-serif tracking-tight">Fungi Atlas <span className="text-[10px] opacity-50">.03</span></h1>
+      </div>
+
+      <div className="flex items-center gap-6">
+        {user && (
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
+            className={`p-2 transition-all ${showSidebar ? 'text-atlas-earth' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
+            title="Buscar / Filtros"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+        )}
+        {user ? (
+          <div className="flex items-center gap-4 font-sans font-black uppercase tracking-widest text-[9px]">
+            <span className="hidden sm:inline-block border-b border-atlas-ink/20">
+              {user.displayName || user.email?.split('@')[0]}
+            </span>
+            <div className="flex items-center gap-4 border-l border-atlas-ink/10 pl-4">
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className={`transition-all ${showChat ? 'text-atlas-ink underline underline-offset-4' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
+              >
+                Chat
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowAdminPanel(!showAdminPanel)}
+                  className={`transition-all ${showAdminPanel ? 'text-atlas-earth font-black' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
+                >
+                  Admin
+                </button>
+              )}
+              <button onClick={handleLogout} className="text-atlas-ink opacity-40 hover:opacity-100">
+                Salir
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </header>
+  );
+}

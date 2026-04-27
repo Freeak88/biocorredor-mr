@@ -1,0 +1,31 @@
+services:
+  web:
+    build: .
+    container_name: fungimap-web
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - proxy-net
+
+  pb:
+    build: ./pocketbase
+    container_name: fungimap-pb
+    restart: unless-stopped
+    volumes:
+      - pb-data:/pb/pb_data
+      - ./pocketbase/pb_migrations:/pb/pb_migrations
+      - ./pocketbase/pb_hooks:/pb/pb_hooks
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-placeholder}
+    expose:
+      - "8090"
+    networks:
+      - proxy-net
+
+volumes:
+  pb-data:
+
+networks:
+  proxy-net:
+    external: true

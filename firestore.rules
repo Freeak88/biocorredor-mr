@@ -1,83 +1,83 @@
-rules_version = '2';
+// =============================================================================
+// Fungimap — Firestore Security Rules
+// =============================================================================
+// Deploy: firebase deploy --only firestore:rules
+// =============================================================================
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
 
-    function isSignedIn() {
+    // --- Helper functions ---
+    function isAuthenticated() {
       return request.auth != null;
     }
 
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'DamianFerraro@gmail.com' && request.auth.token.email_verified;
+      return isAuthenticated() &&
+             request.auth.token.email == 'DamianFerraro@gmail.com';
     }
 
     // --- Users ---
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId) || isAdmin();
+      // Any authenticated user can read profiles
+      allow read: if isAuthenticated();
+      // Users can write their own profile
+      allow write: if isOwner(userId);
     }
 
-    // --- Logs ---
-    match /logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isSignedIn();
+    // --- Sightings ---
+    match /sightings/{sightingId} {
+      // Anyone authenticated can read sightings
+      allow read: if isAuthenticated();
+      // Any authenticated user can create (Cloud Function is the preferred path)
+      allow create: if isAuthenticated();
+      // Only the owner or admin can update/delete
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    // --- Reports ---
-    match /reports/{reportId} {
-      allow read: if isAdmin();
-      allow create: if isSignedIn();
-      allow update: if isAdmin();
+    // --- Sighting Comments (subcollection) ---
+    match /sightings/{sightingId}/comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
     // --- Chat Messages ---
     match /chat_messages/{messageId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    // --- Sightings ---
-    function isValidSighting(data) {
-      return data.mushroomName is string && data.mushroomName.size() < 100
-          && data.lat is number
-          && data.lng is number
-          && data.userId == request.auth.uid;
+    // --- Logs ---
+    match /logs/{logId} {
+      // Only admin can read logs directly; Cloud Functions write via admin SDK (bypass rules)
+      allow read: if isAdmin();
+      allow write: if false; // Written by Cloud Functions only
     }
 
-    function isValidComment(data) {
-      return data.text is string && data.text.size() > 0 && data.text.size() <= 1000
-          && data.userId == request.auth.uid
-          && data.userName is string
-          && data.createdAt == request.time;
+    // --- Reports ---
+    match /reports/{reportId} {
+      // Anyone authenticated can create a report
+      allow create: if isAuthenticated();
+      // Only admin can read/update reports
+      allow read, update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
-    match /sightings/{sightingId} {
-      allow read: if true;
-      allow create: if isSignedIn() && isValidSighting(request.resource.data) && isValidId(sightingId);
-      allow update: if isSignedIn() 
-                   && (isOwner(resource.data.userId) || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])))
-                   && isValidSighting(request.resource.data);
-      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    // --- Rate Limits (internal, written by Cloud Functions) ---
+    match /rate_limits/{userId}/{action}/{reqId} {
+      allow read, write: if false; // Admin SDK only
+    }
 
-      // --- Comments ---
-      match /comments/{commentId} {
-        allow read: if true;
-        allow create: if isSignedIn() && isValidComment(request.resource.data) && isValidId(commentId);
-        allow update: if isSignedIn() && isOwner(resource.data.userId) && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt']));
-        allow delete: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
-      }
+    // --- Exports (temp files metadata, managed by Cloud Functions) ---
+    match /exports/{exportId} {
+      allow read, write: if false; // Admin SDK only
     }
   }
 }

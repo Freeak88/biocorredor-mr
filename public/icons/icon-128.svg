@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#F9F7F2"/>
+  <circle cx="256" cy="256" r="200" fill="#2D4032" opacity="0.06"/>
+  <g transform="translate(256,240)">
+    <ellipse cx="0" cy="-30" rx="80" ry="50" fill="#2D4032"/>
+    <ellipse cx="0" cy="-30" rx="62" ry="36" fill="#3d5744"/>
+    <rect x="-16" y="-8" width="32" height="90" rx="6" fill="#2D4032"/>
+    <rect x="-10" y="-4" width="20" height="82" rx="4" fill="#A67B5B"/>
+    <circle cx="-40" cy="-38" r="6" fill="#F9F7F2" opacity="0.25"/>
+    <circle cx="20" cy="-45" r="4" fill="#F9F7F2" opacity="0.2"/>
+    <circle cx="45" cy="-28" r="5" fill="#F9F7F2" opacity="0.15"/>
+  </g>
+  <text x="256" y="440" text-anchor="middle" font-family="serif" font-size="32" font-style="italic" fill="#2D4032">FungiMap</text>
+</svg>

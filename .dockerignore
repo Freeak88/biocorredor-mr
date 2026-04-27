@@ -1,0 +1,15 @@
+node_modules
+functions/node_modules
+dist
+.git
+.github
+__tests__
+__mocks__
+docs
+e2e
+*.md
+!README.md
+.env
+.env.*
+playwright.config.ts
+vitest.config.ts

@@ -1,16 +1,53 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#507e59" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3571/3571714.png" />
-    <title>FungiMap - Mapeo de Hongos</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1C1917" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>FungiMap — Atlas de Hongos</title>
+    <script>
+      window.onerror = function(msg, url, line, col, err) {
+        var el = document.getElementById('js-error');
+        if (el) {
+          el.style.display = 'block';
+          el.textContent = 'JS Error: ' + msg + ' at ' + url + ':' + line + ':' + col;
+        }
+        console.error(msg, url, line, col, err);
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        var el = document.getElementById('js-error');
+        if (el) {
+          el.style.display = 'block';
+          el.textContent += '\nPromise: ' + (e.reason && e.reason.message || e.reason);
+        }
+      });
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="js-error" style="display:none; padding:20px; font-family:monospace; font-size:12px; color:#c00; white-space:pre-wrap; background:#fee; margin:10px; border:2px solid #c00;"></div>
+    </div>
+    <script>
+      // Force unregister any old service worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(reg) { reg.unregister(); });
+          if (regs.length > 0) {
+            console.log('[SW] Unregistered ' + regs.length + ' old service workers');
+            // Hard reload to clear caches
+            if (window.caches) {
+              caches.keys().then(function(names) {
+                names.forEach(function(n) { caches.delete(n); });
+                location.reload();
+              });
+            }
+          }
+        });
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

@@ -1,8 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// NOTE: This client-side Gemini call should eventually migrate to a PocketBase
+// custom endpoint (e.g. /api/collections/sightings/actions/gemini) to keep the
+// API key server-side. Until then, VITE_GEMINI_API_KEY must be set in .env.
+
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 export async function identifyMushroomFromImage(base64Image: string, mimeType: string = 'image/jpeg') {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === 'placeholder') {
+    throw new Error('Gemini API key not configured');
+  }
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   try {
     const prompt = `Actúa como un experto micólogo de campo. Analiza esta imagen de un hongo y proporciona una identificación técnica precisa. 
     Debes identificar el nombre científico, nombre común probable, nivel de toxicidad, descripción, hábitat natural y características distintivas para el cuaderno de campo.`;
