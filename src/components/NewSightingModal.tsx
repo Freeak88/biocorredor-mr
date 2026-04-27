@@ -1,6 +1,8 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Smartphone } from 'lucide-react';
+import { searchSpecies, validateSpeciesName, ITISValidation } from '../lib/itis-taxonomy';
+import { useITISValidation } from '../hooks/useITISValidation';
 
 interface NewSightingModalProps {
   showModal: boolean;
@@ -53,6 +55,8 @@ export default function NewSightingModal({
   handleAddNewSighting,
   resetForm
 }: NewSightingModalProps) {
+  const { validation, isValidating, isValid, kingdom, phylum, class: class_, order, family, genus, species, suggestions, error } = useITISValidation(formMushroomName);
+
   if (!showModal) return null;
 
   return (
@@ -152,6 +156,59 @@ export default function NewSightingModal({
                   className="w-full atlas-input !text-xl italic"
                   placeholder="Identificando..."
                 />
+                
+                {/* ITIS Validation */}
+                {formMushroomName && formMushroomName.length >= 3 && (
+                  <div className="mt-2 p-2 rounded border text-[10px] font-sans">
+                    {isValidating ? (
+                      <div className="flex items-center gap-2 text-atlas-ink">
+                        <div className="animate-spin w-3 h-3 border-2 border-atlas-ink border-t-transparent rounded-full" />
+                        <span>Validando con ITIS...</span>
+                      </div>
+                    ) : isValid && kingdom ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-emerald-600 font-bold">
+                          <span className="text-xs">✓</span>
+                          <span>Nombre válido</span>
+                        </div>
+                        <div className="text-[9px] opacity-70 mt-1 space-y-0.5">
+                          {kingdom && <div><span className="font-bold">Reino:</span> {kingdom}</div>}
+                          {phylum && <div><span className="font-bold">Filo:</span> {phylum}</div>}
+                          {class_ && <div><span className="font-bold">Clase:</span> {class_}</div>}
+                          {order && <div><span className="font-bold">Orden:</span> {order}</div>}
+                          {family && <div><span className="font-bold">Familia:</span> {family}</div>}
+                          {genus && <div><span className="font-bold">Género:</span> {genus}</div>}
+                          {species && <div><span className="font-bold">Especie:</span> {species}</div>}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-amber-600 font-bold">
+                          <span className="text-xs">⚠</span>
+                          <span>{error || 'No se encontró en ITIS'}</span>
+                        </div>
+                        {suggestions && suggestions.length > 0 && (
+                          <div className="mt-1">
+                            <div className="font-bold text-[9px] opacity-70 mb-1">Sugerencias:</div>
+                            <ul className="text-[9px] opacity-70 space-y-0.5">
+                              {suggestions.slice(0, 3).map((s: any, i: number) => (
+                                <li key={i}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setFormMushroomName(s.full || s.acceptedNameUsage)}
+                                    className="text-emerald-600 hover:underline"
+                                  >
+                                    {s.full || s.acceptedNameUsage}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-sans font-black text-atlas-ink opacity-40 uppercase tracking-widest">Nivel de Toxicidad</label>
