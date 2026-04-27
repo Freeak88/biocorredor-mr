@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { pb, getFileURL } from '../lib/pb';
+import { fetchWeatherContext } from '../lib/weather';
 import type { AuthUser, UserProfile } from '../types';
 
 export function useSightingForm(
@@ -121,7 +122,26 @@ export function useSightingForm(
       });
 
       // Create sighting — user is set automatically via PocketBase API rule
-      await pb.collection('sightings').create(formData);
+      const record = await pb.collection('sightings').create(formData);
+
+      // Fetch weather context for the sighting
+      if (record && record.id) {
+        const sightingLat = pos[0];
+        const sightingLng = pos[1];
+        const sightingDate = new Date().toISOString().split('T')[0]; // Today
+        
+        const weatherContext = await fetchWeatherContext(sightingLat, sightingLng, sightingDate, 10);
+        if (weatherContext) {
+          try {
+            await pb.collection('sightings').update(record.id, {
+              weather_context: weatherContext as any,
+              elevation: weatherContext.location.elevation,
+            });
+          } catch (weatherErr) {
+            console.error('Weather context update failed:', weatherErr);
+          }
+        }
+      }
 
       // Update user points
       if (currentUserProfile) {
