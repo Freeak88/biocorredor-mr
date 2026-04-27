@@ -1,5 +1,5 @@
 // WeatherBadge.tsx — Compact weather summary for sighting popups
-import { WeatherContext, weatherCodeText } from "../lib/weather";
+import { WeatherContext, weatherCodeText, moonPhaseText } from "../lib/weather";
 
 interface Props {
   weather: WeatherContext | null | Record<string, any>;
@@ -62,6 +62,13 @@ export default function WeatherBadge({ weather }: Props) {
       {location?.elevation > 0 && (
         <p className="text-[9px] font-sans text-atlas-ink/40 m-0 mt-1">
           ⛰ {Math.round(location.elevation)}m snm
+        </p>
+      )}
+
+      {/* Moon Phase */}
+      {w.moon_phase && (
+        <p className="text-[9px] font-sans text-atlas-ink/40 m-0 mt-1">
+          🌙 {moonPhaseText(w.moon_phase.moon_phase)} ({Math.round(w.moon_phase.moon_illumination * 100)}%)
         </p>
       )}
     </div>

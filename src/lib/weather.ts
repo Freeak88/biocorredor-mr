@@ -1,10 +1,12 @@
-// weather.ts — Open-Meteo + Sunrise-Sunset integration for FungiMap
+// weather.ts — Open-Meteo + Sunrise-Sunset + WeatherAPI (moon phase) for FungiMap
 // All APIs are free, no auth required
 
 const OPEN_METEO_FORECAST = "https://api.open-meteo.com/v1/forecast";
 const OPEN_METEO_ARCHIVE = "https://archive-api.open-meteo.com/v1/archive";
 const OPEN_METEO_ELEVATION = "https://api.open-meteo.com/v1/elevation";
 const SUNRISE_SUNSET = "https://api.sunrise-sunset.org/json";
+const WEATHERAPI_ASTRONOMY = "https://api.weatherapi.com/v1/astronomy.json";
+const WEATHERAPI_KEY = "13e1173313aa42ab9d265233262704";
 
 export interface DailyWeather {
   date: string;
@@ -21,6 +23,7 @@ export interface DailyWeather {
 export interface WeatherContext {
   location: { lat: number; lng: number; elevation: number };
   days_before: DailyWeather[];
+  moon_phase?: MoonPhaseData;
   summary: {
     avg_temp: number;
     total_precip_mm: number;
@@ -37,6 +40,16 @@ export interface PhotoperiodData {
   sunset: string;
   day_length_hours: number;
   solar_noon: string;
+}
+
+export interface MoonPhaseData {
+  date: string;
+  moon_phase: string;
+  moon_illumination: number;
+  moonrise: string;
+  moonset: string;
+  moonrise_local: string;
+  moonset_local: string;
 }
 
 export async function fetchWeatherContext(
@@ -74,11 +87,12 @@ export async function fetchWeatherContext(
       timezone: "auto",
     });
 
-    const [weatherRes, elevRes] = await Promise.all([
+    const [weatherRes, elevRes, moonRes] = await Promise.all([
       fetch(`${base}?${params}`),
       fetch(
         `${OPEN_METEO_ELEVATION}?latitude=${lat}&longitude=${lng}`
       ),
+      fetchMoonPhase(lat, lng, endDate),
     ]);
 
     if (!weatherRes.ok) {
@@ -116,6 +130,7 @@ export async function fetchWeatherContext(
     return {
       location: { lat, lng, elevation },
       days_before: days,
+      moon_phase: moonRes,
       summary: {
         avg_temp: days.reduce((s, d) => s + d.temp_avg, 0) / days.length,
         total_precip_mm: Math.round(totalPrecip * 10) / 10,
@@ -162,7 +177,39 @@ export async function fetchPhotoperiod(
   }
 }
 
-// Weather code to human-readable description (WMO codes)
+export async function fetchMoonPhase(
+  lat: number,
+  lng: number,
+  date: string // ISO date: "2026-04-27"
+): Promise<MoonPhaseData | null> {
+  try {
+    const params = new URLSearchParams({
+      key: WEATHERAPI_KEY,
+      q: `${lat},${lng}`,
+      dt: date,
+    });
+    const res = await fetch(`${WEATHERAPI_ASTRONOMY}?${params}`);
+    if (!res.ok) {
+      console.error("WeatherAPI moon phase failed:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    const astro = data.astronomy?.astro;
+    if (!astro) return null;
+    return {
+      date,
+      moon_phase: astro.moon_phase,
+      moon_illumination: astro.moon_illumination,
+      moonrise: astro.moonrise,
+      moonset: astro.moonset,
+      moonrise_local: astro.moonrise,
+      moonset_local: astro.moonset,
+    };
+  } catch (err) {
+    console.error("Moon phase error:", err);
+    return null;
+  }
+}
 export function weatherCodeText(code: number): string {
   const codes: Record<number, string> = {
     0: "Despejado",
@@ -188,4 +235,19 @@ export function weatherCodeText(code: number): string {
     99: "Tormenta con granizo fuerte",
   };
   return codes[code] || `Código ${code}`;
+}
+
+// Moon phase to Spanish
+export function moonPhaseText(phase: string): string {
+  const phases: Record<string, string> = {
+    "New Moon": "Luna nueva",
+    "Waxing Crescent": "Creciente",
+    "First Quarter": "Cuarto creciente",
+    "Waxing Gibbous": "Gibosa creciente",
+    "Full Moon": "Luna llena",
+    "Waning Gibbous": "Gibosa menguante",
+    "Last Quarter": "Cuarto menguante",
+    "Waning Crescent": "Menguante",
+  };
+  return phases[phase] || phase;
 }
