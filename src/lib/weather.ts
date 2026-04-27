@@ -20,10 +20,36 @@ export interface DailyWeather {
   weather_code: number;
 }
 
+export interface WindowSummary {
+  temp_avg: number;
+  temp_min: number;
+  temp_max: number;
+  total_precip_mm: number;
+  rainy_days: number;
+  rain_events: number; // days with >2mm
+  avg_humidity: number;
+  avg_wind: number;
+  dry_spell: boolean; // >7 consecutive dry days
+}
+
+export interface MoonWindow {
+  sighting_night: MoonPhaseData;
+  full_moon_days: number;
+  waxing_days: number;
+  waning_days: number;
+  avg_illumination: number;
+}
+
 export interface WeatherContext {
   location: { lat: number; lng: number; elevation: number };
   days_before: DailyWeather[];
   moon_phase?: MoonPhaseData;
+  windows: {
+    trigger: WindowSummary;    // D-14 to D-8
+    development: WindowSummary; // D-7 to D-4
+    maturation: WindowSummary;  // D-3 to D-0
+  };
+  moon_window?: MoonWindow;
   summary: {
     avg_temp: number;
     total_precip_mm: number;
@@ -56,7 +82,7 @@ export async function fetchWeatherContext(
   lat: number,
   lng: number,
   sightingDate: string, // ISO date: "2026-04-27"
-  daysBack: number = 10
+  daysBack: number = 14
 ): Promise<WeatherContext | null> {
   try {
     const sighting = new Date(sightingDate);
@@ -127,10 +153,49 @@ export async function fetchWeatherContext(
     const totalPrecip = days.reduce((s, d) => s + d.precipitation_mm, 0);
     const rainyDays = days.filter((d) => d.precipitation_mm > 0.5).length;
 
+    // 3-window methodology for fruiting body context
+    const calcWindow = (slice: DailyWeather[]): WindowSummary => {
+      const totalP = slice.reduce((s, d) => s + d.precipitation_mm, 0);
+      const rainE = slice.filter((d) => d.precipitation_mm > 2).length;
+      // Detect dry spells (7+ consecutive dry days)
+      let maxDry = 0, curDry = 0;
+      slice.forEach(d => { if (d.precipitation_mm < 0.5) { curDry++; maxDry = Math.max(maxDry, curDry); } else { curDry = 0; } });
+      return {
+        temp_avg: slice.length ? Math.round(slice.reduce((s, d) => s + d.temp_avg, 0) / slice.length * 10) / 10 : 0,
+        temp_min: slice.length ? Math.round(Math.min(...slice.map(d => d.temp_min)) * 10) / 10 : 0,
+        temp_max: slice.length ? Math.round(Math.max(...slice.map(d => d.temp_max)) * 10) / 10 : 0,
+        total_precip_mm: Math.round(totalP * 10) / 10,
+        rainy_days: slice.filter(d => d.precipitation_mm > 0.5).length,
+        rain_events: rainE,
+        avg_humidity: slice.length ? Math.round(slice.reduce((s, d) => s + d.humidity_max, 0) / slice.length) : 0,
+        avg_wind: slice.length ? Math.round(slice.reduce((s, d) => s + d.wind_max, 0) / slice.length * 10) / 10 : 0,
+        dry_spell: maxDry >= 7,
+      };
+    };
+
+    // Window slices (days array is oldest→newest, sighting day is last)
+    const trigger = calcWindow(days.slice(0, 7));       // D-14 to D-8
+    const development = calcWindow(days.slice(7, 11));   // D-7 to D-4
+    const maturation = calcWindow(days.slice(11));        // D-3 to D-0
+
+    // Moon window
+    let moonWindow: MoonWindow | undefined;
+    if (moonRes) {
+      moonWindow = {
+        sighting_night: moonRes,
+        full_moon_days: moonRes.moon_illumination > 0.9 ? 1 : 0,
+        waxing_days: moonRes.moon_phase?.includes('Waxing') ? 1 : 0,
+        waning_days: moonRes.moon_phase?.includes('Waning') ? 1 : 0,
+        avg_illumination: moonRes.moon_illumination,
+      };
+    }
+
     return {
       location: { lat, lng, elevation },
       days_before: days,
       moon_phase: moonRes,
+      windows: { trigger, development, maturation },
+      moon_window: moonWindow,
       summary: {
         avg_temp: days.reduce((s, d) => s + d.temp_avg, 0) / days.length,
         total_precip_mm: Math.round(totalPrecip * 10) / 10,
