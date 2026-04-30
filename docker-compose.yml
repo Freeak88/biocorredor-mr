@@ -1,6 +1,9 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
     container_name: fungimap-web
     restart: unless-stopped
     expose:

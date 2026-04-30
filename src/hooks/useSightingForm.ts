@@ -106,6 +106,7 @@ export function useSightingForm(
 
       // Build FormData for file uploads
       const formData = new FormData();
+      formData.append('user', user.uid);
       formData.append('mushroom_name', mushroomName);
       formData.append('description', description);
       formData.append('toxicity', formToxicity);
@@ -122,7 +123,8 @@ export function useSightingForm(
       });
 
       // Create sighting — user is set automatically via PocketBase API rule
-      const record = await pb.collection('sightings').create(formData);
+      // Use { requestKey: '' } to prevent auto-cancellation by the SDK
+      const record = await pb.collection('sightings').create(formData, { requestKey: 'sighting-create-' + Date.now() });
 
       // Fetch weather context for the sighting
       if (record && record.id) {
@@ -136,7 +138,7 @@ export function useSightingForm(
             await pb.collection('sightings').update(record.id, {
               weather_context: weatherContext as any,
               elevation: weatherContext.location.elevation,
-            });
+            }, { requestKey: 'sighting-weather-' + Date.now() });
           } catch (weatherErr) {
             console.error('Weather context update failed:', weatherErr);
           }
@@ -156,6 +158,7 @@ export function useSightingForm(
       resetForm();
     } catch (err) {
       console.error("Error saving sighting", err);
+      alert(`Error al archivar: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
     }
   }, [user, userLocation, newSightingPos, currentUserProfile, formToxicity, formHabitat, formFeatures, formImageFiles, findNearbyMycelium, getDistance, createLog, resetForm]);
 

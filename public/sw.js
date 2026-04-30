@@ -1,5 +1,5 @@
 // FungiMap Service Worker — Offline-first PWA
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `fungimap-static-${CACHE_VERSION}`;
 const TILE_CACHE = `fungimap-tiles-${CACHE_VERSION}`;
 const API_CACHE = `fungimap-api-${CACHE_VERSION}`;
@@ -10,7 +10,8 @@ const TILE_HOSTS = [
   'b.tile.openstreetmap.org',
   'c.tile.openstreetmap.org',
 ];
-const API_HOSTS = ['firestore.googleapis.com', 'firebaseio.com', 'generativelanguage.googleapis.com'];
+const API_HOSTS = ['generativelanguage.googleapis.com'];
+const PB_PATHS = ['/api/', '/_/'];
 const STATIC_EXTS = /\.(js|css|woff2?|ttf|png|jpg|jpeg|svg|ico|webp)$/;
 
 // — Install: pre-cache shell —
@@ -50,9 +51,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets & same-origin → cache-first
-  if (STATIC_EXTS.test(url.pathname) || url.origin === self.location.origin) {
+  // PocketBase API → network-first (never cache)
+  if (PB_PATHS.some((p) => url.pathname.startsWith(p))) {
+    event.respondWith(networkFirst(request, API_CACHE));
+    return;
+  }
+
+  // Static assets → cache-first (hashed filenames only)
+  if (STATIC_EXTS.test(url.pathname)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
+    return;
+  }
+
+  // HTML navigation → network-first (always fresh shell)
+  if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(networkFirst(request, STATIC_CACHE));
     return;
   }
 });

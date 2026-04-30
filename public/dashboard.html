@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍄 FungiMap Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#080c14;--sf:#111827;--sf2:#1a2236;--bd:#1e2d4a;
+  --t1:#f0f4fc;--t2:#8892a8;--t3:#5a6478;
+  --ac:#7c6cf0;--ac2:#00d2c8;--grn:#00c48c;--org:#ffa63e;--red:#ff6b6b;--blu:#3b9eff;--pnk:#ff7eb3;--ylw:#ffe17a;
+  --r-noa:#e17055;--r-nea:#00b894;--r-cuyo:#fdcb6e;--r-centro:#7c6cf0;--r-pat:#3b9eff;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t1);font-family:-apple-system,'Segoe UI',system-ui,sans-serif}
+
+/* LAYOUT */
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:260px;min-width:260px;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;transition:transform .3s;z-index:100;padding:0}
+.sidebar.closed{transform:translateX(-100%);min-width:0;width:0;border:none}
+.main{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px}
+
+/* TOP BAR */
+.topbar{display:none;align-items:center;gap:12px;padding:10px 16px;background:var(--sf);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:90}
+.hamburger{width:36px;height:36px;border:1px solid var(--bd);border-radius:8px;background:var(--sf2);color:var(--t1);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.topbar h1{font-size:16px;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;flex:1}
+.topbar .badge{font-size:11px;padding:3px 8px;border-radius:12px;background:var(--ac);color:#fff}
+
+/* SIDEBAR */
+.sb-head{padding:16px;border-bottom:1px solid var(--bd)}
+.sb-head h1{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sb-head .badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:12px;background:var(--ac);color:#fff;margin-top:6px}
+.sb-section{padding:12px 16px}
+.sb-section h3{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);margin-bottom:8px}
+.fg{margin-bottom:10px}
+.fg label{display:block;font-size:11px;color:var(--t2);margin-bottom:3px}
+.fg select,.fg input{width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sf2);color:var(--t1);font-size:12px;outline:none}
+.fg select:focus,.fg input:focus{border-color:var(--ac)}
+.fg select option{background:var(--sf2)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{padding:4px 9px;border-radius:12px;font-size:11px;cursor:pointer;border:1px solid var(--bd);background:var(--sf2);color:var(--t2);transition:all .15s;user-select:none}
+.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.chip:hover{border-color:var(--ac2)}
+.sep{height:1px;background:var(--bd);margin:4px 0}
+.reset{width:100%;padding:8px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;cursor:pointer;margin-top:8px}
+.reset:hover{background:var(--ac);color:#fff}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
+.tab{padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap;transition:all .15s}
+.tab.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.tab:hover{border-color:var(--ac2)}
+
+/* PANEL */
+.panel{display:none}
+.panel.on{display:block}
+
+/* CARDS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--sf);border-radius:10px;border:1px solid var(--bd);padding:14px;text-align:center}
+.stat .v{font-size:24px;font-weight:700}
+.stat .l{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--sf);border-radius:10px;border:1px solid var(--bd);padding:14px}
+.card.fw{grid-column:1/-1}
+.card h2{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:10px}
+.ch{width:100%;height:260px}
+.ch.h350{height:350px}
+.ch.h400{height:400px}
+.ch.h450{height:450px}
+
+/* COMPARISON MODE */
+.comp-controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:end}
+.comp-controls .fg{margin:0}
+.comp-controls .fg label{margin-bottom:2px}
+.comp-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.comp-card{background:var(--sf);border-radius:10px;border:1px solid var(--bd);padding:14px}
+.comp-card h2{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:10px}
+.multi-select{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.ms-chip{padding:3px 8px;border-radius:10px;font-size:11px;cursor:pointer;border:1px solid var(--bd);background:var(--sf2);color:var(--t2);transition:all .15s}
+.ms-chip.on{border-color:var(--ac);background:rgba(124,108,240,.2);color:var(--ac)}
+.ms-chip:hover{border-color:var(--ac2)}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;box-shadow:4px 0 20px rgba(0,0,0,.5)}
+  .sidebar.closed{transform:translateX(-100%)}
+  .topbar{display:flex}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .grid{grid-template-columns:1fr}
+  .comp-controls{flex-direction:column;align-items:stretch}
+  .comp-controls .fg{width:100%}
+}
+@media(max-width:500px){
+  .main{padding:10px}
+  .stat .v{font-size:20px}
+  .ch{height:220px}
+  .ch.h350{height:280px}
+  .ch.h400{height:300px}
+  .ch.h450{height:320px}
+}
+
+/* LOADER */
+.loader{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;gap:10px;font-size:16px}
+.loader.hide{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sp{width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--ac)}
+</style>
+</head>
+<body>
+<div class="loader" id="loader"><div class="sp"></div>Cargando...</div>
+
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+<div class="sb-head">
+  <h1>🍄 FungiMap</h1>
+  <span class="badge" id="countBadge">—</span>
+</div>
+
+<div class="sb-section">
+<h3>Época</h3>
+<div class="chips" id="seasonChips">
+  <div class="chip on" data-v="all">Todas</div>
+  <div class="chip" data-v="Verano">☀️ Ver</div>
+  <div class="chip" data-v="Otoño">🍂 Oto</div>
+  <div class="chip" data-v="Invierno">❄️ Inv</div>
+  <div class="chip" data-v="Primavera">🌸 Pri</div>
+</div>
+</div>
+
+<div class="sb-section">
+<h3>Región climática</h3>
+<div class="chips" id="regionChips">
+  <div class="chip on" data-v="all">Todas</div>
+  <div class="chip" data-v="NOA">🏔 NOA</div>
+  <div class="chip" data-v="NEA">🌿 NEA</div>
+  <div class="chip" data-v="Cuyo">🏜 Cuyo</div>
+  <div class="chip" data-v="Centro">🌾 Centro</div>
+  <div class="chip" data-v="Patagonia">🧊 Patag</div>
+</div>
+</div>
+
+<div class="sep"></div>
+
+<div class="sb-section">
+<h3>Taxonomía</h3>
+<div class="fg"><label>Filo</label><select id="fPh"><option value="all">Todos</option></select></div>
+<div class="fg"><label>Familia</label><select id="fFa"><option value="all">Todas</option></select></div>
+<div class="fg"><label>Género</label><select id="fGn"><option value="all">Todos</option></select></div>
+<div class="fg"><label>Agrupar por</label>
+<select id="taxLevel">
+  <option value="ph">Filo</option>
+  <option value="fa">Familia</option>
+  <option value="gn" selected>Género</option>
+  <option value="sp">Especie</option>
+</select></div>
+</div>
+
+<div class="sep"></div>
+
+<div class="sb-section">
+<h3>Ambiente</h3>
+<div class="fg"><label>Temp maduración °C</label><div style="display:flex;gap:4px"><input id="tMin" placeholder="Min"><input id="tMax" placeholder="Max"></div></div>
+<div class="fg"><label>Precip total mm</label><div style="display:flex;gap:4px"><input id="pMin" placeholder="Min"><input id="pMax" placeholder="Max"></div></div>
+<div class="fg"><label>Elevación m</label><div style="display:flex;gap:4px"><input id="eMin" placeholder="Min"><input id="eMax" placeholder="Max"></div></div>
+</div>
+
+<button class="reset" onclick="resetFilters()">↻ Resetear</button>
+</aside>
+
+<!-- MAIN -->
+<div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <h1>🍄 FungiMap Dashboard</h1>
+  <span class="badge" id="countBadge2">—</span>
+</div>
+
+<div class="main" id="mainArea">
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab on" data-tab="overview">📊 Resumen</div>
+  <div class="tab" data-tab="compare">🔬 Comparador</div>
+  <div class="tab" data-tab="behavior">🧬 Comportamiento</div>
+</div>
+
+<!-- OVERVIEW PANEL -->
+<div class="panel on" id="p-overview">
+<div class="stats">
+  <div class="stat"><div class="v" id="sTotal">—</div><div class="l">Registros</div></div>
+  <div class="stat"><div class="v" id="sSpecies">—</div><div class="l">Especies</div></div>
+  <div class="stat"><div class="v" id="sFam">—</div><div class="l">Familias</div></div>
+  <div class="stat"><div class="v" id="sReg">—</div><div class="l">Regiones</div></div>
+</div>
+<div class="grid">
+  <div class="card fw"><h2>🗺️ Distribución geográfica</h2><div class="ch h400" id="cMap"></div></div>
+  <div class="card fw"><h2>📊 Distribución taxonómica</h2><div class="ch h350" id="cTaxon"></div></div>
+  <div class="card"><h2>📅 Estaciones</h2><div class="ch" id="cSeason"></div></div>
+  <div class="card"><h2>🏔️ Regiones</h2><div class="ch" id="cRegion"></div></div>
+  <div class="card"><h2>🌡️ Ventanas bioclimáticas</h2><div class="ch" id="cBio"></div></div>
+  <div class="card"><h2>💧 Precipitación × región</h2><div class="ch" id="cPrecip"></div></div>
+  <div class="card"><h2>📈 Elevación vs Temp</h2><div class="ch" id="cScatter"></div></div>
+  <div class="card"><h2>🏆 Top especies</h2><div class="ch" id="cTop"></div></div>
+</div>
+</div>
+
+<!-- COMPARE PANEL -->
+<div class="panel" id="p-compare">
+<div class="comp-controls">
+  <div class="fg"><label>Nivel taxonómico</label>
+  <select id="compLevel" onchange="buildCompChips()">
+    <option value="gn">Género</option>
+    <option value="sp">Especie</option>
+    <option value="fa">Familia</option>
+  </select></div>
+  <div class="fg"><label>Región</label>
+  <select id="compRegion" onchange="updateCompare()">
+    <option value="all">Todas</option>
+    <option value="NOA">NOA</option>
+    <option value="NEA">NEA</option>
+    <option value="Cuyo">Cuyo</option>
+    <option value="Centro">Centro</option>
+    <option value="Patagonia">Patagonia</option>
+  </select></div>
+</div>
+<div class="fg"><label>Seleccionar taxones (máx 6)</label><div class="multi-select" id="compChips"></div></div>
+<div class="comp-grid">
+  <div class="comp-card"><h2>📊 Perfil bioclimático comparativo</h2><div class="ch h450" id="cCompBio"></div></div>
+  <div class="comp-card"><h2>🎯 Radar — condiciones promedio</h2><div class="ch h400" id="cCompRadar"></div></div>
+  <div class="comp-card"><h2>💧 Perfil hídrico comparativo</h2><div class="ch h350" id="cCompRegion"></div></div>
+  <div class="comp-card"><h2>🗓️ Distribución regional</h2><div class="ch h350" id="cCompRegDist"></div></div>
+  <div class="comp-card"><h2>📅 Fenología estacional</h2><div class="ch h350" id="cCompSeason"></div></div>
+</div>
+</div>
+
+<!-- BEHAVIOR PANEL -->
+<div class="panel" id="p-behavior">
+<div class="comp-controls">
+  <div class="fg"><label>Taxón</label>
+  <select id="behTaxon" onchange="updateBehavior()">
+    <option value="">Seleccionar...</option>
+  </select></div>
+  <div class="fg"><label>Nivel</label>
+  <select id="behLevel" onchange="buildBehaviorSelect()">
+    <option value="gn">Género</option>
+    <option value="sp">Especie</option>
+    <option value="fa">Familia</option>
+  </select></div>
+</div>
+<div class="comp-grid">
+  <div class="comp-card"><h2>🌡️ Comportamiento térmico por región</h2><div class="ch h400" id="cBehTemp"></div></div>
+  <div class="comp-card"><h2>💧 Comportamiento hídrico por región</h2><div class="ch h400" id="cBehWater"></div></div>
+  <div class="comp-card"><h2>🏔️ Perfil de elevación</h2><div class="ch h350" id="cBehElev"></div></div>
+  <div class="comp-card"><h2>📅 Fenología detallada</h2><div class="ch h350" id="cBehPheno"></div></div>
+  <div class="comp-card fw"><h2>📋 Resumen ecológico</h2><div id="behSummary" style="padding:8px;font-size:13px;line-height:1.6"></div></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+const RG={NOA:['Jujuy','Salta','Tucumán','Catamarca','La Rioja','Santiago del Estero'],NEA:['Misiones','Corrientes','Formosa','Chaco'],Cuyo:['Mendoza','San Juan','San Luis'],Centro:['Córdoba','Santa Fe','Entre Ríos','Buenos Aires','Ciudad de Buenos Aires','La Pampa'],Patagonia:['Neuquén','Río Negro','Chubut','Santa Cruz','Tierra del Fuego']};
+const RGC={NOA:'#e17055',NEA:'#00b894',Cuyo:'#fdcb6e',Centro:'#7c6cf0',Patagonia:'#3b9eff'};
+const RG_DESC={NOA:'Subtropical árido → selva nubosa (500-4000m)',NEA:'Subtropical húmedo — selva parananense',Cuyo:'Árido de montaña',Centro:'Templado húmedo pampeano',Patagonia:'Frío árido → subantártico'};
+const PAL=['#7c6cf0','#00d2c8','#00c48c','#ffa63e','#ff6b6b','#ff7eb3','#3b9eff','#ffe17a','#a78bfa','#34d399','#f97316','#64748b'];
+const LEVELS={ph:'Filo',fa:'Familia',gn:'Género',sp:'Especie'};
+
+let D=[];
+const CH={};
+let compSelected=[];
+
+function getR(s){for(const[r,p]of Object.entries(RG))if(p.includes(s))return r;return null}
+function getS(d){if(!d)return null;const m=+d.split('-')[1];return[12,1,2].includes(m)?'Verano':[3,4,5].includes(m)?'Otoño':[6,7,8].includes(m)?'Invierno':'Primavera'}
+function cnt(a){const c={};a.forEach(v=>{if(v)c[v]=(c[v]||0)+1});return c}
+function avg(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
+function med(a){if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2}
+
+async function init(){
+  try{D=await(await fetch('/fd.json')).json()}catch(e){document.getElementById('loader').textContent='Error';return}
+  D.forEach(r=>{r.rg=r.rg||getR(r.st);r.sn=r.sn||getS(r.dt)});
+  document.getElementById('loader').classList.add('hide');
+  initFilters();initCharts();initTabs();
+  update();
+}
+
+function initFilters(){
+  ['fPh','fFa','fGn'].forEach(id=>{
+    const lvl={fPh:'ph',fFa:'fa',fGn:'gn'}[id];
+    const sel=document.getElementById(id);
+    [...new Set(D.map(r=>r[lvl]).filter(Boolean))].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o)});
+  });
+  document.querySelectorAll('#seasonChips .chip,#regionChips .chip').forEach(c=>c.onclick=()=>{c.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');update()});
+  ['fPh','fFa','fGn','taxLevel','tMin','tMax','pMin','pMax','eMin','eMax'].forEach(id=>document.getElementById(id).onchange=update);
+}
+
+function initTabs(){
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    document.getElementById('p-'+t.dataset.tab).classList.add('on');
+    setTimeout(resizeAll,50);
+    if(t.dataset.tab==='compare'){buildCompChips();updateCompare()}
+    if(t.dataset.tab==='behavior'){buildBehaviorSelect()}
+  });
+}
+
+function initCharts(){
+  document.querySelectorAll('.ch[id]').forEach(el=>{CH[el.id]=echarts.init(el,'dark');CH[el.id].setOption({backgroundColor:'transparent'})});
+  let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(resizeAll,100)});
+}
+function resizeAll(){Object.values(CH).forEach(c=>{try{c.resize()}catch(e){}})}
+
+function filtered(){
+  let d=[...D];
+  const sn=document.querySelector('#seasonChips .chip.on')?.dataset.v;
+  if(sn&&sn!=='all')d=d.filter(r=>r.sn===sn);
+  const rg=document.querySelector('#regionChips .chip.on')?.dataset.v;
+  if(rg&&rg!=='all')d=d.filter(r=>r.rg===rg);
+  const ph=document.getElementById('fPh').value;if(ph!=='all')d=d.filter(r=>r.ph===ph);
+  const fa=document.getElementById('fFa').value;if(fa!=='all')d=d.filter(r=>r.fa===fa);
+  const gn=document.getElementById('fGn').value;if(gn!=='all')d=d.filter(r=>r.gn===gn);
+  const t0=+document.getElementById('tMin').value,t1=+document.getElementById('tMax').value;
+  if(t0)d=d.filter(r=>r.mt!==''&&r.mt>=t0);if(t1)d=d.filter(r=>r.mt!==''&&r.mt<=t1);
+  const p0=+document.getElementById('pMin').value,p1=+document.getElementById('pMax').value;
+  if(p0)d=d.filter(r=>(r.tp||0)+(r.dp||0)+(r.mp||0)>=p0);
+  if(p1)d=d.filter(r=>(r.tp||0)+(r.dp||0)+(r.mp||0)<=p1);
+  const e0=+document.getElementById('eMin').value,e1=+document.getElementById('eMax').value;
+  if(e0)d=d.filter(r=>r.el!==''&&r.el>=e0);if(e1)d=d.filter(r=>r.el!==''&&r.el<=e1);
+  return d;
+}
+
+function update(){
+  const d=filtered();
+  const n=d.length;
+  document.getElementById('countBadge').textContent=n;
+  document.getElementById('countBadge2').textContent=n;
+  document.getElementById('sTotal').textContent=n;
+  document.getElementById('sSpecies').textContent=new Set(d.map(r=>r.sp).filter(Boolean)).size;
+  document.getElementById('sFam').textContent=new Set(d.map(r=>r.fa).filter(Boolean)).size;
+  document.getElementById('sReg').textContent=new Set(d.filter(r=>r.rg).map(r=>r.rg)).size;
+  drawMap(d);drawTaxon(d);drawSeason(d);drawRegion(d);drawBio(d);drawPrecip(d);drawScatter(d);drawTop(d);
+}
+
+// ── MAP ──
+function drawMap(d){
+  const pts=d.filter(r=>r.lat&&r.lng).map(r=>({value:[r.lng,r.lat],rg:r.rg,name:r.sp||r.gn||'?',is:{color:RGC[r.rg]||'#7c6cf0'}}));
+  CH.cMap.setOption({backgroundColor:'transparent',tooltip:{trigger:'item',formatter:p=>`<b>${p.data.name}</b><br>${p.data.rg||'?'}<br>${p.value[1].toFixed(2)}°S, ${p.value[0].toFixed(2)}°W`},
+  grid:{left:40,right:20,top:20,bottom:40},xAxis:{show:false,min:-73,max:-53},yAxis:{show:false,min:-56,max:-20},
+  series:[{type:'scatter',symbolSize:5,data:pts,itemStyle:{opacity:.65},emphasis:{itemStyle:{opacity:1,shadowBlur:8}}}],
+  visualMap:{show:false}},true);
+  setTimeout(()=>{try{CH.cMap.resize()}catch(e){}},100);
+}
+
+// ── TAXON BAR ──
+function drawTaxon(d){
+  const lvl=document.getElementById('taxLevel').value;
+  const c=cnt(d.map(r=>r[lvl]).filter(Boolean));
+  const s=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,25);
+  CH.cTaxon.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},grid:{left:140,right:30,top:10,bottom:30},
+  xAxis:{type:'value',axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  yAxis:{type:'category',data:s.map(x=>x[0]).reverse(),axisLabel:{color:'#e8edf5',fontSize:11}},
+  series:[{type:'bar',data:s.map((x,i)=>({value:x[1],is:{color:PAL[i%PAL.length],borderRadius:[0,4,4,0]}})).reverse(),barWidth:14,
+  label:{show:true,position:'right',color:'#8892a8',fontSize:11}}]},true);
+}
+
+// ── SEASON PIE ──
+function drawSeason(d){
+  const c=cnt(d.map(r=>r.sn).filter(Boolean));
+  const ord=['Primavera','Verano','Otoño','Invierno'],ic=['🌸','☀️','🍂','❄️'],co=['#ff7eb3','#ffa63e','#e17055','#3b9eff'];
+  CH.cSeason.setOption({backgroundColor:'transparent',tooltip:{trigger:'item'},series:[{type:'pie',radius:['40%','72%'],
+  data:ord.map((s,i)=>({value:c[s]||0,name:`${ic[i]} ${s}`,is:{color:co[i]}})),label:{color:'#e8edf5',fontSize:11}}]},true);
+}
+
+// ── REGION PIE ──
+function drawRegion(d){
+  const c=cnt(d.map(r=>r.rg).filter(Boolean));
+  const ord=['NOA','NEA','Cuyo','Centro','Patagonia'];
+  CH.cRegion.setOption({backgroundColor:'transparent',tooltip:{trigger:'item',formatter:p=>`<b>${p.name}</b><br>${p.value} registros<br><span style="font-size:10px;color:#8892a8">${RG_DESC[p.name]||''}</span>`},
+  series:[{type:'pie',radius:['40%','72%'],data:ord.map(r=>({value:c[r]||0,name:r,is:{color:RGC[r]}})),label:{color:'#e8edf5',fontSize:11,formatter:'{b}\n{d}%'}}]},true);
+}
+
+// ── BIO WINDOWS ──
+function drawBio(d){
+  const w=d.filter(r=>r.tt!==''&&r.dt2!==''&&r.mt!=='');
+  const rgs=[...new Set(w.map(r=>r.rg).filter(Boolean))];
+  const wins=[{k:'tt',n:'💧 Disparo (D-14→D-8)',c:'#3b9eff'},{k:'dt2',n:'🌱 Desarrollo (D-7→D-4)',c:'#00c48c'},{k:'mt',n:'🍄 Maduración (D-3→D-0)',c:'#ffa63e'}];
+  CH.cBio.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:wins.map(w=>w.n)},
+  grid:{left:50,right:20,top:15,bottom:40},xAxis:{type:'category',data:rgs,axisLabel:{color:'#8892a8'}},
+  yAxis:{type:'value',name:'°C',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:wins.map(w=>({name:w.n,type:'bar',data:rgs.map(r=>Math.round(avg(w.filter(x=>x.rg===r).map(x=>x[w.k]||0))*10)/10),is:{color:w.c,borderRadius:[3,3,0,0]},barGap:'10%'}))},true);
+}
+
+// ── PRECIP ──
+function drawPrecip(d){
+  const w=d.filter(r=>r.tp!==''&&r.rg);
+  const rgs=[...new Set(w.map(r=>r.rg).filter(Boolean))];
+  const wins=[{k:'tp',n:'Disparo',c:'#3b9eff'},{k:'dp',n:'Desarrollo',c:'#00c48c'},{k:'mp',n:'Maduración',c:'#ffa63e'}];
+  CH.cPrecip.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:wins.map(w=>w.n)},
+  grid:{left:50,right:20,top:10,bottom:40},xAxis:{type:'category',data:rgs,axisLabel:{color:'#8892a8'}},
+  yAxis:{type:'value',name:'mm',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:wins.map(w=>({name:w.n,type:'bar',stack:'t',data:rgs.map(r=>Math.round(avg(w.filter(x=>x.rg===r).map(x=>x[w.k]||0))*10)/10),is:{color:w.c}}))},true);
+}
+
+// ── SCATTER ──
+function drawScatter(d){
+  const pts=d.filter(r=>r.el&&r.mt!=='').map(r=>({value:[r.el,r.mt],rg:r.rg,name:r.sp||r.gn||'',is:{color:RGC[r.rg]||'#7c6cf0',opacity:.55}}));
+  CH.cScatter.setOption({backgroundColor:'transparent',tooltip:{trigger:'item',formatter:p=>`<b>${p.data.name}</b><br>${p.value[0]}m • ${p.value[1]}°C`},
+  grid:{left:50,right:20,top:15,bottom:35},xAxis:{type:'value',name:'Elev (m)',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  yAxis:{type:'value',name:'°C',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:[{type:'scatter',data:pts,symbolSize:7}]},true);
+}
+
+// ── TOP SPECIES ROSE ──
+function drawTop(d){
+  const c=cnt(d.map(r=>r.sp).filter(Boolean));
+  const s=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  CH.cTop.setOption({backgroundColor:'transparent',tooltip:{trigger:'item'},series:[{type:'pie',radius:['20%','68%'],roseType:'radius',
+  data:s.map((x,i)=>({value:x[1],name:x[0],is:{color:PAL[i%PAL.length]}})),label:{color:'#e8edf5',fontSize:10}}]},true);
+}
+
+// ── COMPARE MODE ──
+function buildCompChips(){
+  const lvl=document.getElementById('compLevel').value;
+  const rg=document.getElementById('compRegion').value;
+  const base=rg&&rg!=='all'?D.filter(r=>r.rg===rg):D;
+  const c=cnt(base.map(r=>r[lvl]).filter(Boolean));
+  const sorted=Object.entries(c).filter(x=>x[1]>=2).sort((a,b)=>b[1]-a[1]).slice(0,30);
+  const el=document.getElementById('compChips');
+  el.innerHTML='';
+  compSelected=[];
+  sorted.forEach(([name])=>{
+    const ch=document.createElement('div');ch.className='ms-chip';ch.textContent=name;
+    ch.onclick=()=>{
+      if(ch.classList.contains('on')){ch.classList.remove('on');compSelected=compSelected.filter(x=>x!==name)}
+      else if(compSelected.length<6){ch.classList.add('on');compSelected.push(name)}
+      updateCompare();
+    };
+    el.appendChild(ch);
+  });
+}
+
+function updateCompare(){
+  if(!compSelected.length)return;
+  const lvl=document.getElementById('compLevel').value;
+  const rg=document.getElementById('compRegion').value;
+  const base=rg&&rg!=='all'?D.filter(r=>r.rg===rg):D;
+
+  // Comp bio: 2 panels — thermal + hydro profiles per taxon across 3 windows
+  const colMap={};compSelected.forEach((n,i)=>colMap[n]=PAL[i%PAL.length]);
+  const wLabels=['💧 Disparo\n(D-14→D-8)','🌱 Desarrollo\n(D-7→D-4)','🍄 Maduración\n(D-3→D-0)'];
+  const tempSeries=[];const precipSeries=[];
+  compSelected.forEach(name=>{
+    const sub=base.filter(r=>r[lvl]===name&&r.tt!=='');
+    const col=colMap[name];
+    tempSeries.push({name,type:'line',data:['tt','dt2','mt'].map(k=>Math.round(avg(sub.map(r=>r[k]||0))*10)/10),
+      lineStyle:{color:col,width:3},itemStyle:{color:col},symbol:'circle',symbolSize:10,
+      label:{show:true,position:'top',color:col,fontSize:12,fontWeight:700,formatter:p=>p.value+'°C'}});
+    precipSeries.push({name,type:'line',data:['tp','dp','mp'].map(k=>Math.round(avg(sub.map(r=>r[k]||0))*10)/10),
+      lineStyle:{color:col,width:3},itemStyle:{color:col},symbol:'diamond',symbolSize:10,
+      label:{show:true,position:'top',color:col,fontSize:12,fontWeight:700,formatter:p=>p.value+'mm'}});
+  });
+  // Use cCompBio for thermal profile (line chart)
+  CH.cCompBio.setOption({backgroundColor:'transparent',
+  title:[{text:'🌡️ Perfil térmico (°C)',left:'center',top:0,textStyle:{color:'#8892a8',fontSize:13,fontWeight:600}}],
+  tooltip:{trigger:'axis',formatter:function(ps){let h=`<b>${ps[0].axisValueLabel}</b>`;ps.forEach(p=>{h+=`<br/><span style="color:${p.color}">● ${p.seriesName}</span>: <b>${p.value}°C</b>`});return h}},
+  legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:compSelected,type:'scroll'},
+  grid:{left:60,right:30,top:40,bottom:50},
+  xAxis:{type:'category',data:wLabels,axisLabel:{color:'#e8edf5',fontSize:11,interval:0}},
+  yAxis:{type:'value',name:'°C',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:tempSeries},true);
+  // Use cCompRegion for hydro profile (line chart)
+  CH.cCompRegion.setOption({backgroundColor:'transparent',
+  title:[{text:'💧 Perfil hídrico (mm)',left:'center',top:0,textStyle:{color:'#8892a8',fontSize:13,fontWeight:600}}],
+  tooltip:{trigger:'axis',formatter:function(ps){let h=`<b>${ps[0].axisValueLabel}</b>`;ps.forEach(p=>{h+=`<br/><span style="color:${p.color}">● ${p.seriesName}</span>: <b>${p.value}mm</b>`});return h}},
+  legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:compSelected,type:'scroll'},
+  grid:{left:60,right:30,top:40,bottom:50},
+  xAxis:{type:'category',data:wLabels,axisLabel:{color:'#e8edf5',fontSize:11,interval:0}},
+  yAxis:{type:'value',name:'mm',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:precipSeries},true);
+
+  // Radar — valores reales con unidades, cada eje con su propio max
+  const radarAxes=[
+    {k:'tt',label:'💧 Temp Disparo °C',unit:'°C',max:40},
+    {k:'dt2',label:'🌱 Temp Desarrollo °C',unit:'°C',max:40},
+    {k:'mt',label:'🍄 Temp Maduración °C',unit:'°C',max:40},
+    {k:'tp',label:'💧 Precip Disparo mm',unit:'mm',max:150},
+    {k:'dp',label:'🌱 Precip Desarrollo mm',unit:'mm',max:150},
+    {k:'mp',label:'🍄 Precip Maduración mm',unit:'mm',max:150},
+    {k:'hum',label:'💧 Humedad %',unit:'%',max:100},
+    {k:'el',label:'🏔️ Elevación m',unit:'m',max:3500},
+  ];
+  const radarInd=radarAxes.map(a=>({name:a.label,max:a.max}));
+  const radarRealValues={}; // store real values for tooltip
+  const radarData=compSelected.map((name,i)=>{
+    const sub=base.filter(r=>r[lvl]===name&&r.tt!=='');
+    const realVals=radarAxes.map(a=>{
+      if(a.k==='hum')return Math.round(avg(sub.map(r=>r.th||r.dh||r.mh||0))*10)/10;
+      return Math.round(avg(sub.map(r=>r[a.k]||0))*10)/10;
+    });
+    radarRealValues[name]=realVals;
+    return{value:realVals,name,is:{color:PAL[i%PAL.length]}};
+  });
+  CH.cCompRadar.setOption({backgroundColor:'transparent',
+  tooltip:{formatter:function(params){
+    const rv=radarRealValues[params.name]||[];
+    let html=`<b style="color:${params.color}">${params.name}</b><br/><table style="font-size:12px">`;
+    radarAxes.forEach((a,i)=>{
+      html+=`<tr><td style="padding:1px 6px;color:#8892a8">${a.label}</td><td style="font-weight:600;text-align:right">${rv[i]} ${a.unit}</td></tr>`;
+    });
+    html+='</table>';return html;
+  }},
+  legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:compSelected},
+  radar:{indicator:radarInd,shape:'circle',
+    splitNumber:4,
+    splitArea:{areaStyle:{color:['rgba(124,108,240,.04)','rgba(124,108,240,.08)']}},
+    axisLine:{lineStyle:{color:'#1e2d4a'}},
+    splitLine:{lineStyle:{color:'#1e2d4a'}},
+    axisName:{color:'#8892a8',fontSize:9,formatter:function(val){return val}}},
+  series:[{type:'radar',data:radarData,lineStyle:{width:2},areaStyle:{opacity:.12},
+  label:{show:false}}]},true);
+
+  // Region distribution
+  const regions=['NOA','NEA','Cuyo','Centro','Patagonia'];
+  CH.cCompRegion.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:compSelected},
+  grid:{left:50,right:20,top:15,bottom:40},xAxis:{type:'category',data:regions,axisLabel:{color:'#8892a8'}},
+  yAxis:{type:'value',axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:compSelected.map((name,i)=>({name,type:'bar',data:regions.map(r=>base.filter(x=>x[lvl]===name&&x.rg===r).length),
+  is:{color:PAL[i%PAL.length],borderRadius:[3,3,0,0]},barGap:'5%'}))},true);
+
+  // Season
+  const seasons=['Primavera','Verano','Otoño','Invierno'];
+  CH.cCompSeason.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:compSelected},
+  grid:{left:50,right:20,top:15,bottom:40},xAxis:{type:'category',data:seasons,axisLabel:{color:'#8892a8'}},
+  yAxis:{type:'value',axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:compSelected.map((name,i)=>({name,type:'line',data:seasons.map(s=>base.filter(x=>x[lvl]===name&&x.sn===s).length),
+  lineStyle:{color:PAL[i%PAL.length],width:2},itemStyle:{color:PAL[i%PAL.length]},smooth:true,areaStyle:{opacity:.1}}))},true);
+
+  // Regional distribution (stacked bar)
+  const rgs2=['NOA','NEA','Cuyo','Centro','Patagonia'];
+  if(!CH.cCompRegDist){CH.cCompRegDist=echarts.init(document.getElementById('cCompRegDist'),'dark');CH.cCompRegDist.setOption({backgroundColor:'transparent'})}
+  CH.cCompRegDist.setOption({backgroundColor:'transparent',
+  tooltip:{trigger:'axis',formatter:function(ps){let h=`<b>${ps[0].axisValueLabel}</b>`;ps.forEach(p=>{if(p.value)h+=`<br/><span style="color:${p.color}">● ${p.seriesName}</span>: <b>${p.value}</b>`});return h}},
+  legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:10},data:compSelected},
+  grid:{left:50,right:20,top:15,bottom:40},xAxis:{type:'category',data:rgs2,axisLabel:{color:'#8892a8'}},
+  yAxis:{type:'value',name:'registros',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:compSelected.map((name,i)=>({name,type:'bar',stack:'total',
+  data:rgs2.map(r=>base.filter(x=>x[lvl]===name&&x.rg===r).length),
+  is:{color:PAL[i%PAL.length],borderRadius:[2,2,0,0]},barGap:'5%',
+  label:{show:true,position:'inside',color:'#fff',fontSize:10,formatter:p=>p.value||''}}))},true);
+}
+
+// ── BEHAVIOR MODE ──
+function buildBehaviorSelect(){
+  const lvl=document.getElementById('behLevel').value;
+  const sel=document.getElementById('behTaxon');
+  sel.innerHTML='<option value="">Seleccionar...</option>';
+  const c=cnt(D.map(r=>r[lvl]).filter(Boolean));
+  Object.entries(c).filter(x=>x[1]>=3).sort((a,b)=>b[1]-a[1]).forEach(([name])=>{
+    const o=document.createElement('option');o.value=name;o.textContent=`${name} (${c[name]})`;sel.appendChild(o);
+  });
+}
+
+function updateBehavior(){
+  const lvl=document.getElementById('behLevel').value;
+  const taxon=document.getElementById('behTaxon').value;
+  if(!taxon)return;
+  const sub=D.filter(r=>r[lvl]===taxon);
+  const subW=sub.filter(r=>r.tt!=='');
+  const regions=[...new Set(sub.map(r=>r.rg).filter(Boolean))];
+
+  // Temperature behavior by region
+  const wins=[{k:'tt',n:'Disparo',c:'#3b9eff'},{k:'dt2',n:'Desarrollo',c:'#00c48c'},{k:'mt',n:'Maduración',c:'#ffa63e'}];
+  const tempSeries=[];
+  regions.forEach(r=>{
+    const rs=subW.filter(x=>x.rg===r);
+    if(!rs.length)return;
+    wins.forEach(w=>{
+      const vals=rs.map(x=>x[w.k]||0);
+      tempSeries.push({name:`${r} — ${w.n}`,type:'bar',data:[{value:Math.round(avg(vals)*10)/10,
+      is:{color:RGC[r],opacity:w.k==='tt'?.9:w.k==='dt2'?.7:.5,borderRadius:[3,3,0,0]}}]});
+    });
+  });
+  CH.cBehTemp.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:9},type:'scroll'},
+  grid:{left:50,right:20,top:15,bottom:60},xAxis:{type:'category',data:regions,axisLabel:{color:'#e8edf5',fontSize:11}},
+  yAxis:{type:'value',name:'°C',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:tempSeries.length?tempSeries:[{type:'bar',data:[]}]},true);
+
+  // Water behavior
+  const waterSeries=[];
+  regions.forEach(r=>{
+    const rs=subW.filter(x=>x.rg===r);
+    if(!rs.length)return;
+    [{k:'tp',n:'Precip Disparo',c:'#3b9eff'},{k:'dp',n:'Precip Desarro',c:'#00c48c'},{k:'mp',n:'Precip Madur',c:'#ffa63e'}].forEach(w=>{
+      waterSeries.push({name:`${r} — ${w.n}`,type:'bar',stack:r,data:[Math.round(avg(rs.map(x=>x[w.k]||0))*10)/10],is:{color:w.c}});
+    });
+  });
+  CH.cBehWater.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},legend:{bottom:0,textStyle:{color:'#8892a8',fontSize:9},type:'scroll'},
+  grid:{left:50,right:20,top:15,bottom:60},xAxis:{type:'category',data:regions,axisLabel:{color:'#e8edf5',fontSize:11}},
+  yAxis:{type:'value',name:'mm',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:waterSeries.length?waterSeries:[{type:'bar',data:[]}]},true);
+
+  // Elevation profile
+  const elByReg=regions.map(r=>subW.filter(x=>x.rg===r&&x.el).map(x=>x.el));
+  CH.cBehElev.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},grid:{left:50,right:20,top:15,bottom:35},
+  xAxis:{type:'category',data:regions,axisLabel:{color:'#8892a8'}},
+  yAxis:{type:'value',name:'m',nameTextStyle:{color:'#8892a8'},axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:[{type:'boxplot',data:elByReg.map(v=>{if(!v.length)return[];const s=[...v].sort((a,b)=>a-b);return[Math.round(s[0]),Math.round(s[Math.floor(s.length*.25)]),Math.round(med(s)),Math.round(s[Math.floor(s.length*.75)]),Math.round(s[s.length-1])]}),
+  itemStyle:{color:'#7c6cf0',borderColor:'#7c6cf0'}}]},true);
+
+  // Phenology (by month)
+  const months=Array.from({length:12},(_,i)=>i+1);
+  const monthNames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const monthData=months.map(m=>sub.filter(r=>{const d=r.dt;return d&&+d.split('-')[1]===m}).length);
+  CH.cBehPheno.setOption({backgroundColor:'transparent',tooltip:{trigger:'axis'},grid:{left:40,right:20,top:15,bottom:30},
+  xAxis:{type:'category',data:monthNames,axisLabel:{color:'#8892a8'}},
+  yAxis:{type:'value',axisLabel:{color:'#8892a8'},splitLine:{lineStyle:{color:'#1e2d4a'}}},
+  series:[{type:'bar',data:monthData.map((v,i)=>({value:v,is:{color:v>0?'#7c6cf0':'#1e2d4a',borderRadius:[3,3,0,0]}})),barWidth:16},
+  {type:'line',data:monthData,smooth:true,lineStyle:{color:'#00d2c8',width:2},itemStyle:{color:'#00d2c8'},symbol:'circle',symbolSize:6}]},true);
+
+  // Summary
+  const sum=document.getElementById('behSummary');
+  const allW=subW;
+  const regionsStr=regions.length?regions.join(', '):'Sin datos regionales';
+  const spCount=new Set(sub.map(r=>r.sp).filter(Boolean)).size;
+  const tempRange=allW.length?`Min: ${Math.min(...allW.map(r=>r.mt||99)).toFixed(1)}°C — Max: ${Math.max(...allW.map(r=>r.mt||0)).toFixed(1)}°C`:'—';
+  const precipRange=allW.length?`${Math.round(avg(allW.map(r=>(r.tp||0)+(r.dp||0)+(r.mp||0))))}mm promedio (14 días)`:'—';
+  const peakMonth=months[monthData.indexOf(Math.max(...monthData))];
+  const peakSeason=monthData.indexOf(Math.max(...monthData));
+
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">`;
+  html+=`<div><b style="color:var(--ac)">📊 ${taxon}</b><br>Registros: ${sub.length} (${subW.length} con clima)<br>Especies: ${spCount}<br>Regiones: ${regionsStr}</div>`;
+  html+=`<div><b style="color:var(--ac2)">🌡️ Comportamiento térmico</b><br>Rango maduración: ${tempRange}<br>`;
+  if(allW.length){
+    html+=`Disparo: ${avg(allW.map(r=>r.tt||0)).toFixed(1)}°C → Desarrollo: ${avg(allW.map(r=>r.dt2||0)).toFixed(1)}°C → Maduración: ${avg(allW.map(r=>r.mt||0)).toFixed(1)}°C<br>`;
+  }
+  html+=`</div>`;
+  html+=`<div><b style="color:var(--grn)">💧 Comportamiento hídrico</b><br>${precipRange}<br>`;
+  if(allW.length){
+    html+=`Disparo: ${avg(allW.map(r=>r.tp||0)).toFixed(1)}mm → Desarrollo: ${avg(allW.map(r=>r.dp||0)).toFixed(1)}mm → Maduración: ${avg(allW.map(r=>r.mp||0)).toFixed(1)}mm`;
+  }
+  html+=`</div>`;
+  html+=`<div><b style="color:var(--org)">📅 Fenología</b><br>Pico: ${monthNames[peakSeason]} (${Math.max(...monthData)} registros)<br>`;
+  html+=`Primavera: ${sub.filter(r=>r.sn==='Primavera').length} | Verano: ${sub.filter(r=>r.sn==='Verano').length} | Otoño: ${sub.filter(r=>r.sn==='Otoño').length} | Invierno: ${sub.filter(r=>r.sn==='Invierno').length}</div>`;
+  html+=`</div>`;
+
+  // Regional behavior comparison
+  if(regions.length>1){
+    html+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)"><b style="color:var(--pnk)">🏔️ Comportamiento regional</b><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px">`;
+    regions.forEach(r=>{
+      const rs=subW.filter(x=>x.rg===r);
+      if(!rs.length)return;
+      html+=`<div style="padding:8px;border-radius:6px;background:var(--sf2);border-left:3px solid ${RGC[r]}">`;
+      html+=`<b style="color:${RGC[r]}">${r}</b> (${rs.length})<br>`;
+      html+=`<span style="font-size:11px">Temp: ${avg(rs.map(x=>x.mt||0)).toFixed(1)}°C | Precip: ${Math.round(avg(rs.map(x=>(x.tp||0)+(x.dp||0)+(x.mp||0))))}mm<br>`;
+      html+=`Elev: ${Math.round(avg(rs.filter(x=>x.el).map(x=>x.el)))}m | Humedad: ${Math.round(avg(rs.map(x=>x.th||x.dh||x.mh||0)))}%</span></div>`;
+    });
+    html+=`</div></div>`;
+  }
+  sum.innerHTML=html;
+}
+
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('closed')}
+function resetFilters(){
+  document.querySelectorAll('#seasonChips .chip,#regionChips .chip').forEach((c,i)=>{c.classList.toggle('on',i===0)});
+  ['fPh','fFa','fGn'].forEach(id=>document.getElementById(id).value='all');
+  ['tMin','tMax','pMin','pMax','eMin','eMax'].forEach(id=>document.getElementById(id).value='');
+  update();
+}
+
+init();
+</script>
+</body>
+</html>

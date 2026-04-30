@@ -95,6 +95,39 @@ interface MapViewProps {
   updateLayerToggle: <K extends keyof LayerToggles>(key: K, value: LayerToggles[K]) => void;
 }
 
+// ── Global click handler for popup buttons (Leaflet popups break React event delegation) ──
+let globalClickInstalled = false;
+let globalClickCallback: ((s: Sighting) => void) | null = null;
+
+function installGlobalPopupClick() {
+  if (globalClickInstalled) return;
+  globalClickInstalled = true;
+  document.addEventListener('click', (e: MouseEvent) => {
+    const target = (e.target as HTMLElement)?.closest('.sighting-action-btn');
+    if (!target) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const raw = target.getAttribute('data-sighting');
+    if (raw && globalClickCallback) {
+      try {
+        const sighting = JSON.parse(raw);
+        globalClickCallback(sighting);
+      } catch (err) {
+        console.error('PopupClick parse error', err);
+      }
+    }
+  }, true); // capture phase to beat Leaflet's handler
+}
+
+function PopupClickHandler({ onSightingClick }: { onSightingClick: (s: Sighting) => void }) {
+  useEffect(() => {
+    globalClickCallback = onSightingClick;
+    installGlobalPopupClick();
+    return () => { globalClickCallback = null; };
+  }, [onSightingClick]);
+  return null;
+}
+
 function LocationMarker({
   isAddingMode,
   setIsAddingMode,
@@ -329,8 +362,11 @@ export default function MapView({
             <div className="mt-2 space-y-1">
               {!isGbif && (
                 <button
-                  onClick={() => onSightingClick(s)}
-                  className="w-full text-center py-2 text-[10px] font-sans font-black uppercase tracking-widest border border-atlas-ink/10 bg-atlas-paper hover:bg-atlas-stone transition-colors"
+                  className="sighting-action-btn w-full text-center py-2 text-[10px] font-sans font-black uppercase tracking-widest border border-atlas-ink/10 bg-atlas-paper hover:bg-atlas-stone transition-colors"
+                  data-sighting-id={s.id}
+                  data-lat={s.lat}
+                  data-lng={s.lng}
+                  data-sighting={JSON.stringify({ id: s.id, mushroom_name: s.mushroom_name, mushroomName: s.mushroomName, description: s.description, toxicity: s.toxicity, lat: s.lat, lng: s.lng, habitat: s.habitat, features: s.features, images: s.images, status: s.status, user: typeof s.user === 'string' ? s.user : s.userId, isGbif: false, weather_context: s.weather_context, elevation: s.elevation, phylum: s.phylum, taxon_class: s.taxon_class, taxon_order: s.taxon_order, family: s.family, genus: s.genus, species: s.species, event_date: s.event_date, locality: s.locality, state_province: s.state_province, country: s.country, recorded_by: s.recorded_by, created: s.created, network_id: s.network_id, imageUrl: s.imageUrl, userName: s.userName, userId: s.userId })}
                 >
                   Consultar Archivo
                 </button>
@@ -405,6 +441,7 @@ export default function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MalvinasOverlay />
+        <PopupClickHandler onSightingClick={onSightingClick} />
         <MarkerClusterGroup
           chunkedLoading
           spiderfyOnMaxZoom={true}

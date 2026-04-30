@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>ENM-BGEN vs FungiMap — Comparativa Capa por Capa</title>
+<style>
+  @page {
+    size: A4;
+    margin: 12mm 10mm 12mm 10mm;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 9pt;
+    color: #1a1a1a;
+    line-height: 1.35;
+    background: #fff;
+  }
+
+  /* ── Header ── */
+  .header {
+    border-bottom: 3px solid #2c3e50;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+  .header h1 {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #2c3e50;
+    letter-spacing: -0.5px;
+  }
+  .header .subtitle {
+    font-size: 9pt;
+    color: #666;
+    margin-top: 2px;
+  }
+  .header .meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 7.5pt;
+    color: #999;
+  }
+
+  /* ── Section titles ── */
+  h2 {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #fff;
+    background: #2c3e50;
+    padding: 5px 10px;
+    margin: 14px 0 6px 0;
+    page-break-after: avoid;
+  }
+  h2.green { background: #27ae60; }
+  h2.red { background: #c0392b; }
+  h2.blue { background: #2980b9; }
+  h2.amber { background: #d35400; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    font-size: 8.5pt;
+  }
+  th {
+    background: #f0f0f0;
+    font-weight: 700;
+    text-align: left;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #555;
+  }
+  td {
+    padding: 5px 6px;
+    border: 1px solid #ddd;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #fafafa; }
+  td.check { text-align: center; font-size: 12pt; }
+  td.effort { text-align: center; font-weight: 600; }
+
+  /* ── Impact badges ── */
+  .badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .badge-high { background: #c0392b; color: #fff; }
+  .badge-med { background: #f39c12; color: #fff; }
+  .badge-low { background: #95a5a6; color: #fff; }
+  .badge-fire { background: #e74c3c; color: #fff; font-size: 8pt; }
+
+  /* ── Notes column ── */
+  .notes-col {
+    min-width: 80px;
+    background: #fefefe !important;
+    border-left: 2px dashed #ccc !important;
+  }
+
+  /* ── Summary grid ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 10px 0;
+  }
+  .summary-box {
+    border: 2px solid #2c3e50;
+    border-radius: 4px;
+    padding: 8px 10px;
+  }
+  .summary-box h3 {
+    font-size: 9pt;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #2c3e50;
+  }
+  .summary-box ul {
+    margin-left: 14px;
+    font-size: 8pt;
+    color: #444;
+  }
+  .summary-box ul li { margin-bottom: 2px; }
+
+  /* ── Visual comparison ── */
+  .compare-table {
+    font-size: 8pt;
+    width: 100%;
+  }
+  .compare-table td { padding: 4px 6px; }
+  .compare-table td:first-child { font-weight: 600; width: 38%; }
+  .compare-table td:nth-child(2),
+  .compare-table td:nth-child(3) { text-align: center; width: 25%; }
+  .compare-table td:last-child { width: 12%; text-align: center; }
+
+  /* ── Print helpers ── */
+  .page-break { page-break-before: always; }
+  .no-break { page-break-inside: avoid; }
+  .annotation-lines {
+    height: 24px;
+    border-bottom: 1px dotted #ccc;
+    margin: 4px 0;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 20px;
+    padding-top: 6px;
+    border-top: 1px solid #ccc;
+    font-size: 7pt;
+    color: #aaa;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ PORTADA ═══════════ -->
+<div class="header">
+  <h1>ENM-BGEN vs FungiMap</h1>
+  <div class="subtitle">Comparativa capa por capa — Análisis para integración de modelado de nicho ecológico</div>
+  <div class="meta">
+    <span>Aletheia · Abril 2026</span>
+    <span>ENM-BGEN: BGEN/UNAJ · MIT License · Autor: D.N. Sánchez Leguizamón</span>
+  </div>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-box">
+    <h3>🍄 FungiMap (nuestro)</h3>
+    <ul>
+      <li>Mapa colaborativo de hongos silvestres</li>
+      <li>React + Vite + Leaflet + PocketBase</li>
+      <li>1,110 registros (GBIF + MO + usuarios)</li>
+      <li>Clima 14 días, luna, fotoperiodo, altitud</li>
+      <li>Geofirma, IA (Gemini), PWA, chat</li>
+      <li>Stack: TypeScript, Docker, nginx</li>
+    </ul>
+  </div>
+  <div class="summary-box">
+    <h3>🌿 ENM-BGEN (referencia)</h3>
+    <ul>
+      <li>Modelado de nicho ecológico, 19 plantas nativas</li>
+      <li>R + biomod2 + Leaflet</li>
+      <li>GBIF + iNaturalist (estático, batch)</li>
+      <li>WorldClim + SRTM (variables macro)</li>
+      <li>Ensemble: GLM+GBM+RF+MAXNET+XGBOOST</li>
+      <li>AUC 0.93–0.98, TSS 0.70–0.91</li>
+    </ul>
+  </div>
+</div>
+
+<div class="annotation-lines"></div>
+<div class="annotation-lines"></div>
+
+<!-- ═══════════ SECCIÓN 1: Lo que FungiMap YA TIENE ═══════════ -->
+<h2 class="green">✅ Capas que FungiMap ya tiene (ventaja sobre ENM-BGEN)</h2>
+
+<table class="no-break">
+  <thead>
+    <tr>
+      <th style="width:22%">Capa</th>
+      <th style="width:32%">FungiMap</th>
+      <th style="width:32%">ENM-BGEN</th>
+      <th style="width:14%">Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Registros en tiempo real</strong></td>
+      <td>Usuarios + GBIF + Mushroom Observer (1,110+ vivos, actualización continua)</td>
+      <td>GBIF + iNaturalist (estático, importación batch)</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Clima microcontexto</strong></td>
+      <td>Open-Meteo 14 días previos: temp, precipitación, humedad, viento por día</td>
+      <td>WorldClim promedio 1970–2000 (macro, no fenológico)</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Ventanas biológicas</strong></td>
+      <td>3 ventanas: Disparo (D-14→D-8), Desarrollo (D-7→D-4), Maduración (D-3→D-0)</td>
+      <td>No tiene</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Fase lunar</strong></td>
+      <td>WeatherAPI: fase, iluminación %, moonrise/set</td>
+      <td>No tiene</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Fotoperiodo</strong></td>
+      <td>Sunrise-Sunset API: horas luz, amanecer, atardecer, noon solar</td>
+      <td>No tiene</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Altitud automática</strong></td>
+      <td>Open-Meteo Elevation por registro individual</td>
+      <td>SRTM raster global (por píxel)</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Geofirma (validación in situ)</strong></td>
+      <td>GPS + threshold 50m + puntos + méritos</td>
+      <td>No tiene</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Reconocimiento IA</strong></td>
+      <td>Gemini para identificación por imagen</td>
+      <td>No tiene</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Usuarios / Colaboración</strong></td>
+      <td>Auth, perfiles, puntos, méritos, roles (user/expert/admin)</td>
+      <td>No tiene (pipeline unipersonal)</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Chat en mapa</strong></td>
+      <td>Tiempo real, vinculado a ubicación</td>
+      <td>No tiene</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>PWA / Offline</strong></td>
+      <td>Service worker, offline indicator, install prompt</td>
+      <td>No tiene (app web estática)</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Taxonomía validada</strong></td>
+      <td>ITIS validation hook (useITISValidation)</td>
+      <td>Normalización manual con word()</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Toxicidad</strong></td>
+      <td>Comestible / Tóxico / Mortal / Desconocido</td>
+      <td>No aplica (plantas, no hongos)</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Reportes / Moderación</strong></td>
+      <td>Sistema completo: report + review + dismiss</td>
+      <td>No tiene</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Visualización markers</strong></td>
+      <td>Markers con foto, badge fuente, popup rico, clustering</td>
+      <td>Raster overlay continuo (sin markers individuales)</td>
+      <td class="notes-col"></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════ SECCIÓN 2: Lo que FungiMap NECESITA ═══════════ -->
+<h2 class="red">❌ Capas que ENM-BGEN tiene y FungiMap NO</h2>
+
+<table class="no-break">
+  <thead>
+    <tr>
+      <th style="width:22%">Capa</th>
+      <th style="width:26%">Qué hace en ENM-BGEN</th>
+      <th style="width:24%">Cómo adaptarlo a FungiMap</th>
+      <th style="width:10%">Esfuerzo</th>
+      <th style="width:10%">Impacto</th>
+      <th style="width:8%">Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Mapa de idoneidad por especie (SDM)</strong></td>
+      <td>Rasters de probabilidad 0–1, renderizados como overlay Leaflet con paleta semántica</td>
+      <td>Python: scikit-learn + rasterio + folium. Entrenar con registros FungiMap + GBIF validados. Overlay toggle por especie.</td>
+      <td class="effort">5–7 días</td>
+      <td><span class="badge badge-fire">🔥 CRÍTICO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Variables bioclimáticas</strong></td>
+      <td>WorldClim v2.1 (19 BIO) + SRTM (elevación, pendiente, aspecto). Filtradas VIF ≤5 → 9 predictores</td>
+      <td>Descargar WorldClim + SRTM para Argentina. Generar stack. Usar como input del SDM y como capas informativas en el mapa.</td>
+      <td class="effort">2–3 días</td>
+      <td><span class="badge badge-high">ALTO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Modelo de nicho ecológico</strong></td>
+      <td>Ensemble 5 algoritmos (biomod2), validación cruzada 3 rep, pseudo-ausencias SRE</td>
+      <td>XGBoost + RF ensemble en Python. Usar registros FungiMap como presencias. Pseudo-ausencias fuera de rango ambiental.</td>
+      <td class="effort">Incluido en SDM</td>
+      <td><span class="badge badge-fire">🔥 CRÍTICO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Cobertura del suelo (MapBiomas)</strong></td>
+      <td>Cruce idoneidad × uso suelo → 9 categorías: conservación / restauración / pérdida</td>
+      <td>Descargar MapBiomas Argentina Colección 2. Reclasificar. Cruce con rasters de idoneidad. Capa toggle.</td>
+      <td class="effort">2–3 días</td>
+      <td><span class="badge badge-fire">🔥 CRÍTICO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Clasificación de idoneidad</strong></td>
+      <td>4 clases: Insustentable (0–0.2), Bajo (0.2–0.4), Moderado (0.4–0.6), Alto (0.6–1.0)</td>
+      <td>Aplicar misma clasificación a rasters generados. Paleta: gris/amarillo/naranja/verde.</td>
+      <td class="effort">1 día</td>
+      <td><span class="badge badge-high">ALTO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Selección de variables (VIF)</strong></td>
+      <td>Stepwise VIF ≤5 + Pearson para eliminar colinealidad entre predictores</td>
+      <td>Python: statsmodels VIF. Aplicar al stack de variables antes de modelar.</td>
+      <td class="effort">1 día</td>
+      <td><span class="badge badge-med">MEDIO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Métricas de validación</strong></td>
+      <td>AUCroc, TSS por especie, importancia de variables, tabla resumen</td>
+      <td>Python: sklearn metrics (ROC-AUC, TSS equivalent). Mostrar en dashboard por especie.</td>
+      <td class="effort">Incluido en SDM</td>
+      <td><span class="badge badge-high">ALTO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Mapa multiespecies toggle</strong></td>
+      <td>Leaflet con checkbox por especie, 3 basemaps, leyenda integrada</td>
+      <td>Añadir overlay rasters al MapView existente. Toggle por especie además de por fuente.</td>
+      <td class="effort">1–2 días</td>
+      <td><span class="badge badge-med">MEDIO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Thinning espacial</strong></td>
+      <td>1 registro por píxel por especie (elimina sesgo de muestreo)</td>
+      <td>Verificar duplicados en mismo píxel (~1km²) al crear avistamiento. Sugerir confirmar existente.</td>
+      <td class="effort">1 día</td>
+      <td><span class="badge badge-med">MEDIO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Pipeline reproducible</strong></td>
+      <td>Script maestro R con bloques secuenciales y checkpoints</td>
+      <td>Ya tenemos mejor stack (Python/Docker). Formalizar checkpoints en pipeline existente.</td>
+      <td class="effort">—</td>
+      <td><span class="badge badge-low">BAJO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════ SECCIÓN 3: Oportunidades ═══════════ -->
+<h2 class="blue">🆕 Capas que NINGUNO tiene (oportunidades)</h2>
+
+<table class="no-break">
+  <thead>
+    <tr>
+      <th style="width:22%">Capa</th>
+      <th style="width:34%">Descripción</th>
+      <th style="width:18%">Esfuerzo</th>
+      <th style="width:10%">Impacto</th>
+      <th style="width:8%">Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Predicción de fructificación</strong></td>
+      <td>Combinar nicho ecológico + clima reciente + suelo → "Probabilidad de encontrar X especie esta semana en Y zona". Ningún mapa de hongos hace esto.</td>
+      <td class="effort">5–7 días</td>
+      <td><span class="badge badge-fire">🔥 DIFERENCIADOR</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Dashboard por especie</strong></td>
+      <td>Rango altitudinal, estacionalidad, preferencia de hábitat, temperatura óptima — todo derivado de datos propios de FungiMap</td>
+      <td class="effort">3–4 días</td>
+      <td><span class="badge badge-high">ALTO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Capa suelo en tiempo real</strong></td>
+      <td>Open-Meteo soil_moisture + soil_temperature como heatmap vivo. Correlación directa con fructificación fúngica.</td>
+      <td class="effort">2 días</td>
+      <td><span class="badge badge-high">ALTO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td><strong>Spore map (dispersión)</strong></td>
+      <td>Modelar dirección de dispersión desde puntos observados. Capa de viento + registros históricos.</td>
+      <td class="effort">7–10 días</td>
+      <td><span class="badge badge-med">MEDIO</span></td>
+      <td class="notes-col"></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════ RESUMEN VISUAL ═══════════ -->
+<h2 class="amber">📊 Resumen comparativo</h2>
+
+<table class="compare-table no-break">
+  <thead>
+    <tr>
+      <th>Capa</th>
+      <th>ENM-BGEN</th>
+      <th>FungiMap</th>
+      <th>Prioridad</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Registros vivos</td><td>—</td><td>✅</td><td></td></tr>
+    <tr><td>Clima 14 días + ventanas biológicas</td><td>—</td><td>✅</td><td></td></tr>
+    <tr><td>Luna / Fotoperiodo</td><td>—</td><td>✅</td><td></td></tr>
+    <tr><td>Geofirma / Validación in situ</td><td>—</td><td>✅</td><td></td></tr>
+    <tr><td>IA / Colaboración / Chat</td><td>—</td><td>✅</td><td></td></tr>
+    <tr><td>PWA / Offline</td><td>—</td><td>✅</td><td></td></tr>
+    <tr style="background:#fff3f3"><td><strong>Nicho ecológico (SDM)</strong></td><td>✅</td><td>—</td><td><span class="badge badge-fire">P0</span></td></tr>
+    <tr style="background:#fff3f3"><td><strong>Variables bioclimáticas</strong></td><td>✅</td><td>—</td><td><span class="badge badge-high">P0</span></td></tr>
+    <tr style="background:#fff3f3"><td><strong>MapBiomas (uso suelo)</strong></td><td>✅</td><td>—</td><td><span class="badge badge-fire">P1</span></td></tr>
+    <tr style="background:#fff3f3"><td><strong>Clasificación idoneidad</strong></td><td>✅</td><td>—</td><td><span class="badge badge-high">P1</span></td></tr>
+    <tr style="background:#fff3f3"><td><strong>Validación estadística</strong></td><td>✅</td><td>—</td><td><span class="badge badge-high">P1</span></td></tr>
+    <tr style="background:#fff8e1"><td><strong>Predicción fructificación</strong></td><td>—</td><td>—</td><td><span class="badge badge-fire">P2</span></td></tr>
+    <tr style="background:#fff8e1"><td><strong>Dashboard por especie</strong></td><td>—</td><td>—</td><td><span class="badge badge-high">P2</span></td></tr>
+    <tr style="background:#fff8e1"><td><strong>Suelo en tiempo real</strong></td><td>—</td><td>—</td><td><span class="badge badge-high">P2</span></td></tr>
+  </tbody>
+</table>
+
+<div class="annotation-lines"></div>
+<div class="annotation-lines"></div>
+<div class="annotation-lines"></div>
+
+<!-- ═══════════ HOJA 2: PLAN DE IMPLEMENTACIÓN ═══════════ -->
+<div class="page-break"></div>
+
+<div class="header">
+  <h1>Plan de Implementación Sugerido</h1>
+  <div class="subtitle">FungiMap + SDM — Fases priorizadas</div>
+</div>
+
+<h2 class="green">Fase P0 — Fundamentos (≈ 4 días)</h2>
+<table class="no-break">
+  <thead>
+    <tr>
+      <th style="width:8%">#</th>
+      <th style="width:28%">Tarea</th>
+      <th style="width:40%">Detalle</th>
+      <th style="width:10%">Días</th>
+      <th style="width:14%">Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Descargar WorldClim + SRTM</td>
+      <td>19 BIO + elevación/pendiente/aspecto para Argentina (~1km). Recortar AOI.</td>
+      <td class="effort">1</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Thinning espacial de registros</td>
+      <td>1 registro por píxel por especie. Detección de duplicados al crear avistamiento.</td>
+      <td class="effort">1</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Selección de variables (VIF)</td>
+      <td>Stepwise VIF ≤5 sobre el stack. Reducir a ~9 predictores no colineales.</td>
+      <td class="effort">1</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Capa altitud + precipitación mapa</td>
+      <td>Renderizar SRTM y precipitación acumulada como overlays en MapView.</td>
+      <td class="effort">1</td>
+      <td class="notes-col"></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 class="red">Fase P1 — Modelo SDM (≈ 7 días)</h2>
+<table class="no-break">
+  <thead>
+    <tr>
+      <th style="width:8%">#</th>
+      <th style="width:28%">Tarea</th>
+      <th style="width:40%">Detalle</th>
+      <th style="width:10%">Días</th>
+      <th style="width:14%">Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>5</td>
+      <td>Entrenar SDM por especie</td>
+      <td>XGBoost + RF ensemble. Pseudo-ausencias SRE. Validación cruzada 3 rep 80/20. Especies con ≥30 registros.</td>
+      <td class="effort">3–4</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Generar rasters de idoneidad</td>
+      <td>Probabilidad continua 0–1 + clasificación 4 clases. Export GeoTIFF.</td>
+      <td class="effort">1</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Cruce con MapBiomas</td>
+      <td>Descargar Colección 2. Reclasificar 3 categorías. Cruce → 9 clases. Superficie por especie.</td>
+      <td class="effort">2</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>Integrar overlays en MapView</td>
+      <td>Toggle por especie. Paleta semántica. Leyenda. Basemaps existentes.</td>
+      <td class="effort">1</td>
+      <td class="notes-col"></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 class="blue">Fase P2 — Diferenciadores (≈ 7 días)</h2>
+<table class="no-break">
+  <thead>
+    <tr>
+      <th style="width:8%">#</th>
+      <th style="width:28%">Tarea</th>
+      <th style="width:40%">Detalle</th>
+      <th style="width:10%">Días</th>
+      <th style="width:14%">Notas</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>9</td>
+      <td>Predicción de fructificación</td>
+      <td>SDM + clima reciente + suelo → probabilidad semanal por especie por zona.</td>
+      <td class="effort">4–5</td>
+      <td class="notes-col"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>Dashboard por especie</td>
+      <td>Rango altitudinal, estacionalidad, hábitat óptimo. Derivado de datos propios.</td>
+      <td class="effort">2–3</td>
+      <td class="notes-col"></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="annotation-lines"></div>
+<div class="annotation-lines"></div>
+<div class="annotation-lines"></div>
+
+<!-- ═══════════ NOTAS ADICIONALES ═══════════ -->
+<h2>📝 Notas / Decisiones pendientes</h2>
+
+<div style="border: 1px solid #ccc; border-radius: 4px; padding: 10px; font-size: 8.5pt;">
+  <p><strong>Stack para SDM:</strong> ¿Python puro (scikit-learn + rasterio + folium) o wrapper R → Python? Python se integra directo con el stack existente.</p>
+  <div class="annotation-lines"></div>
+
+  <p><strong>Especies iniciales:</strong> ¿Arrancar con las top 10 por registros (Coprinus comatus, Schizophyllum commune, Amanita muscaria, etc.) o todas las que superen 30 registros?</p>
+  <div class="annotation-lines"></div>
+
+  <p><strong>MapBiomas:</strong> Descargar de plataforma.argentina.mapbiomas.org. ¿Usar solo 2024 o serie temporal?</p>
+  <div class="annotation-lines"></div>
+
+  <p><strong>Horizonte MycoData:</strong> Los rasters + registros validados + contexto climático = dataset de entrenamiento. ¿Exportar en qué formato? GeoJSON + CSV + GeoTIFF.</p>
+  <div class="annotation-lines"></div>
+
+  <p><strong>API de predicción:</strong> ¿Endpoint REST (FastAPI) o proceso batch semanal? Para empezar, batch semanal es suficiente.</p>
+  <div class="annotation-lines"></div>
+
+  <p></p>
+  <div class="annotation-lines"></div>
+  <div class="annotation-lines"></div>
+  <div class="annotation-lines"></div>
+</div>
+
+<div class="footer">
+  Aletheia · FungiMap + ENM-BGEN Analysis · Abril 2026 · Documento para impresión
+</div>
+
+</body>
+</html>
