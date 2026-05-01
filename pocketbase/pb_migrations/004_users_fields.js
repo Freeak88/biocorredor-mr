@@ -5,25 +5,50 @@ migrate((app) => {
   const existingFields = users.fields.map(f => f.name);
 
   if (!existingFields.includes("name")) {
-    users.fields.push({ name: "name", type: "text" });
+    users.fields.add(new TextField({
+      name: "name",
+      required: false
+    }));
   }
   if (!existingFields.includes("role")) {
-    users.fields.push({ name: "role", type: "select", maxSelect: 1, values: ["user", "expert", "admin"] });
+    users.fields.add(new SelectField({
+      name: "role",
+      required: false,
+      maxSelect: 1,
+      values: ["user", "expert", "admin"]
+    }));
   }
   if (!existingFields.includes("points")) {
-    users.fields.push({ name: "points", type: "number" });
+    users.fields.add(new NumberField({
+      name: "points",
+      required: false
+    }));
   }
   if (!existingFields.includes("avatar")) {
-    users.fields.push({ name: "avatar", type: "file", maxSelect: 1, maxSize: 2097152 });
+    users.fields.add(new FileField({
+      name: "avatar",
+      required: false,
+      maxSelect: 1,
+      maxSize: 2097152
+    }));
   }
   if (!existingFields.includes("last_lat")) {
-    users.fields.push({ name: "last_lat", type: "number" });
+    users.fields.add(new NumberField({
+      name: "last_lat",
+      required: false
+    }));
   }
   if (!existingFields.includes("last_lng")) {
-    users.fields.push({ name: "last_lng", type: "number" });
+    users.fields.add(new NumberField({
+      name: "last_lng",
+      required: false
+    }));
   }
   if (!existingFields.includes("last_seen")) {
-    users.fields.push({ name: "last_seen", type: "date" });
+    users.fields.add(new DateField({
+      name: "last_seen",
+      required: false
+    }));
   }
 
   app.save(users);

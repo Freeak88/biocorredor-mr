@@ -28,6 +28,8 @@ services:
 
 volumes:
   pb-data:
+    external: true
+    name: fungimon_pb-data
 
 networks:
   proxy-net:

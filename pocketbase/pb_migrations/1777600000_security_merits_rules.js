@@ -4,12 +4,12 @@ migrate((app) => {
   const users = app.findCollectionByNameOrId("users");
   const userFields = users.fields.map((f) => f.name);
   if (!userFields.includes("merits")) {
-    users.fields.push({
+    users.fields.add(new SelectField({
       name: "merits",
-      type: "select",
-      maxSelect: 20,
-      values: ["Geofirmador Oficial", "Cartografo", "Micologo", "Curador"],
-    });
+      required: false,
+      maxSelect: 4,
+      values: ["Geofirmador Oficial", "Cartografo", "Micologo", "Curador"]
+    }));
   }
   app.save(users);
 
