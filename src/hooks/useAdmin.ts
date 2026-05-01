@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { pb } from '../lib/pb';
+import { pb, withAuthRefresh } from '../lib/pb';
 import type { ActionLog, Report, UserProfile, AuthUser } from '../types';
 
 export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserProfile: UserProfile | null) {
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [adminError, setAdminError] = useState<string | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [activeAdminTab, setActiveAdminTab] = useState<'logs' | 'reports'>('logs');
 
@@ -17,11 +18,12 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
     (async () => {
       try {
         // Initial loads
-        const [usersList, logsList, reportsList] = await Promise.all([
+        setAdminError(null);
+        const [usersList, logsList, reportsList] = await withAuthRefresh(() => Promise.all([
           pb.collection('users').getFullList({ sort: '-last_seen' }),
           pb.collection('logs').getFullList({ sort: '-created', expand: 'user' }),
           pb.collection('reports').getFullList({ sort: '-created', expand: 'reporter' }),
-        ]);
+        ]));
 
         if (!cancelled) {
           setAllUsers(usersList as unknown as UserProfile[]);
@@ -58,6 +60,7 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
         });
       } catch (err) {
         console.error("Admin load error", err);
+        if (!cancelled) setAdminError(err instanceof Error ? err.message : 'No se pudo cargar el panel admin.');
       }
     })();
 
@@ -72,11 +75,11 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
   const createLog = useCallback(async (action: string, details: string) => {
     if (!user) return;
     try {
-      await pb.collection('logs').create({
+      await withAuthRefresh(() => pb.collection('logs').create({
+        user: user.uid,
         action,
         details,
-        // user is set automatically via API rule
-      });
+      }));
     } catch (e) {
       console.error("Log error", e);
     }
@@ -85,14 +88,14 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
   const submitReport = useCallback(async (reason: string, reportModal: { type: 'message' | 'user' | 'sighting' | 'comment'; targetId: string; content?: string } | null) => {
     if (!user || !reportModal) return;
     try {
-      await pb.collection('reports').create({
+      await withAuthRefresh(() => pb.collection('reports').create({
+        reporter: user.uid,
         type: reportModal.type,
         target_id: reportModal.targetId,
         content: reportModal.content || '',
         reason,
         status: 'pending',
-        // reporter is set automatically via API rule
-      });
+      }));
       await createLog('report_submitted', `Denunció ${reportModal.type} (${reportModal.targetId}) por ${reason}`);
     } catch (e) {
       console.error("Report error", e);
@@ -135,6 +138,7 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
     logs,
     allUsers,
     reports,
+    adminError,
     showAdminPanel,
     setShowAdminPanel,
     activeAdminTab,

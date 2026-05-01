@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { pb, getFileURL } from '../lib/pb';
+import { isPointInBounds, viewportChangePercent } from '../utils/geohash';
+import { listSightingsInViewport } from '../services/sightingsService';
+import type { ViewportBounds } from './useGeoQuery';
 import type { Sighting } from '../types';
 
 function expandSighting(raw: Record<string, any>): Sighting {
@@ -18,6 +21,7 @@ function expandSighting(raw: Record<string, any>): Sighting {
     userPhoto: isGbif ? '' : (userObj?.avatar ? getFileURL(userObj, userObj.avatar) : ''),
     imageUrl,
     isGbif,
+    userId: typeof raw.user === 'string' ? raw.user : raw.user?.id,
     gbifUrl: gbifId ? `https://www.gbif.org/occurrence/${gbifId}` : undefined,
     gbif_image_url: raw.gbif_image_url || '',
     // MO-specific
@@ -33,6 +37,8 @@ interface LayerToggles {
 }
 
 const LAYER_STORAGE_KEY = 'fungimap-layers';
+const PAGE_SIZE = 500;
+const CACHE_THRESHOLD = 0.20;
 
 function loadLayerToggles(): LayerToggles {
   try {
@@ -50,6 +56,9 @@ export function useSightings(currentUserId?: string) {
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [layerToggles, setLayerToggles] = useState<LayerToggles>(loadLayerToggles);
+  const [mapBounds, setMapBounds] = useState<ViewportBounds | null>(null);
+  const [cachedBounds, setCachedBounds] = useState<ViewportBounds | null>(null);
+  const [cachedSightings, setCachedSightings] = useState<Sighting[]>([]);
 
   const updateLayerToggle = useCallback(<K extends keyof LayerToggles>(key: K, value: LayerToggles[K]) => {
     setLayerToggles(prev => {
@@ -59,21 +68,38 @@ export function useSightings(currentUserId?: string) {
     });
   }, []);
 
-  const loadSightings = useCallback(async () => {
+  const isInCurrentBounds = useCallback((sighting: Sighting) => {
+    if (!mapBounds) return false;
+    return isPointInBounds(sighting.lat, sighting.lng, mapBounds);
+  }, [mapBounds]);
+
+  const loadSightings = useCallback(async (bounds = mapBounds) => {
+    if (!bounds) {
+      setSightings([]);
+      return;
+    }
+
+    if (cachedBounds && cachedSightings.length > 0 && viewportChangePercent(cachedBounds, bounds) < CACHE_THRESHOLD) {
+      setSightings(cachedSightings.filter(s => isPointInBounds(s.lat, s.lng, bounds)));
+      return;
+    }
+
     try {
-      const records = await pb.collection('sightings').getFullList({
-        sort: '-id',
-        expand: 'user',
-      });
-      setSightings(records.map(expandSighting));
+      const records = await listSightingsInViewport(bounds, PAGE_SIZE);
+      const expanded = records.items.map(expandSighting);
+      setCachedBounds(bounds);
+      setCachedSightings(expanded);
+      setSightings(expanded);
     } catch (err) {
       console.error("Failed to load sightings", err);
     }
-  }, []);
+  }, [mapBounds, cachedBounds, cachedSightings]);
 
   useEffect(() => {
-    loadSightings();
+    loadSightings(mapBounds);
+  }, [loadSightings, mapBounds]);
 
+  useEffect(() => {
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
 
@@ -85,6 +111,10 @@ export function useSightings(currentUserId?: string) {
             setSightings(prev => prev.filter(s => s.id !== e.record.id));
           } else {
             const expanded = expandSighting(e.record);
+            if (!isInCurrentBounds(expanded)) {
+              setSightings(prev => prev.filter(s => s.id !== e.record.id));
+              return;
+            }
             setSightings(prev => {
               const idx = prev.findIndex(s => s.id === e.record.id);
               if (idx >= 0) {
@@ -107,7 +137,7 @@ export function useSightings(currentUserId?: string) {
         pb.collection('sightings').unsubscribe('*').catch(() => {});
       }
     };
-  }, [loadSightings]);
+  }, [isInCurrentBounds]);
 
   // ── Split by type ──
   const userSightings = useMemo(
@@ -163,6 +193,8 @@ export function useSightings(currentUserId?: string) {
     setSearchQuery,
     layerToggles,
     updateLayerToggle,
+    mapBounds,
+    setMapBounds,
     findNearbyMycelium,
     reload: loadSightings,
   };

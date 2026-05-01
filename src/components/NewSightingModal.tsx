@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, MapPin, Smartphone } from 'lucide-react';
-import { searchSpecies, validateSpeciesName, ITISValidation } from '../lib/itis-taxonomy';
 import { useITISValidation } from '../hooks/useITISValidation';
 import { fetchIUCNStatus, iucnCategoryText, parseBinomial } from '../lib/iucn';
 
@@ -26,8 +25,9 @@ interface NewSightingModalProps {
   setFormFeatures: (v: string) => void;
   isAiLoading: boolean;
   handleImageUpload: (file: File) => void;
+  removeFormImage: (index: number) => void;
   runAiRecognition: () => void;
-  handleAddNewSighting: (e: React.FormEvent) => void;
+  handleAddNewSighting: (e: FormEvent) => void;
   resetForm: () => void;
 }
 
@@ -52,6 +52,7 @@ export default function NewSightingModal({
   setFormFeatures,
   isAiLoading,
   handleImageUpload,
+  removeFormImage,
   runAiRecognition,
   handleAddNewSighting,
   resetForm
@@ -109,7 +110,7 @@ export default function NewSightingModal({
                     <img src={img} alt="Preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => setFormImages(formImages.filter((_, i) => i !== idx))}
+                      onClick={() => removeFormImage(idx)}
                       className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Plus className="w-3 h-3 rotate-45" />

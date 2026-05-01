@@ -22,7 +22,7 @@ vi.mock('../lib/gemini', async () => {
   };
 });
 
-export function resetGeminiMocks() {
+export async function resetGeminiMocks() {
   const { identifyMushroomFromImage } = vi.mocked(await import('../lib/gemini'));
   identifyMushroomFromImage.mockClear();
 }

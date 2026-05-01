@@ -1,9 +1,10 @@
-import {StrictMode, Component, type ReactNode} from 'react';
+import * as React from 'react';
+import {StrictMode, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-class ErrorBoundary extends Component<{children: ReactNode}, {error: string | null}> {
+class ErrorBoundary extends React.Component<{children: ReactNode}, {error: string | null}> {
   state = {error: null as string | null};
   static getDerivedStateFromError(e: Error) {
     return {error: e.message + '\n' + e.stack};

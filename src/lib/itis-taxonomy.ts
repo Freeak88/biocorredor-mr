@@ -21,7 +21,14 @@ interface ITISResult {
   tsn: string;
 }
 
-interface ITISValidation {
+export interface ITISSuggestion {
+  genus?: string;
+  species?: string;
+  full?: string;
+  acceptedNameUsage?: string;
+}
+
+export interface ITISValidation {
   valid: boolean;
   kingdom?: string;
   phylum?: string;
@@ -30,7 +37,9 @@ interface ITISValidation {
   family?: string;
   genus?: string;
   species?: string;
-  suggestions?: string[];
+  taxonAuthor?: string;
+  rank?: string;
+  suggestions?: ITISSuggestion[];
   error?: string;
 }
 
@@ -80,7 +89,7 @@ export async function validateSpeciesName(speciesName: string): Promise<ITISVali
       valid: true,
       kingdom: bestMatch.kingdom,
       phylum: bestMatch.phylum,
-      class: bestMatch.class_,
+      class: bestMatch.class,
       order: bestMatch.order,
       family: bestMatch.family,
       genus: bestMatch.genus,

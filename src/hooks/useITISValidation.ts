@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { searchSpecies, validateSpeciesName } from '../lib/itis-taxonomy';
+import type { ITISSuggestion } from '../lib/itis-taxonomy';
 
 interface ITISValidation {
   valid: boolean;
@@ -10,7 +11,7 @@ interface ITISValidation {
   family?: string;
   genus?: string;
   species?: string;
-  suggestions?: string[];
+  suggestions?: ITISSuggestion[];
   error?: string;
 }
 
@@ -44,10 +45,11 @@ export function useITISValidation(mushroomName: string, enabled: boolean = true)
     family: validation.family,
     genus: validation.genus,
     order: validation.order,
+    class: validation.class,
     kingdom: validation.kingdom,
     phylum: validation.phylum,
     suggestions: validation.suggestions || [],
-    rank: validation.suggestions?.[0]?.split(' ')[0] || '',
+    rank: validation.suggestions?.[0]?.full?.split(' ')[0] || '',
     error: validation.error,
     validate: () => {
       setIsValidating(true);

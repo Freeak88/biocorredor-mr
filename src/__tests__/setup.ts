@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 
 // ─── Browser API Mocks ───────────────────────────────────────
 
@@ -60,5 +61,4 @@ window.alert = vi.fn();
 // ─── Module-level mocks (loaded before any test imports) ─────
 
 // These imports register vi.mock() calls that apply globally
-import './__mocks__/firebase';
-import './__mocks__/leaflet';
+import '../__mocks__/leaflet';

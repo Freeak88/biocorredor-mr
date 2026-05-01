@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { pb, getFileURL } from '../lib/pb';
+import { pb, getFileURL, withAuthRefresh } from '../lib/pb';
 import type { ChatMessage, AuthUser } from '../types';
 
 function expandChatMessage(raw: Record<string, any>): ChatMessage {
@@ -65,12 +65,12 @@ export function useChat(user: AuthUser | null, userLocation: [number, number] | 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!user || !userLocation || !text.trim()) return;
     try {
-      await pb.collection('chat_messages').create({
+      await withAuthRefresh(() => pb.collection('chat_messages').create({
+        user: user.uid,
         text,
         lat: userLocation[0],
         lng: userLocation[1],
-        // user is set automatically via API rule
-      });
+      }));
     } catch (err) {
       console.error("Send message error", err);
     }

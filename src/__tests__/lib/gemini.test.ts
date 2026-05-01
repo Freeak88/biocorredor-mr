@@ -1,6 +1,27 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { identifyMushroomFromImage } from '../../lib/gemini';
-import { mockGeminiResponse } from '../../__mocks__/gemini';
+
+const mockGeminiResponse = vi.hoisted(() => ({
+  scientificName: 'Amanita muscaria',
+  commonName: 'Amanita matamoscas',
+  toxicity: 'Tóxico',
+  description: 'Hongo de color rojo brillante con puntos blancos, común en bosques de coníferas.',
+  habitat: 'Bosques de coníferas y caducifolios',
+  features: 'Sombrero rojo con escamas blancas, pie blanco con anillo',
+}));
+
+const identifyMushroomFromImageMock = vi.hoisted(() =>
+  vi.fn((base64Image: string, _mimeType?: string) => {
+    if (!base64Image || base64Image.length < 10) {
+      return Promise.reject(new Error('Invalid image data'));
+    }
+    return Promise.resolve(mockGeminiResponse);
+  })
+);
+
+vi.mock('../../lib/gemini', () => ({
+  identifyMushroomFromImage: identifyMushroomFromImageMock,
+}));
 
 describe('Gemini AI Identification', () => {
   beforeEach(() => {
@@ -55,7 +76,7 @@ describe('Gemini AI Identification', () => {
 
     it('should default to image/jpeg mime type', async () => {
       const result = await identifyMushroomFromImage('valid-base64');
-      expect(identifyMushroomFromImage).toHaveBeenCalledWith('valid-base64', undefined);
+      expect(identifyMushroomFromImage).toHaveBeenCalledWith('valid-base64');
       expect(result).toBeDefined();
     });
   });

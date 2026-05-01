@@ -22,17 +22,17 @@ import SectionBoundary from './components/SectionBoundary';
 
 export default function App() {
   const { user, loading, isAdmin, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
-  const { sightings, filteredSightings, searchQuery, setSearchQuery, findNearbyMycelium, layerToggles, updateLayerToggle } = useSightings(user?.uid);
+  const { sightings, filteredSightings, searchQuery, setSearchQuery, findNearbyMycelium, layerToggles, updateLayerToggle, setMapBounds } = useSightings(user?.uid);
   const { userLocation, onlineUsers, currentUserProfile, mapCentered, setMapCentered, getDistance } = usePresence(user);
   const { chatMessages, filteredMessages, showChat, setShowChat, handleSendMessage } = useChat(user, userLocation);
-  const { logs, allUsers, reports, showAdminPanel, setShowAdminPanel, activeAdminTab, setActiveAdminTab, createLog, submitReport, exportToGeoJSON } = useAdmin(user, isAdmin, currentUserProfile);
+  const { logs, allUsers, reports, adminError, showAdminPanel, setShowAdminPanel, activeAdminTab, setActiveAdminTab, createLog, submitReport, exportToGeoJSON } = useAdmin(user, isAdmin, currentUserProfile);
   const {
     formImages, setFormImages, formMushroomName, setFormMushroomName,
     formDescription, setFormDescription, formToxicity, setFormToxicity,
     formHabitat, setFormHabitat, formFeatures, setFormFeatures,
     isAiLoading, showModal, setShowModal, isAddingMode, setIsAddingMode,
     newSightingPos, setNewSightingPos, handleImageUpload, runAiRecognition,
-    handleAddNewSighting, resetForm
+    handleAddNewSighting, removeFormImage, resetForm
   } = useSightingForm(user, userLocation, currentUserProfile, findNearbyMycelium, getDistance, createLog);
 
   const [selectedSighting, setSelectedSighting] = useState<Sighting | null>(null);
@@ -128,6 +128,7 @@ export default function App() {
           onSightingClick={handleSightingClick}
           layerToggles={layerToggles}
           updateLayerToggle={updateLayerToggle}
+          onBoundsChange={setMapBounds}
         />
         </SectionBoundary>
 
@@ -213,6 +214,7 @@ export default function App() {
           isAdmin={isAdmin}
           logs={logs}
           reports={reports}
+          adminError={adminError}
           allUsers={allUsers}
           onlineUsers={onlineUsers}
           activeAdminTab={activeAdminTab}
@@ -260,6 +262,7 @@ export default function App() {
         setFormFeatures={setFormFeatures}
         isAiLoading={isAiLoading}
         handleImageUpload={handleImageUpload}
+        removeFormImage={removeFormImage}
         runAiRecognition={runAiRecognition}
         handleAddNewSighting={handleAddNewSighting}
         resetForm={resetForm}

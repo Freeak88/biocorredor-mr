@@ -19,6 +19,7 @@ interface AdminPanelProps {
   isAdmin: boolean;
   logs: ActionLog[];
   reports: Report[];
+  adminError?: string | null;
   allUsers: UserProfile[];
   onlineUsers: UserProfile[];
   activeAdminTab: 'logs' | 'reports';
@@ -33,6 +34,7 @@ export default function AdminPanel({
   isAdmin,
   logs,
   reports,
+  adminError,
   allUsers,
   onlineUsers,
   activeAdminTab,
@@ -139,6 +141,11 @@ export default function AdminPanel({
             </div>
 
             <div className="flex-1 p-8 overflow-y-auto space-y-4 font-serif">
+              {adminError && (
+                <div className="p-4 border border-red-600 text-red-700 bg-red-50 text-xs font-sans font-bold">
+                  {adminError}
+                </div>
+              )}
               {activeAdminTab === 'logs' ? (
                 logs.map(l => (
                   <div key={l.id} className="p-4 border-b border-atlas-ink/5 flex items-start gap-4 transition-all hover:bg-atlas-stone">

@@ -1,6 +1,9 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { pb, getFileURL } from '../lib/pb';
+import React, { useState, useCallback } from 'react';
 import { fetchWeatherContext } from '../lib/weather';
+import { encodeGeohash } from '../utils/geohash';
+import { compressImage, fileToDataUrl } from '../services/imagesService';
+import { createSighting, updateSighting } from '../services/sightingsService';
+import { updateUserProfile } from '../services/usersService';
 import type { AuthUser, UserProfile } from '../types';
 
 export function useSightingForm(
@@ -23,23 +26,21 @@ export function useSightingForm(
   const [isAddingMode, setIsAddingMode] = useState(false);
   const [newSightingPos, setNewSightingPos] = useState<[number, number] | null>(null);
 
-  const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleImageUpload = useCallback(async (file: File) => {
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const compressed = await compressImage(file);
+      const dataUrl = await fileToDataUrl(compressed);
       setFormImages(prev => [...prev, dataUrl]);
-      setFormImageFiles(prev => [...prev, file]);
+      setFormImageFiles(prev => [...prev, compressed]);
     } catch (err) {
       console.error("Image upload error", err);
+      alert(err instanceof Error ? err.message : 'No se pudo procesar la imagen.');
     }
+  }, []);
+
+  const removeFormImage = useCallback((index: number) => {
+    setFormImages(prev => prev.filter((_, i) => i !== index));
+    setFormImageFiles(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const runAiRecognition = useCallback(async () => {
@@ -48,7 +49,7 @@ export function useSightingForm(
       setIsAiLoading(true);
       const dataUrl = formImages[0];
       const base64 = dataUrl.split(',')[1];
-      const mimeType = "image/jpeg";
+      const mimeType = /data:(.*?);base64/.exec(dataUrl)?.[1] || "image/jpeg";
 
       const { identifyMushroomFromImage } = await import('../lib/gemini');
       const analysis = await identifyMushroomFromImage(base64, mimeType);
@@ -64,7 +65,7 @@ export function useSightingForm(
       }
     } catch (err) {
       console.error("AI Analysis error", err);
-      alert("Error en el reconocimiento. Verifique su conexión.");
+      alert("Error en el reconocimiento. Verifique su conexi\u00f3n.");
     } finally {
       setIsAiLoading(false);
     }
@@ -93,7 +94,7 @@ export function useSightingForm(
 
     const pos = newSightingPos || userLocation;
     if (!pos) {
-      alert("No se ha podido determinar su ubicación actual. Inicie la geolocalización o seleccione un punto en el mapa.");
+      alert("No se ha podido determinar su ubicaci\u00f3n actual. Inicie la geolocalizaci\u00f3n o seleccione un punto en el mapa.");
       return;
     }
 
@@ -114,6 +115,7 @@ export function useSightingForm(
       formData.append('features', formFeatures || '');
       formData.append('lat', String(pos[0]));
       formData.append('lng', String(pos[1]));
+      formData.append('geohash', encodeGeohash(pos[0], pos[1], 9));
       formData.append('status', initialStatus);
       formData.append('network_id', networkId || '');
 
@@ -122,9 +124,7 @@ export function useSightingForm(
         formData.append('images', file);
       });
 
-      // Create sighting — user is set automatically via PocketBase API rule
-      // Use { requestKey: '' } to prevent auto-cancellation by the SDK
-      const record = await pb.collection('sightings').create(formData, { requestKey: 'sighting-create-' + Date.now() });
+      const record = await createSighting(formData);
 
       // Fetch weather context for the sighting
       if (record && record.id) {
@@ -135,10 +135,10 @@ export function useSightingForm(
         const weatherContext = await fetchWeatherContext(sightingLat, sightingLng, sightingDate, 10);
         if (weatherContext) {
           try {
-            await pb.collection('sightings').update(record.id, {
+            await updateSighting(record.id, {
               weather_context: weatherContext as any,
               elevation: weatherContext.location.elevation,
-            }, { requestKey: 'sighting-weather-' + Date.now() });
+            });
           } catch (weatherErr) {
             console.error('Weather context update failed:', weatherErr);
           }
@@ -148,13 +148,13 @@ export function useSightingForm(
       // Update user points
       if (currentUserProfile) {
         const newMerits = [...(currentUserProfile.merits || [])];
-        await pb.collection('users').update(user.uid, {
+        await updateUserProfile(user.uid, {
           points: (currentUserProfile.points || 0) + points,
           merits: newMerits,
         });
       }
 
-      await createLog('sighting_add', `Registró "${mushroomName}" como ${initialStatus === 'draft' ? 'Borrador remoto' : 'Hallazgo local'}`);
+      await createLog('sighting_add', `Registr\u00f3 "${mushroomName}" como ${initialStatus === 'draft' ? 'Borrador remoto' : 'Hallazgo local'}`);
       resetForm();
     } catch (err) {
       console.error("Error saving sighting", err);
@@ -183,6 +183,7 @@ export function useSightingForm(
     newSightingPos,
     setNewSightingPos,
     handleImageUpload,
+    removeFormImage,
     runAiRecognition,
     handleAddNewSighting,
     resetForm,

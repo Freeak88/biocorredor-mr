@@ -22,3 +22,33 @@ export function isAuthenticated(): boolean {
 export function isAdmin(): boolean {
   return pb.authStore.record?.role === 'admin';
 }
+
+export function isAuthError(error: unknown): boolean {
+  const status = (error as { status?: number })?.status;
+  return status === 401 || status === 403;
+}
+
+export async function refreshAuth(): Promise<boolean> {
+  if (!pb.authStore.record) return false;
+  try {
+    await pb.collection('users').authRefresh();
+    return pb.authStore.isValid;
+  } catch (error) {
+    pb.authStore.clear();
+    return false;
+  }
+}
+
+export async function withAuthRefresh<T>(operation: () => Promise<T>): Promise<T> {
+  if (pb.authStore.record && !pb.authStore.isValid) {
+    await refreshAuth();
+  }
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isAuthError(error)) throw error;
+    const refreshed = await refreshAuth();
+    if (!refreshed) throw error;
+    return operation();
+  }
+}

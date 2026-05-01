@@ -1,5 +1,5 @@
 /**
- * GeoHash utility for geographic querying in Firestore.
+ * GeoHash utility for compact geographic indexing.
  *
  * Implements a pure geohash encoder/decoder and bounding-box query generator.
  * No external dependencies — fully self-contained.
@@ -135,14 +135,15 @@ export function geohashPrecisionForRadius(radiusKm: number): number {
 /**
  * Generate geohash bounding box prefixes for a given viewport.
  *
- * Firestore only supports range queries on a single field, so we can't do a
- * true "within rectangle" query directly. Instead, we:
+ * This helper generates coarse geohash ranges that cover the viewport. The
+ * active PocketBase map flow queries lat/lng bounds directly, while these
+ * ranges remain available for future server-side geohash optimizations.
  * 1. Compute the geohash precision based on the viewport size
  * 2. Generate the set of geohash prefixes that cover the viewport
  * 3. Query each prefix with startAt/endAt on the geohash field
  *
  * @param bounds Viewport bounds { northEast, southWest }
- * @returns Array of { start: string, end: string } ranges for Firestore queries
+ * @returns Array of { start: string, end: string } ranges for geohash queries
  */
 export function getGeohashRanges(bounds: Bounds): Array<{ start: string; end: string }> {
   const { northEast, southWest } = bounds;
@@ -252,7 +253,7 @@ function toRad(deg: number): number {
 
 /**
  * Check if a point is within viewport bounds.
- * Used for client-side filtering after Firestore query.
+ * Used for client-side filtering after a coarse geographic query.
  */
 export function isPointInBounds(
   lat: number,
@@ -283,5 +284,5 @@ export function viewportChangePercent(
     (newBounds.northEast.lng - newBounds.southWest.lng);
 
   if (oldArea === 0) return 1;
-  return Math.abs(newArea - oldArea) / oldArea;
+  return Math.min(1, Math.abs(newArea - oldArea) / Math.abs(oldArea));
 }

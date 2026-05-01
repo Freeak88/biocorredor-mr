@@ -25,8 +25,8 @@ const CACHE_THRESHOLD = 0.20;
 /**
  * useGeoQuery — PocketBase geographic query hook with viewport-based caching.
  *
- * Loads all sightings and filters client-side by viewport bounds.
- * For large datasets, consider a PocketBase custom endpoint with server-side geohash filtering.
+ * Loads one page of sightings inside viewport bounds. For larger datasets,
+ * consider a PocketBase custom endpoint with server-side geohash filtering.
  */
 export function useGeoQuery(
   bounds: ViewportBounds | null,
@@ -66,12 +66,20 @@ export function useGeoQuery(
 
     setState(prev => ({ ...prev, loading: true }));
 
-    // Fetch all sightings and filter by viewport
-    pb.collection('sightings').getFullList({
+    const south = bounds.southWest.lat;
+    const north = bounds.northEast.lat;
+    const west = bounds.southWest.lng;
+    const east = bounds.northEast.lng;
+    const lngFilter = west <= east
+      ? `lng >= ${west} && lng <= ${east}`
+      : `(lng >= ${west} || lng <= ${east})`;
+
+    pb.collection('sightings').getList(1, options.limit || 500, {
       sort: '-created',
+      filter: `lat >= ${south} && lat <= ${north} && ${lngFilter}`,
       expand: 'user',
     }).then(records => {
-      const sightings = records.map(r => ({
+      const sightings = records.items.map(r => ({
         ...r,
         mushroomName: r.mushroom_name,
         userName: (r as any).expand?.user?.name || '',

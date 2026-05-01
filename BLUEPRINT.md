@@ -1,4 +1,12 @@
-# FungiMap — System Blueprint
+# FungiMap - System Blueprint
+
+## Current Implementation Status
+
+- Backend activo: PocketBase. Firebase queda como legado documental/test y no debe usarse en codigo nuevo.
+- Los avistamientos nuevos envian `user`, `geohash`, imagenes comprimidas y metadata ambiental no bloqueante.
+- Las consultas del mapa se hacen por viewport con filtros `lat/lng`, cache de movimiento y realtime filtrado por bounds.
+- Las reglas de PocketBase se endurecen por migracion incremental: solo duenio o admin puede modificar contenido propio, admin lee reportes/logs.
+- Pendiente de siguiente iteracion: completar offline sync con imagenes, migrar todos los tests heredados de Firebase y reducir `any` en componentes grandes.
 
 ## Overview
 FungiMap es una aplicación PWA para registro y mapeo de hongos con:

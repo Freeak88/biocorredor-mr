@@ -299,16 +299,18 @@ const mockLeaflet = {
 };
 
 // Apply marker prototype options for react-leaflet compatibility
-(mockLeaflet.Marker as any).prototype = {
-  options: {
-    icon: mockLeaflet.divIcon({
-      className: 'default-marker',
-      html: '<div></div>',
-    }),
-  },
+(mockLeaflet.Marker as any).prototype.options = {
+  icon: mockLeaflet.divIcon({
+    className: 'default-marker',
+    html: '<div></div>',
+  }),
 };
 
-vi.mock('leaflet', async () => mockLeaflet);
+vi.mock('leaflet', async () => ({
+  __esModule: true,
+  default: mockLeaflet,
+  ...mockLeaflet,
+}));
 vi.mock('leaflet.markercluster', () => ({
   __esModule: true,
   default: vi.fn(() => ({

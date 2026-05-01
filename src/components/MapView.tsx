@@ -2,10 +2,10 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
-import { useEffect } from 'react';
 import { getFileURL } from '../lib/pb';
 import { Sighting, UserProfile } from '../types';
 import WeatherBadge from './WeatherBadge';
+import type { ViewportBounds } from '../hooks/useGeoQuery';
 
 const DefaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -93,6 +93,7 @@ interface MapViewProps {
   onSightingClick: (s: Sighting) => void;
   layerToggles: LayerToggles;
   updateLayerToggle: <K extends keyof LayerToggles>(key: K, value: LayerToggles[K]) => void;
+  onBoundsChange: (bounds: ViewportBounds | null) => void;
 }
 
 // ── Global click handler for popup buttons (Leaflet popups break React event delegation) ──
@@ -136,7 +137,8 @@ function LocationMarker({
   userLocation,
   mapCentered,
   setMapCentered,
-  newSightingPos
+  newSightingPos,
+  onBoundsChange
 }: {
   isAddingMode: boolean;
   setIsAddingMode: (v: boolean) => void;
@@ -146,7 +148,16 @@ function LocationMarker({
   mapCentered: boolean;
   setMapCentered: (v: boolean) => void;
   newSightingPos: [number, number] | null;
+  onBoundsChange: (bounds: ViewportBounds | null) => void;
 }) {
+  const publishBounds = (map: L.Map) => {
+    const bounds = map.getBounds();
+    onBoundsChange({
+      northEast: { lat: bounds.getNorthEast().lat, lng: bounds.getNorthEast().lng },
+      southWest: { lat: bounds.getSouthWest().lat, lng: bounds.getSouthWest().lng },
+    });
+  };
+
   const map = useMapEvents({
     click(e) {
       if (isAddingMode) {
@@ -155,7 +166,17 @@ function LocationMarker({
         setShowModal(true);
       }
     },
+    moveend() {
+      publishBounds(map);
+    },
+    zoomend() {
+      publishBounds(map);
+    },
   });
+
+  useEffect(() => {
+    publishBounds(map);
+  }, [map]);
 
   useEffect(() => {
     if (userLocation && !mapCentered) {
@@ -259,6 +280,7 @@ export default function MapView({
   onSightingClick,
   layerToggles,
   updateLayerToggle,
+  onBoundsChange,
 }: MapViewProps) {
   // ── Separate GBIF vs user markers ──
   const { gbif: gbifMarkers, user: sightingUserMarkers } = useMemo(() => {
@@ -465,6 +487,7 @@ export default function MapView({
           mapCentered={mapCentered}
           setMapCentered={setMapCentered}
           newSightingPos={newSightingPos}
+          onBoundsChange={onBoundsChange}
         />
       </MapContainer>
       {/* Layer toggle control */}

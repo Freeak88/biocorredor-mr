@@ -1,4 +1,5 @@
-import { Component, type ReactNode } from 'react';
+import * as React from 'react';
+import type { ReactNode } from 'react';
 
 interface Props {
   name: string;
@@ -9,7 +10,7 @@ interface State {
   error: string | null;
 }
 
-export default class SectionBoundary extends Component<Props, State> {
+export default class SectionBoundary extends React.Component<Props, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(e: Error) {

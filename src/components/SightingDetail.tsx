@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Sprout, Wind, Database, Info, ShieldCheck, MessageSquare, Send, User as UserIcon, Flag, LeafyGreen } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { pb, getFileURL } from '../lib/pb';
+import { pb, getFileURL, withAuthRefresh } from '../lib/pb';
 import { Sighting, Comment, UserProfile, AuthUser } from '../types';
 import { useSpeciesStats } from '../hooks/useSpeciesStats';
 
@@ -223,11 +223,11 @@ export default function SightingDetail({
     e.preventDefault();
     if (!user || !selectedSighting || !newComment.trim()) return;
     try {
-      await pb.collection('comments').create({
+      await withAuthRefresh(() => pb.collection('comments').create({
         sighting: selectedSighting.id,
+        user: user.uid,
         text: newComment.trim(),
-        // user is set automatically via API rule
-      });
+      }));
 
       if (currentUserProfile) {
         await pb.collection('users').update(user.uid, {
@@ -462,8 +462,8 @@ export default function SightingDetail({
                           <span className="text-[9px] font-sans font-black uppercase tracking-widest text-atlas-ink/60">{c.userName}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-[8px] font-mono opacity-30">{format(parseDate(c.created || c.createdAt), 'HH:mm', { locale: es })}</span>
-                          {c.userId !== user?.uid && (
+                          <span className="text-[8px] font-mono opacity-30">{format(parseDate(c.created), 'HH:mm', { locale: es })}</span>
+                          {c.user !== user?.uid && (
                             <button onClick={() => onReport('comment', c.id, c.text)} className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] font-sans font-black text-red-800 uppercase tracking-widest">
                               Denunciar
                             </button>
