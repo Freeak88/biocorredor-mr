@@ -1,12 +1,19 @@
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_ORIGINAL_IMAGE_BYTES = 50 * 1024 * 1024;
 export const TARGET_IMAGE_BYTES = 500 * 1024;
 
 export function validateImageFile(file: File): void {
   if (!file.type.startsWith('image/')) {
     throw new Error('El archivo seleccionado no es una imagen.');
   }
+  if (file.size > MAX_ORIGINAL_IMAGE_BYTES) {
+    throw new Error('La imagen es demasiado grande para procesarla. El limite es 50 MB.');
+  }
+}
+
+export function validateCompressedImageFile(file: File): void {
   if (file.size > MAX_IMAGE_BYTES) {
-    throw new Error('La imagen supera el limite de 5 MB.');
+    throw new Error('No se pudo comprimir la imagen por debajo de 5 MB.');
   }
 }
 
@@ -56,7 +63,9 @@ export async function compressImage(file: File, targetBytes = TARGET_IMAGE_BYTES
   }
 
   const baseName = file.name.replace(/\.[^.]+$/, '') || 'fungimap';
-  return new File([blob], `${baseName}.jpg`, { type: outputType, lastModified: Date.now() });
+  const compressedFile = new File([blob], `${baseName}.jpg`, { type: outputType, lastModified: Date.now() });
+  validateCompressedImageFile(compressedFile);
+  return compressedFile;
 }
 
 export function dataUrlToFile(dataUrl: string, filename: string): File {
