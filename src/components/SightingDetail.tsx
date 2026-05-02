@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Sprout, Wind, Database, Info, ShieldCheck, MessageSquare, Send, User as UserIcon, Flag, LeafyGreen } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { pb, getFileURL, withAuthRefresh } from '../lib/pb';
+import { pb, getFileURL, sortByDateDesc, withAuthRefresh } from '../lib/pb';
 import { Sighting, Comment, UserProfile, AuthUser } from '../types';
 import { useSpeciesStats } from '../hooks/useSpeciesStats';
 
@@ -168,11 +168,10 @@ export default function SightingDetail({
         // Load initial comments
         const comments = await pb.collection('comments').getFullList({
           filter: `sighting = "${selectedSighting.id}"`,
-          sort: 'created',
           expand: 'user',
         });
         if (!cancelled) {
-          setSightingComments(comments.map(c => ({
+          setSightingComments(sortByDateDesc(comments).reverse().map(c => ({
             ...c,
             userName: (c as any).expand?.user?.name || '',
             userPhoto: (c as any).expand?.user?.avatar ? getFileURL((c as any).expand.user, (c as any).expand.user.avatar) : '',

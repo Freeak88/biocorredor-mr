@@ -17,7 +17,6 @@ export function buildViewportFilter(bounds: ViewportBounds): string {
 
 export function listSightingsInViewport(bounds: ViewportBounds, limit = DEFAULT_VIEWPORT_LIMIT) {
   return pb.collection('sightings').getList(1, limit, {
-    sort: '-created',
     filter: buildViewportFilter(bounds),
     expand: 'user',
   });

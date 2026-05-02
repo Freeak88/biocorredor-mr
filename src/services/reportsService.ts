@@ -1,4 +1,4 @@
-import { pb, withAuthRefresh } from '../lib/pb';
+import { pb, sortByDateDesc, withAuthRefresh } from '../lib/pb';
 
 export function createReport(data: {
   reporter: string;
@@ -12,5 +12,5 @@ export function createReport(data: {
 }
 
 export function listAdminReports() {
-  return withAuthRefresh(() => pb.collection('reports').getFullList({ sort: '-created', expand: 'reporter' }));
+  return withAuthRefresh(async () => sortByDateDesc(await pb.collection('reports').getFullList({ expand: 'reporter' })));
 }

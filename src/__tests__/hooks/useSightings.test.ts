@@ -10,6 +10,7 @@ const pbMock = vi.hoisted(() => ({
 vi.mock('../../lib/pb', () => ({
   pb: pbMock,
   getFileURL: vi.fn(() => 'file-url'),
+  sortByDateDesc: vi.fn((records: any[]) => records),
 }));
 
 describe('useSightings viewport loading', () => {
@@ -49,7 +50,6 @@ describe('useSightings viewport loading', () => {
 
     await waitFor(() => expect(result.current.sightings).toHaveLength(1));
     expect(getList).toHaveBeenCalledWith(1, 500, expect.objectContaining({
-      sort: '-created',
       expand: 'user',
       filter: expect.stringContaining('lat >= -35 && lat <= -34'),
     }));

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { pb, withAuthRefresh } from '../lib/pb';
+import { pb, sortByDateDesc, withAuthRefresh } from '../lib/pb';
 import { logError } from '../lib/logger';
 import type { ActionLog, Report, UserProfile, AuthUser } from '../types';
 
@@ -21,18 +21,18 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
         // Initial loads
         setAdminError(null);
         const [usersList, logsList, reportsList] = await withAuthRefresh(() => Promise.all([
-          pb.collection('users').getFullList({ sort: '-last_seen' }),
-          pb.collection('logs').getFullList({ sort: '-created', expand: 'user' }),
-          pb.collection('reports').getFullList({ sort: '-created', expand: 'reporter' }),
+          pb.collection('users').getFullList(),
+          pb.collection('logs').getFullList({ expand: 'user' }),
+          pb.collection('reports').getFullList({ expand: 'reporter' }),
         ]));
 
         if (!cancelled) {
-          setAllUsers(usersList as unknown as UserProfile[]);
-          setLogs(logsList.map(l => ({
+          setAllUsers(sortByDateDesc(usersList, 'last_seen') as unknown as UserProfile[]);
+          setLogs(sortByDateDesc(logsList).map(l => ({
             ...l,
             userName: (l as any).expand?.user?.name || '',
           })) as unknown as ActionLog[]);
-          setReports(reportsList.map(r => ({
+          setReports(sortByDateDesc(reportsList).map(r => ({
             ...r,
             reporterName: (r as any).expand?.reporter?.name || '',
           })) as unknown as Report[]);
@@ -41,22 +41,22 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
         // Realtime subscriptions
         await pb.collection('users').subscribe('*', () => {
           if (cancelled) return;
-          pb.collection('users').getFullList({ sort: '-last_seen' })
-            .then(u => { if (!cancelled) setAllUsers(u as unknown as UserProfile[]); })
+          pb.collection('users').getFullList()
+            .then(u => { if (!cancelled) setAllUsers(sortByDateDesc(u, 'last_seen') as unknown as UserProfile[]); })
             .catch(() => {});
         });
 
         await pb.collection('logs').subscribe('*', () => {
           if (cancelled) return;
-          pb.collection('logs').getFullList({ sort: '-created', expand: 'user' })
-            .then(l => { if (!cancelled) setLogs(l.map(item => ({ ...item, userName: (item as any).expand?.user?.name || '' })) as unknown as ActionLog[]); })
+          pb.collection('logs').getFullList({ expand: 'user' })
+            .then(l => { if (!cancelled) setLogs(sortByDateDesc(l).map(item => ({ ...item, userName: (item as any).expand?.user?.name || '' })) as unknown as ActionLog[]); })
             .catch(() => {});
         });
 
         await pb.collection('reports').subscribe('*', () => {
           if (cancelled) return;
-          pb.collection('reports').getFullList({ sort: '-created', expand: 'reporter' })
-            .then(r => { if (!cancelled) setReports(r.map(item => ({ ...item, reporterName: (item as any).expand?.reporter?.name || '' })) as unknown as Report[]); })
+          pb.collection('reports').getFullList({ expand: 'reporter' })
+            .then(r => { if (!cancelled) setReports(sortByDateDesc(r).map(item => ({ ...item, reporterName: (item as any).expand?.reporter?.name || '' })) as unknown as Report[]); })
             .catch(() => {});
         });
       } catch (err) {

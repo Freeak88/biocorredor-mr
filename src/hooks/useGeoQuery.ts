@@ -5,7 +5,7 @@
 // This file is kept as a placeholder. The main sightings are loaded via useSightings.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { pb } from '../lib/pb';
+import { pb, sortByDateDesc } from '../lib/pb';
 import { encodeGeohash, isPointInBounds, viewportChangePercent } from '../utils/geohash';
 import type { Sighting } from '../types';
 
@@ -75,11 +75,10 @@ export function useGeoQuery(
       : `(lng >= ${west} || lng <= ${east})`;
 
     pb.collection('sightings').getList(1, options.limit || 500, {
-      sort: '-created',
       filter: `lat >= ${south} && lat <= ${north} && ${lngFilter}`,
       expand: 'user',
     }).then(records => {
-      const sightings = records.items.map(r => ({
+      const sightings = sortByDateDesc(records.items).map(r => ({
         ...r,
         mushroomName: r.mushroom_name,
         userName: (r as any).expand?.user?.name || '',

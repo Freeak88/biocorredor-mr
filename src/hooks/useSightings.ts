@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { pb, getFileURL } from '../lib/pb';
+import { pb, getFileURL, sortByDateDesc } from '../lib/pb';
 import { logError } from '../lib/logger';
 import { isPointInBounds, viewportChangePercent } from '../utils/geohash';
 import { listSightingsInViewport } from '../services/sightingsService';
@@ -101,7 +101,7 @@ export function useSightings(currentUserId?: string) {
 
     try {
       const records = await listSightingsInViewport(bounds, PAGE_SIZE);
-      const expanded = records.items.map(expandSighting);
+      const expanded = sortByDateDesc(records.items).map(expandSighting);
       cachedBoundsRef.current = bounds;
       cachedSightingsRef.current = expanded;
       setSightings(expanded);

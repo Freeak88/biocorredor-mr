@@ -12,6 +12,7 @@ const withAuthRefreshMock = vi.hoisted(() => vi.fn((operation: () => Promise<unk
 vi.mock('../../lib/pb', () => ({
   pb: pbMock,
   getFileURL: vi.fn(() => 'avatar-url'),
+  sortByDateDesc: vi.fn((records: any[]) => records),
   withAuthRefresh: withAuthRefreshMock,
 }));
 
@@ -37,7 +38,7 @@ describe('useChat with PocketBase', () => {
     const { result } = renderHook(() => useChat(user, [1, 2]));
 
     await waitFor(() => expect(result.current.chatMessages).toHaveLength(1));
-    expect(getList).toHaveBeenCalledWith(1, 200, { sort: '-created', expand: 'user' });
+    expect(getList).toHaveBeenCalledWith(1, 200, { expand: 'user' });
   });
 
   it('sends required user relation with chat message', async () => {

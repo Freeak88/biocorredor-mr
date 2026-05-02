@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { pb, getFileURL, withAuthRefresh } from '../lib/pb';
+import { pb, getFileURL, sortByDateDesc, withAuthRefresh } from '../lib/pb';
 import { logError } from '../lib/logger';
 import type { ChatMessage, AuthUser } from '../types';
 
@@ -25,11 +25,10 @@ export function useChat(user: AuthUser | null, userLocation: [number, number] | 
       try {
         // Initial load
         const records = await pb.collection('chat_messages').getList(1, 200, {
-          sort: '-created',
           expand: 'user',
         });
         if (!cancelled) {
-          setChatMessages(records.items.map(expandChatMessage));
+          setChatMessages(sortByDateDesc(records.items).map(expandChatMessage));
         }
 
         // Realtime subscription

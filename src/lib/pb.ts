@@ -52,3 +52,11 @@ export async function withAuthRefresh<T>(operation: () => Promise<T>): Promise<T
     return operation();
   }
 }
+
+export function sortByDateDesc<T extends Record<string, any>>(records: T[], field = 'created'): T[] {
+  return [...records].sort((a, b) => {
+    const aTime = Date.parse(a[field] || a.updated || '');
+    const bTime = Date.parse(b[field] || b.updated || '');
+    return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+  });
+}
