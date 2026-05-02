@@ -3,11 +3,19 @@ import {StrictMode, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { installGlobalErrorLogging, logError } from './lib/logger';
+
+installGlobalErrorLogging();
 
 class ErrorBoundary extends React.Component<{children: ReactNode}, {error: string | null}> {
   state = {error: null as string | null};
   static getDerivedStateFromError(e: Error) {
     return {error: e.message + '\n' + e.stack};
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    logError('react-boundary', 'React render tree crashed', error, {
+      componentStack: info.componentStack,
+    });
   }
   render() {
     if (this.state.error) {

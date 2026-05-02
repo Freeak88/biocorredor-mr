@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
 import { pb } from './lib/pb';
+import { logError } from './lib/logger';
 import { useAuth } from './hooks/useAuth';
 import { useSightings } from './hooks/useSightings';
 import { useChat } from './hooks/useChat';
@@ -23,7 +24,7 @@ import SectionBoundary from './components/SectionBoundary';
 export default function App() {
   const { user, loading, isAdmin, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
   const { sightings, filteredSightings, searchQuery, setSearchQuery, findNearbyMycelium, layerToggles, updateLayerToggle, setMapBounds } = useSightings(user?.uid);
-  const { userLocation, onlineUsers, currentUserProfile, mapCentered, setMapCentered, getDistance } = usePresence(user);
+  const { userLocation, onlineUsers, currentUserProfile, mapCentered, setMapCentered, requestUserLocation, getDistance } = usePresence(user);
   const { chatMessages, filteredMessages, showChat, setShowChat, handleSendMessage } = useChat(user, userLocation);
   const { logs, allUsers, reports, adminError, showAdminPanel, setShowAdminPanel, activeAdminTab, setActiveAdminTab, createLog, submitReport, exportToGeoJSON } = useAdmin(user, isAdmin, currentUserProfile);
   const {
@@ -72,7 +73,7 @@ export default function App() {
       setSelectedSighting({ ...s, status: 'unconfirmed' });
       await createLog('geofirm', `Geofirmó hallazgo de "${s.mushroomName || s.mushroom_name}" in situ`);
     } catch (err) {
-      console.error("Geofirm error", err);
+      logError('geofirm', 'No se pudo geofirmar el hallazgo', err, { sightingId: s.id });
     }
   }, [user, userLocation, currentUserProfile, getDistance, createLog]);
 
@@ -93,153 +94,237 @@ export default function App() {
     return <LoginScreen onLogin={handleLogin} onEmailLogin={handleEmailLogin} onRegister={handleRegister} />;
   }
 
-  console.log('[FungiMap] Rendering app, user:', user?.email, 'isAdmin:', isAdmin);
-
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-atlas-paper relative">
       <SectionBoundary name="Header">
-        <Header
-          user={user}
-          isAdmin={isAdmin}
-          onLogout={handleLogout}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onToggleAdmin={() => setShowAdminPanel(!showAdminPanel)}
-          onToggleChat={() => setShowChat(!showChat)}
-          onToggleSidebar={() => setShowSidebar(!showSidebar)}
-          showChat={showChat}
-          showAdminPanel={showAdminPanel}
-          showSidebar={showSidebar}
-          userProfile={currentUserProfile}
-        />
+      <Header
+        user={user}
+        isAdmin={isAdmin}
+        showSidebar={showSidebar}
+        setShowSidebar={setShowSidebar}
+        showChat={showChat}
+        setShowChat={setShowChat}
+        showAdminPanel={showAdminPanel}
+        setShowAdminPanel={setShowAdminPanel}
+        handleLogin={handleLogin}
+        handleLogout={handleLogout}
+      />
       </SectionBoundary>
 
-      <div className="flex-1 flex overflow-hidden relative">
-        <AnimatePresence>
-          {showSidebar && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 320, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="border-r border-atlas-ink/10 bg-atlas-paper flex flex-col overflow-hidden"
-            >
-              <Sidebar
-                sightings={filteredSightings}
-                onSightingClick={handleSightingClick}
-                userLocation={userLocation}
-                getDistance={getDistance}
-                layerToggles={layerToggles}
-                updateLayerToggle={updateLayerToggle}
-                searchQuery={searchQuery}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <main className="flex-1 relative overflow-hidden">
+        <SectionBoundary name="MapView">
+        <MapView
+          filteredSightings={filteredSightings}
+          onlineUsers={onlineUsers}
+          isAddingMode={isAddingMode}
+          setIsAddingMode={setIsAddingMode}
+          setNewSightingPos={setNewSightingPos}
+          setShowModal={setShowModal}
+          userLocation={userLocation}
+          mapCentered={mapCentered}
+          setMapCentered={setMapCentered}
+          newSightingPos={newSightingPos}
+          onSightingClick={handleSightingClick}
+          layerToggles={layerToggles}
+          updateLayerToggle={updateLayerToggle}
+          onBoundsChange={setMapBounds}
+        />
+        </SectionBoundary>
 
-        <div className="flex-1 relative">
-          <MapView
-            filteredSightings={filteredSightings}
-            onlineUsers={onlineUsers}
-            isAddingMode={isAddingMode}
-            setIsAddingMode={setIsAddingMode}
-            setNewSightingPos={setNewSightingPos}
-            setShowModal={setShowModal}
-            userLocation={userLocation}
-            mapCentered={mapCentered}
-            setMapCentered={setMapCentered}
-            newSightingPos={newSightingPos}
-            onSightingClick={handleSightingClick}
-            layerToggles={layerToggles}
-            updateLayerToggle={updateLayerToggle}
-            onBoundsChange={setMapBounds}
-          />
+        {isAddingMode && !newSightingPos && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-atlas-ink text-atlas-paper px-8 py-3 shadow-atlas border border-atlas-ink text-[9px] font-sans font-black uppercase tracking-[0.3em] flex items-center gap-3"
+            >
+              <div className="w-2 h-2 bg-atlas-earth rounded-full animate-pulse" />
+              Seleccione punto en el Mapa
+            </motion.div>
+          </div>
+        )}
+
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1001] w-full max-w-lg px-6">
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="flex items-center justify-between gap-4"
+          >
+            <div className="flex bg-atlas-paper border-2 border-atlas-ink shadow-atlas overflow-hidden">
+              <button
+                onClick={() => setShowSidebar(!showSidebar)}
+                className={`p-4 border-r border-atlas-ink transition-all hover:bg-atlas-stone ${showSidebar ? 'text-atlas-earth' : 'text-atlas-ink opacity-40'}`}
+                title="Feed / Búsqueda"
+              >
+                <MapIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className={`p-4 transition-all hover:bg-atlas-stone ${showChat ? 'text-atlas-earth' : 'text-atlas-ink opacity-40'}`}
+                title="Chat Global"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
+            </div>
+            <button
+              onClick={() => { setNewSightingPos(null); setShowModal(true); }}
+              className="flex-1 bg-atlas-ink text-atlas-paper py-4 border-2 border-atlas-ink shadow-atlas hover:bg-atlas-earth transition-all flex items-center justify-center gap-3"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="text-[10px] font-sans font-black uppercase tracking-[0.2em]">Añadir Hallazgo</span>
+            </button>
+            <button
+              onClick={() => { if (userLocation) { setMapCentered(false); } else { requestUserLocation(); } }}
+              className="bg-atlas-paper p-4 border-2 border-atlas-ink shadow-atlas hover:bg-atlas-stone transition-all"
+              title="Mi Ubicación"
+            >
+              <Navigation className="w-5 h-5 text-atlas-ink" />
+            </button>
+          </motion.div>
         </div>
 
-        <AnimatePresence>
-          {showChat && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 320, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="border-l border-atlas-ink/10 bg-atlas-paper flex flex-col overflow-hidden"
+        <SectionBoundary name="Sidebar">
+        <Sidebar
+          showSidebar={showSidebar}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filteredSightings={filteredSightings}
+          onSightingClick={handleSightingClick}
+          isAdmin={isAdmin}
+          onExport={handleExport}
+        />
+        </SectionBoundary>
+
+        <SectionBoundary name="ChatPanel">
+        <ChatPanel
+          showChat={showChat}
+          setShowChat={setShowChat}
+          filteredMessages={filteredMessages}
+          handleSendMessage={handleSendMessage}
+          user={user}
+          onReport={handleReport}
+        />
+        </SectionBoundary>
+
+        <SectionBoundary name="AdminPanel">
+        <AdminPanel
+          showAdminPanel={showAdminPanel}
+          setShowAdminPanel={setShowAdminPanel}
+          isAdmin={isAdmin}
+          logs={logs}
+          reports={reports}
+          adminError={adminError}
+          allUsers={allUsers}
+          onlineUsers={onlineUsers}
+          activeAdminTab={activeAdminTab}
+          setActiveAdminTab={setActiveAdminTab}
+          handleSendMessage={handleSendMessage}
+          createLog={createLog}
+        />
+        </SectionBoundary>
+
+        <SectionBoundary name="SightingDetail">
+        <SightingDetail
+          selectedSighting={selectedSighting}
+          onClose={() => setSelectedSighting(null)}
+          user={user}
+          userLocation={userLocation}
+          currentUserProfile={currentUserProfile}
+          sightings={sightings}
+          onReport={handleReport}
+          onGeofirm={handleGeofirm}
+          createLog={createLog}
+          activeGalleryIndex={activeGalleryIndex}
+          setActiveGalleryIndex={setActiveGalleryIndex}
+        />
+        </SectionBoundary>
+      </main>
+
+      <NewSightingModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        isAddingMode={isAddingMode}
+        setIsAddingMode={setIsAddingMode}
+        newSightingPos={newSightingPos}
+        setNewSightingPos={setNewSightingPos}
+        formImages={formImages}
+        setFormImages={setFormImages}
+        formMushroomName={formMushroomName}
+        setFormMushroomName={setFormMushroomName}
+        formDescription={formDescription}
+        setFormDescription={setFormDescription}
+        formToxicity={formToxicity}
+        setFormToxicity={setFormToxicity}
+        formHabitat={formHabitat}
+        setFormHabitat={setFormHabitat}
+        formFeatures={formFeatures}
+        setFormFeatures={setFormFeatures}
+        isAiLoading={isAiLoading}
+        handleImageUpload={handleImageUpload}
+        removeFormImage={removeFormImage}
+        runAiRecognition={runAiRecognition}
+        handleAddNewSighting={handleAddNewSighting}
+        resetForm={resetForm}
+      />
+
+      <ReportModal
+        showReportModal={showReportModal}
+        setShowReportModal={setShowReportModal}
+        submitReport={handleSubmitReport}
+      />
+
+      <AnimatePresence>
+        {activeGalleryIndex !== null && selectedSighting?.images && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[5000] bg-atlas-ink flex flex-col items-center justify-center p-4 md:p-20"
+          >
+            <button
+              onClick={() => setActiveGalleryIndex(null)}
+              className="absolute top-8 right-8 text-atlas-paper hover:scale-110 transition-transform z-10"
             >
-              <ChatPanel
-                messages={filteredMessages}
-                onSendMessage={handleSendMessage}
-                currentUser={user}
-                onClose={() => setShowChat(false)}
-                onReport={handleReport}
+              <Plus className="w-10 h-10 rotate-45" />
+            </button>
+            <motion.div
+              key={activeGalleryIndex}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="relative w-full h-full flex items-center justify-center"
+            >
+              <img
+                src={selectedSighting.images[activeGalleryIndex]}
+                alt=""
+                className="max-w-full max-h-full object-contain shadow-2xl border-4 border-atlas-paper"
               />
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-4 bg-atlas-ink/40 p-4 backdrop-blur rounded-full border border-atlas-paper/10">
+                {selectedSighting.images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveGalleryIndex(i)}
+                    className={`w-3 h-3 rounded-full transition-all ${i === activeGalleryIndex ? 'bg-atlas-earth scale-125' : 'bg-atlas-paper/40 hover:bg-atlas-paper'}`}
+                  />
+                ))}
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <AnimatePresence>
-        {selectedSighting && (
-          <SightingDetail
-            sighting={selectedSighting}
-            onClose={() => setSelectedSighting(null)}
-            onGeofirm={handleGeofirm}
-            onReport={handleReport}
-            currentUser={user}
-            userLocation={userLocation}
-            isAdmin={isAdmin}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showModal && (
-          <NewSightingModal
-            onClose={() => { setShowModal(false); resetForm(); }}
-            onSubmit={handleAddNewSighting}
-            images={formImages}
-            onImageUpload={handleImageUpload}
-            onRemoveImage={removeFormImage}
-            mushroomName={formMushroomName}
-            onMushroomNameChange={setFormMushroomName}
-            description={formDescription}
-            onDescriptionChange={setFormDescription}
-            toxicity={formToxicity}
-            onToxicityChange={setFormToxicity}
-            habitat={formHabitat}
-            onHabitatChange={setFormHabitat}
-            features={formFeatures}
-            onFeaturesChange={setFormFeatures}
-            isAiLoading={isAiLoading}
-            onAiRecognize={runAiRecognition}
-            userLocation={userLocation}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showAdminPanel && isAdmin && (
-          <AdminPanel
-            logs={logs}
-            users={allUsers}
-            reports={reports}
-            error={adminError}
-            onClose={() => setShowAdminPanel(false)}
-            activeTab={activeAdminTab}
-            onTabChange={setActiveAdminTab}
-            onExport={handleExport}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showReportModal && (
-          <ReportModal
-            type={showReportModal.type}
-            targetId={showReportModal.targetId}
-            content={showReportModal.content}
-            onClose={() => setShowReportModal(null)}
-            onSubmit={handleSubmitReport}
-          />
+            <div className="absolute top-1/2 -translate-y-1/2 left-4 md:left-10">
+              <button
+                onClick={() => setActiveGalleryIndex(prev => prev! > 0 ? prev! - 1 : selectedSighting.images!.length - 1)}
+                className="p-4 text-atlas-paper opacity-40 hover:opacity-100 transition-opacity"
+              >
+                <Navigation className="w-8 h-8 -rotate-90" />
+              </button>
+            </div>
+            <div className="absolute top-1/2 -translate-y-1/2 right-4 md:right-10">
+              <button
+                onClick={() => setActiveGalleryIndex(prev => prev! < selectedSighting.images!.length - 1 ? prev! + 1 : 0)}
+                className="p-4 text-atlas-paper opacity-40 hover:opacity-100 transition-opacity"
+              >
+                <Navigation className="w-8 h-8 rotate-90" />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { pb, getFileURL } from '../lib/pb';
+import { logError } from '../lib/logger';
 import { isPointInBounds, viewportChangePercent } from '../utils/geohash';
 import { listSightingsInViewport } from '../services/sightingsService';
 import type { ViewportBounds } from './useGeoQuery';
@@ -56,9 +57,21 @@ export function useSightings(currentUserId?: string) {
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [layerToggles, setLayerToggles] = useState<LayerToggles>(loadLayerToggles);
-  const [mapBounds, setMapBounds] = useState<ViewportBounds | null>(null);
-  const [cachedBounds, setCachedBounds] = useState<ViewportBounds | null>(null);
-  const [cachedSightings, setCachedSightings] = useState<Sighting[]>([]);
+  const [mapBounds, setMapBoundsState] = useState<ViewportBounds | null>(null);
+  const cachedBoundsRef = useRef<ViewportBounds | null>(null);
+  const cachedSightingsRef = useRef<Sighting[]>([]);
+
+  const setMapBounds = useCallback((next: ViewportBounds | null) => {
+    setMapBoundsState(prev => {
+      if (!prev || !next) return next;
+      const same =
+        prev.northEast.lat === next.northEast.lat &&
+        prev.northEast.lng === next.northEast.lng &&
+        prev.southWest.lat === next.southWest.lat &&
+        prev.southWest.lng === next.southWest.lng;
+      return same ? prev : next;
+    });
+  }, []);
 
   const updateLayerToggle = useCallback(<K extends keyof LayerToggles>(key: K, value: LayerToggles[K]) => {
     setLayerToggles(prev => {
@@ -79,6 +92,8 @@ export function useSightings(currentUserId?: string) {
       return;
     }
 
+    const cachedBounds = cachedBoundsRef.current;
+    const cachedSightings = cachedSightingsRef.current;
     if (cachedBounds && cachedSightings.length > 0 && viewportChangePercent(cachedBounds, bounds) < CACHE_THRESHOLD) {
       setSightings(cachedSightings.filter(s => isPointInBounds(s.lat, s.lng, bounds)));
       return;
@@ -87,13 +102,16 @@ export function useSightings(currentUserId?: string) {
     try {
       const records = await listSightingsInViewport(bounds, PAGE_SIZE);
       const expanded = records.items.map(expandSighting);
-      setCachedBounds(bounds);
-      setCachedSightings(expanded);
+      cachedBoundsRef.current = bounds;
+      cachedSightingsRef.current = expanded;
       setSightings(expanded);
     } catch (err) {
-      console.error("Failed to load sightings", err);
+      logError('sightings.load', 'No se pudieron cargar los hallazgos del viewport', err, {
+        bounds,
+        pageSize: PAGE_SIZE,
+      });
     }
-  }, [mapBounds, cachedBounds, cachedSightings]);
+  }, [mapBounds]);
 
   useEffect(() => {
     loadSightings(mapBounds);
@@ -127,7 +145,7 @@ export function useSightings(currentUserId?: string) {
           }
         });
       } catch (err) {
-        console.error("Sightings subscription error", err);
+        logError('sightings.realtime', 'No se pudo suscribir a cambios de hallazgos', err);
       }
     })();
 

@@ -372,7 +372,7 @@ export default function SightingDetail({
               </h4>
               <p className="text-lg text-atlas-ink leading-relaxed italic border-l-2 border-atlas-stone pl-6 py-2">"{s.description}"</p>
               {userId !== user?.uid && (
-                <button onClick={() => onReport('sighting', s.id, s.description)} className="mt-6 inline-flex items-center gap-2 text-[9px] font-sans font-black text-atlas-ink/40 hover:text-red-600 transition-colors uppercase tracking-[0.2em]">
+                <button onClick={() => onReport('sighting', s.id, s.description)} className="mt-6 inline-flex items-center gap-2 border border-red-900/20 bg-red-50 px-3 py-2 text-[9px] font-sans font-black text-red-900 hover:bg-red-900 hover:text-atlas-paper transition-colors uppercase tracking-[0.2em]">
                   <Flag className="w-3 h-3" /> Reportar Inexactitud o Abuso
                 </button>
               )}

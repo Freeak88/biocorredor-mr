@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { pb } from '../lib/pb';
+import { logError } from '../lib/logger';
 import type { UserProfile } from '../types';
 
 export interface AuthUser {
@@ -51,7 +52,7 @@ export function useAuth() {
     try {
       await pb.collection('users').authWithOAuth2({ provider: 'google' });
     } catch (error) {
-      console.error("Google OAuth login failed", error);
+      logError('auth.google', 'Falló el login con Google', error);
     }
   }, []);
 
@@ -59,7 +60,7 @@ export function useAuth() {
     try {
       await pb.collection('users').authWithPassword(email, password);
     } catch (error) {
-      console.error("Email login failed", error);
+      logError('auth.email', 'Falló el login con email', error, { email });
       throw error;
     }
   }, []);
@@ -78,7 +79,7 @@ export function useAuth() {
       // Auto-login after registration
       await pb.collection('users').authWithPassword(email, password);
     } catch (error) {
-      console.error("Registration failed", error);
+      logError('auth.register', 'Falló el registro de usuario', error, { email });
       throw error;
     }
   }, []);

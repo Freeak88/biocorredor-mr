@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { pb, withAuthRefresh } from '../lib/pb';
+import { logError } from '../lib/logger';
 import type { ActionLog, Report, UserProfile, AuthUser } from '../types';
 
 export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserProfile: UserProfile | null) {
@@ -59,7 +60,7 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
             .catch(() => {});
         });
       } catch (err) {
-        console.error("Admin load error", err);
+        logError('admin.load', 'No se pudo cargar el panel admin', err);
         if (!cancelled) setAdminError(err instanceof Error ? err.message : 'No se pudo cargar el panel admin.');
       }
     })();
@@ -81,7 +82,7 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
         details,
       }));
     } catch (e) {
-      console.error("Log error", e);
+      logError('admin.log-create', 'No se pudo crear log de auditoría', e, { action });
     }
   }, [user]);
 
@@ -98,7 +99,10 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
       }));
       await createLog('report_submitted', `Denunció ${reportModal.type} (${reportModal.targetId}) por ${reason}`);
     } catch (e) {
-      console.error("Report error", e);
+      logError('reports.create', 'No se pudo crear denuncia', e, {
+        type: reportModal.type,
+        targetId: reportModal.targetId,
+      });
     }
   }, [user, createLog]);
 

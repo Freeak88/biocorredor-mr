@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { pb, getFileURL } from '../lib/pb';
+import { logError, logInfo } from '../lib/logger';
 import type { UserProfile, AuthUser } from '../types';
 
 function toUserProfile(record: Record<string, any>): UserProfile {
@@ -15,6 +16,7 @@ export function usePresence(user: AuthUser | null) {
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [mapCentered, setMapCentered] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [locationWatchId, setLocationWatchId] = useState<number | null>(null);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -40,26 +42,7 @@ export function usePresence(user: AuthUser | null) {
     pb.collection('users').update(userId, {
       name: user.displayName,
       last_seen: new Date().toISOString(),
-    }).catch(err => console.error("Profile sync error", err));
-
-    // Watch geolocation
-    const watchId = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        setUserLocation(loc);
-        try {
-          await pb.collection('users').update(userId, {
-            last_lat: loc[0],
-            last_lng: loc[1],
-            last_seen: new Date().toISOString(),
-          });
-        } catch (err) {
-          console.error("Location update error", err);
-        }
-      },
-      (err) => console.error("Geo error", err),
-      { enableHighAccuracy: true }
-    );
+    }).catch(err => logError('presence.profile-sync', 'No se pudo sincronizar el perfil', err, { userId }));
 
     // Subscribe to own profile changes
     let profileUnsub: (() => void) | undefined;
@@ -83,10 +66,58 @@ export function usePresence(user: AuthUser | null) {
 
     return () => {
       cancelled = true;
-      navigator.geolocation.clearWatch(watchId);
       if (profileUnsub) pb.collection('users').unsubscribe(userId).catch(() => {});
     };
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (locationWatchId !== null) {
+        navigator.geolocation.clearWatch(locationWatchId);
+      }
+    };
+  }, [locationWatchId]);
+
+  const requestUserLocation = useCallback(() => {
+    if (!user) return;
+    if (!('geolocation' in navigator)) {
+      logInfo('presence.location', 'Geolocalización no disponible en este navegador');
+      alert('La geolocalización no está disponible en este navegador.');
+      return;
+    }
+
+    if (locationWatchId !== null) {
+      setMapCentered(false);
+      return;
+    }
+
+    const userId = user.uid;
+    const watchId = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setUserLocation(loc);
+        try {
+          await pb.collection('users').update(userId, {
+            last_lat: loc[0],
+            last_lng: loc[1],
+            last_seen: new Date().toISOString(),
+          });
+        } catch (err) {
+          logError('presence.location-update', 'No se pudo guardar la ubicación del usuario', err, { userId });
+        }
+      },
+      (err) => {
+        logError('presence.location', 'El navegador rechazó o falló al obtener ubicación', err, {
+          code: err.code,
+          message: err.message,
+        });
+        alert('No se pudo obtener tu ubicación. Revisá permisos del navegador e intentá de nuevo.');
+      },
+      { enableHighAccuracy: true }
+    );
+
+    setLocationWatchId(watchId);
+  }, [locationWatchId, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +127,7 @@ export function usePresence(user: AuthUser | null) {
       try {
         // Initial load of online users (active in last 5 minutes)
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const filter = `last_seen >= "${fiveMinAgo}" && id != "${user?.uid || ''}" && last_lat != ""`;
+        const filter = `last_seen >= "${fiveMinAgo}" && id != "${user?.uid || ''}"`;
         const result = await pb.collection('users').getFullList({ filter });
         if (!cancelled) {
           setOnlineUsers(result.filter(u => u.last_lat != null && u.last_lng != null).map(toUserProfile));
@@ -108,15 +139,15 @@ export function usePresence(user: AuthUser | null) {
           const profile = toUserProfile(e.record);
           // Refresh the full list on any change
           pb.collection('users').getFullList({
-            filter: `last_seen >= "${new Date(Date.now() - 5 * 60 * 1000).toISOString()}" && id != "${user?.uid || ''}" && last_lat != ""`,
+            filter: `last_seen >= "${new Date(Date.now() - 5 * 60 * 1000).toISOString()}" && id != "${user?.uid || ''}"`,
           }).then(users => {
             if (!cancelled) {
               setOnlineUsers(users.filter(u => u.last_lat != null && u.last_lng != null).map(toUserProfile));
             }
-          }).catch(() => {});
+          }).catch(err => logError('presence.online-users-refresh', 'No se pudo refrescar usuarios online', err));
         });
       } catch (err) {
-        console.error("Online users subscription error", err);
+        logError('presence.online-users', 'No se pudo cargar o suscribir usuarios online', err);
       }
     })();
 
@@ -152,6 +183,7 @@ export function usePresence(user: AuthUser | null) {
     currentUserProfile,
     mapCentered,
     setMapCentered,
+    requestUserLocation,
     deferredPrompt,
     handleInstallClick,
     getDistance,

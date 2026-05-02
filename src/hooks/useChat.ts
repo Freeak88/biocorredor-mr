@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { pb, getFileURL, withAuthRefresh } from '../lib/pb';
+import { logError } from '../lib/logger';
 import type { ChatMessage, AuthUser } from '../types';
 
 function expandChatMessage(raw: Record<string, any>): ChatMessage {
@@ -50,7 +51,7 @@ export function useChat(user: AuthUser | null, userLocation: [number, number] | 
           }
         });
       } catch (err) {
-        console.error("Chat subscription error", err);
+        logError('chat.load', 'No se pudo cargar o suscribir el chat', err);
       }
     })();
 
@@ -72,7 +73,10 @@ export function useChat(user: AuthUser | null, userLocation: [number, number] | 
         lng: userLocation[1],
       }));
     } catch (err) {
-      console.error("Send message error", err);
+      logError('chat.send', 'No se pudo enviar el mensaje', err, {
+        hasLocation: Boolean(userLocation),
+        userId: user.uid,
+      });
     }
   }, [user, userLocation]);
 

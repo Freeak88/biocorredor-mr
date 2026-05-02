@@ -92,6 +92,7 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-atlas-ink/40" />
             <input
               type={showPassword ? 'text' : 'password'}
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Contraseña"
