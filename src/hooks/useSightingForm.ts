@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { fetchWeatherContext } from '../lib/weather';
 import { encodeGeohash } from '../utils/geohash';
 import { compressImage, fileToDataUrl } from '../services/imagesService';
@@ -22,9 +22,11 @@ export function useSightingForm(
   const [formHabitat, setFormHabitat] = useState('');
   const [formFeatures, setFormFeatures] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isSubmittingSighting, setIsSubmittingSighting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isAddingMode, setIsAddingMode] = useState(false);
   const [newSightingPos, setNewSightingPos] = useState<[number, number] | null>(null);
+  const submitInFlightRef = useRef(false);
 
   const handleImageUpload = useCallback(async (file: File) => {
     try {
@@ -86,6 +88,8 @@ export function useSightingForm(
 
   const handleAddNewSighting = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitInFlightRef.current) return;
+
     const form = e.target as HTMLFormElement;
     const mushroomName = (form.elements.namedItem('mushroomName') as HTMLInputElement).value;
     const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value;
@@ -102,6 +106,9 @@ export function useSightingForm(
     const initialStatus = isRemote ? 'draft' : 'unconfirmed';
 
     try {
+      submitInFlightRef.current = true;
+      setIsSubmittingSighting(true);
+
       const points = initialStatus === 'draft' ? 5 : 25;
       const networkId = findNearbyMycelium(pos[0], pos[1], mushroomName);
 
@@ -155,10 +162,14 @@ export function useSightingForm(
       }
 
       await createLog('sighting_add', `Registr\u00f3 "${mushroomName}" como ${initialStatus === 'draft' ? 'Borrador remoto' : 'Hallazgo local'}`);
+      alert('Hallazgo archivado en el Atlas.');
       resetForm();
     } catch (err) {
       console.error("Error saving sighting", err);
       alert(`Error al archivar: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
+    } finally {
+      submitInFlightRef.current = false;
+      setIsSubmittingSighting(false);
     }
   }, [user, userLocation, newSightingPos, currentUserProfile, formToxicity, formHabitat, formFeatures, formImageFiles, findNearbyMycelium, getDistance, createLog, resetForm]);
 
@@ -176,6 +187,7 @@ export function useSightingForm(
     formFeatures,
     setFormFeatures,
     isAiLoading,
+    isSubmittingSighting,
     showModal,
     setShowModal,
     isAddingMode,

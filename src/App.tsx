@@ -31,7 +31,7 @@ export default function App() {
     formImages, setFormImages, formMushroomName, setFormMushroomName,
     formDescription, setFormDescription, formToxicity, setFormToxicity,
     formHabitat, setFormHabitat, formFeatures, setFormFeatures,
-    isAiLoading, showModal, setShowModal, isAddingMode, setIsAddingMode,
+    isAiLoading, isSubmittingSighting, showModal, setShowModal, isAddingMode, setIsAddingMode,
     newSightingPos, setNewSightingPos, handleImageUpload, runAiRecognition,
     handleAddNewSighting, removeFormImage, resetForm
   } = useSightingForm(user, userLocation, currentUserProfile, findNearbyMycelium, getDistance, createLog);
@@ -260,6 +260,7 @@ export default function App() {
         formFeatures={formFeatures}
         setFormFeatures={setFormFeatures}
         isAiLoading={isAiLoading}
+        isSubmittingSighting={isSubmittingSighting}
         handleImageUpload={handleImageUpload}
         removeFormImage={removeFormImage}
         runAiRecognition={runAiRecognition}

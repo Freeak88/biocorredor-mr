@@ -24,6 +24,7 @@ interface NewSightingModalProps {
   formFeatures: string;
   setFormFeatures: (v: string) => void;
   isAiLoading: boolean;
+  isSubmittingSighting: boolean;
   handleImageUpload: (file: File) => void;
   removeFormImage: (index: number) => void;
   runAiRecognition: () => void;
@@ -51,6 +52,7 @@ export default function NewSightingModal({
   formFeatures,
   setFormFeatures,
   isAiLoading,
+  isSubmittingSighting,
   handleImageUpload,
   removeFormImage,
   runAiRecognition,
@@ -285,13 +287,18 @@ export default function NewSightingModal({
             <div className="pt-6 flex gap-6">
               <button
                 type="button"
+                disabled={isSubmittingSighting}
                 onClick={() => { setShowModal(false); setNewSightingPos(null); }}
-                className="flex-1 py-4 text-[10px] font-sans font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity"
+                className="flex-1 py-4 text-[10px] font-sans font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity disabled:pointer-events-none disabled:opacity-20"
               >
                 Anular Registro
               </button>
-              <button type="submit" className="flex-[2] atlas-button !py-4 !text-sm">
-                Archivar en el Atlas
+              <button
+                type="submit"
+                disabled={isSubmittingSighting}
+                className="flex-[2] atlas-button !py-4 !text-sm disabled:pointer-events-none disabled:cursor-wait disabled:opacity-70"
+              >
+                {isSubmittingSighting ? 'Archivando...' : 'Archivar en el Atlas'}
               </button>
             </div>
           </form>
