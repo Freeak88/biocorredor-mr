@@ -25,7 +25,10 @@ export default function App() {
   const { user, loading, isAdmin, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
   const { sightings, filteredSightings, searchQuery, setSearchQuery, findNearbyMycelium, layerToggles, updateLayerToggle, setMapBounds } = useSightings(user?.uid);
   const { userLocation, onlineUsers, currentUserProfile, mapCentered, setMapCentered, requestUserLocation, getDistance } = usePresence(user);
-  const { chatMessages, filteredMessages, showChat, setShowChat, handleSendMessage } = useChat(user, userLocation);
+  const {
+    chatMessages, filteredMessages, chatRadius, setChatRadius, chatRadiusOptions,
+    chatError, isSendingMessage, showChat, setShowChat, handleSendMessage
+  } = useChat(user, userLocation);
   const { logs, allUsers, reports, adminError, showAdminPanel, setShowAdminPanel, activeAdminTab, setActiveAdminTab, createLog, submitReport, exportToGeoJSON } = useAdmin(user, isAdmin, currentUserProfile);
   const {
     formImages, setFormImages, formMushroomName, setFormMushroomName,
@@ -200,6 +203,11 @@ export default function App() {
           showChat={showChat}
           setShowChat={setShowChat}
           filteredMessages={filteredMessages}
+          chatRadius={chatRadius}
+          setChatRadius={setChatRadius}
+          chatRadiusOptions={chatRadiusOptions}
+          chatError={chatError}
+          isSendingMessage={isSendingMessage}
           handleSendMessage={handleSendMessage}
           user={user}
           onReport={handleReport}

@@ -3,18 +3,37 @@ import { pb, getFileURL, sortByDateDesc, withAuthRefresh } from '../lib/pb';
 import { logError } from '../lib/logger';
 import type { ChatMessage, AuthUser } from '../types';
 
-function expandChatMessage(raw: Record<string, any>): ChatMessage {
+const CHAT_RADIUS_OPTIONS = [1, 5, 20, 100, 0] as const;
+
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function expandChatMessage(raw: Record<string, any>, fallbackUser?: AuthUser | null): ChatMessage {
   const userObj = raw.expand?.user;
+  const userId = typeof raw.user === 'string' ? raw.user : raw.user?.id;
+  const isFallbackUser = fallbackUser && userId === fallbackUser.uid;
   return {
     ...raw,
-    userName: userObj?.name || '',
+    userId,
+    userName: userObj?.name || (isFallbackUser ? fallbackUser.displayName : '') || 'Explorador',
     userPhoto: userObj?.avatar ? getFileURL(userObj, userObj.avatar) : '',
   } as ChatMessage;
 }
 
 export function useChat(user: AuthUser | null, userLocation: [number, number] | null) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatRadius, setChatRadius] = useState(20);
+  const [chatRadius, setChatRadius] = useState(0);
+  const [chatError, setChatError] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
@@ -28,7 +47,7 @@ export function useChat(user: AuthUser | null, userLocation: [number, number] | 
           expand: 'user',
         });
         if (!cancelled) {
-          setChatMessages(sortByDateDesc(records.items).map(expandChatMessage));
+          setChatMessages(sortByDateDesc(records.items).map(record => expandChatMessage(record, user)));
         }
 
         // Realtime subscription
@@ -37,7 +56,7 @@ export function useChat(user: AuthUser | null, userLocation: [number, number] | 
           if (e.action === 'delete') {
             setChatMessages(prev => prev.filter(m => m.id !== e.record.id));
           } else {
-            const expanded = expandChatMessage(e.record);
+            const expanded = expandChatMessage(e.record, user);
             setChatMessages(prev => {
               const idx = prev.findIndex(m => m.id === e.record.id);
               if (idx >= 0) {
@@ -60,32 +79,61 @@ export function useChat(user: AuthUser | null, userLocation: [number, number] | 
         pb.collection('chat_messages').unsubscribe('*').catch(() => {});
       }
     };
-  }, []);
+  }, [user]);
 
-  const handleSendMessage = useCallback(async (text: string) => {
-    if (!user || !userLocation || !text.trim()) return;
+  const handleSendMessage = useCallback(async (text: string): Promise<boolean> => {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+    if (!user) {
+      setChatError('Necesitás iniciar sesión para escribir.');
+      return false;
+    }
+    if (!userLocation) {
+      setChatError('Activá tu ubicación para enviar mensajes cercanos.');
+      return false;
+    }
     try {
-      await withAuthRefresh(() => pb.collection('chat_messages').create({
+      setChatError('');
+      setIsSendingMessage(true);
+      const created = await withAuthRefresh(() => pb.collection('chat_messages').create({
         user: user.uid,
-        text,
+        text: trimmed,
         lat: userLocation[0],
         lng: userLocation[1],
       }));
+      const expanded = expandChatMessage(created, user);
+      setChatMessages(prev => {
+        if (prev.some(m => m.id === expanded.id)) return prev;
+        return [expanded, ...prev];
+      });
+      return true;
     } catch (err) {
+      setChatError('No se pudo enviar el mensaje. Probá de nuevo.');
       logError('chat.send', 'No se pudo enviar el mensaje', err, {
         hasLocation: Boolean(userLocation),
         userId: user.uid,
       });
+      return false;
+    } finally {
+      setIsSendingMessage(false);
     }
   }, [user, userLocation]);
 
-  const filteredMessages = chatMessages;
+  const filteredMessages = chatMessages.filter(message => {
+    if (chatRadius === 0) return true;
+    if (!userLocation) return false;
+    if (typeof message.lat !== 'number' || typeof message.lng !== 'number') return false;
+    return distanceKm(userLocation[0], userLocation[1], message.lat, message.lng) <= chatRadius;
+  });
 
   return {
     chatMessages,
     filteredMessages,
     chatRadius,
     setChatRadius,
+    chatRadiusOptions: CHAT_RADIUS_OPTIONS,
+    chatError,
+    isSendingMessage,
     showChat,
     setShowChat,
     handleSendMessage,
