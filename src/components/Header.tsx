@@ -1,5 +1,6 @@
 import React from 'react';
-import { Sprout, Search, LogOut, User } from 'lucide-react';
+import { Sprout, Search, LogOut, Trophy } from 'lucide-react';
+import LeaderboardPanel from './LeaderboardPanel';
 
 interface HeaderProps {
   user: any;
@@ -35,13 +36,16 @@ export default function Header({
 
       <div className="flex items-center gap-6">
         {user && (
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
-            className={`p-2 transition-all ${showSidebar ? 'text-atlas-earth' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
-            title="Buscar / Filtros"
-          >
-            <Search className="w-5 h-5" />
-          </button>
+          <>
+            <LeaderboardPanel />
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={`p-2 transition-all ${showSidebar ? 'text-atlas-earth' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
+              title="Buscar / Filtros"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          </>
         )}
         {user ? (
           <div className="flex items-center gap-4 font-sans font-black uppercase tracking-widest text-[9px]">
