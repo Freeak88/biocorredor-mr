@@ -90,7 +90,6 @@ export default function NewSightingModal({
 
   // ── Camera capture refs and handlers ──
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleCameraClick = () => {
     if (!prefillFromCapture) {
@@ -162,27 +161,17 @@ export default function NewSightingModal({
                     </button>
                   </div>
                 ))}
-                {/* Hidden inputs */}
+                { /* Single input for both camera and gallery - no capture attribute
+                    In iOS Safari: opens native dialog with "Take Photo" and "Choose Photo"
+                    "Take Photo" opens full native Camera app with all controls */ }
                 <input
                   ref={cameraInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={handleCameraFile}
                 />
-                <input
-                  ref={galleryInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleImageUpload(file);
-                    e.target.value = '';
-                  }}
-                />
-                {/* Camera option - always first when adding */}
+                {/* Camera option */}
                 <button
                   type="button"
                   onClick={handleCameraClick}
@@ -191,10 +180,10 @@ export default function NewSightingModal({
                   <Camera className="w-6 h-6 text-atlas-earth group-hover:scale-110 transition-transform" />
                   <p className="text-[8px] font-sans font-black uppercase tracking-widest opacity-60 text-center px-2">Cámara</p>
                 </button>
-                {/* Gallery option */}
+                {/* Gallery option - same input, just a different entry point */}
                 <button
                   type="button"
-                  onClick={() => galleryInputRef.current?.click()}
+                  onClick={() => cameraInputRef.current?.click()}
                   className="aspect-square border-2 border-dashed border-atlas-ink/30 flex flex-col items-center justify-center gap-2 bg-atlas-stone/10 hover:border-atlas-ink transition-all cursor-pointer relative overflow-hidden group"
                 >
                   <ImageIcon className="w-6 h-6 text-atlas-ink/40 group-hover:scale-110 transition-transform" />

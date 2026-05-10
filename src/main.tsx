@@ -5,21 +5,36 @@ import App from './App.tsx';
 import './index.css';
 import { installGlobalErrorLogging, logError } from './lib/logger';
 
-// ── Emergency SW unregister ──
+// ── Emergency SW unregister + version check ──
+const APP_VERSION = 'v5';
+
 if ('serviceWorker' in navigator) {
+  // Unregister any old SWs
   navigator.serviceWorker.getRegistrations().then((regs) => {
     regs.forEach((reg) => {
       reg.unregister().then(() => {
         console.log('[SW] Unregistered:', reg.scope);
       });
     });
-    // Also clear all caches
-    if (window.caches) {
-      caches.keys().then((names) => {
-        names.forEach((n) => caches.delete(n));
-      });
-    }
   });
+
+  // Clear all caches
+  if (window.caches) {
+    caches.keys().then((names) => {
+      names.forEach((n) => caches.delete(n));
+    });
+  }
+
+  // Register new SW with versioned URL (forces browser to treat as new)
+  const swUrl = `/service-worker.js?v=${APP_VERSION}`;
+  navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' })
+    .then((reg) => {
+      console.log('[SW] Registered:', reg.scope);
+      reg.update(); // Force check for updates
+    })
+    .catch((err) => {
+      console.warn('[SW] Registration failed:', err);
+    });
 }
 
 installGlobalErrorLogging();
