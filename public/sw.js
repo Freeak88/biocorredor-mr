@@ -1,5 +1,5 @@
 // FungiMap Service Worker — Offline-first PWA
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE = `fungimap-static-${CACHE_VERSION}`;
 const TILE_CACHE = `fungimap-tiles-${CACHE_VERSION}`;
 const API_CACHE = `fungimap-api-${CACHE_VERSION}`;
