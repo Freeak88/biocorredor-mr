@@ -20,6 +20,7 @@ import ReportModal from './components/ReportModal';
 import Sidebar from './components/Sidebar';
 import LoginScreen from './components/LoginScreen';
 import SectionBoundary from './components/SectionBoundary';
+import CaptureButton from './components/CaptureButton';
 
 export default function App() {
   const { user, loading, isAdmin, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
@@ -36,7 +37,7 @@ export default function App() {
     formHabitat, setFormHabitat, formFeatures, setFormFeatures,
     isAiLoading, isSubmittingSighting, showModal, setShowModal, isAddingMode, setIsAddingMode,
     newSightingPos, setNewSightingPos, handleImageUpload, runAiRecognition,
-    handleAddNewSighting, removeFormImage, resetForm
+    handleAddNewSighting, removeFormImage, resetForm, prefillFromCapture
   } = useSightingForm(user, userLocation, currentUserProfile, findNearbyMycelium, getDistance, createLog);
 
   const [selectedSighting, setSelectedSighting] = useState<Sighting | null>(null);
@@ -246,6 +247,17 @@ export default function App() {
           setActiveGalleryIndex={setActiveGalleryIndex}
         />
         </SectionBoundary>
+
+        {/* Capture Button - floating camera action */}
+        <CaptureButton
+          onCapture={(file, lat, lng) => {
+            prefillFromCapture(file, lat, lng);
+          }}
+          onGallerySelect={(file) => {
+            handleImageUpload(file);
+            setShowModal(true);
+          }}
+        />
       </main>
 
       <NewSightingModal

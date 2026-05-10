@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { fetchWeatherContext } from '../lib/weather';
 import { encodeGeohash } from '../utils/geohash';
 import { compressImage, fileToDataUrl } from '../services/imagesService';
@@ -39,6 +39,126 @@ export function useSightingForm(
       alert(err instanceof Error ? err.message : 'No se pudo procesar la imagen.');
     }
   }, []);
+
+  // ── Prefill from camera capture ──
+  const prefillFromCapture = useCallback(async (file: File, lat: number, lng: number) => {
+    try {
+      const compressed = await compressImage(file);
+      const dataUrl = await fileToDataUrl(compressed);
+      setFormImages([dataUrl]);
+      setFormImageFiles([compressed]);
+      setNewSightingPos([lat, lng]);
+      setShowModal(true);
+      // Save draft immediately
+      saveDraft({
+        images: [dataUrl],
+        mushroomName: '',
+        description: '',
+        toxicity: 'Desconocido',
+        habitat: '',
+        features: '',
+        lat,
+        lng,
+      });
+    } catch (err) {
+      console.error("Camera capture error", err);
+      alert('No se pudo procesar la foto de la cámara.');
+    }
+  }, []);
+
+  // ── Draft localStorage ──
+  const DRAFT_KEY = user ? `fungimap_draft_${user.uid}` : 'fungimap_draft_guest';
+
+  interface DraftData {
+    images: string[];
+    mushroomName: string;
+    description: string;
+    toxicity: string;
+    habitat: string;
+    features: string;
+    lat: number;
+    lng: number;
+    timestamp: number;
+  }
+
+  const saveDraft = useCallback((partial: Partial<DraftData>) => {
+    try {
+      const existing = localStorage.getItem(DRAFT_KEY);
+      const draft: DraftData = existing ? JSON.parse(existing) : {
+        images: [], mushroomName: '', description: '',
+        toxicity: 'Desconocido', habitat: '', features: '',
+        lat: 0, lng: 0, timestamp: Date.now(),
+      };
+      const updated = { ...draft, ...partial, timestamp: Date.now() };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to save draft', e);
+    }
+  }, [DRAFT_KEY]);
+
+  const loadDraft = useCallback((): DraftData | null => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      const draft = JSON.parse(raw) as DraftData;
+      // Draft expires after 24 hours
+      if (Date.now() - draft.timestamp > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(DRAFT_KEY);
+        return null;
+      }
+      return draft;
+    } catch (e) {
+      return null;
+    }
+  }, [DRAFT_KEY]);
+
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(DRAFT_KEY);
+  }, [DRAFT_KEY]);
+
+  // Auto-save draft on form changes
+  useEffect(() => {
+    if (!showModal) return;
+    const timeout = setTimeout(() => {
+      saveDraft({
+        images: formImages,
+        mushroomName: formMushroomName,
+        description: formDescription,
+        toxicity: formToxicity,
+        habitat: formHabitat,
+        features: formFeatures,
+        lat: newSightingPos?.[0] ?? userLocation?.[0] ?? 0,
+        lng: newSightingPos?.[1] ?? userLocation?.[1] ?? 0,
+      });
+    }, 3000);
+    return () => clearTimeout(timeout);
+  }, [formImages, formMushroomName, formDescription, formToxicity, formHabitat, formFeatures, newSightingPos, userLocation, showModal, saveDraft]);
+
+  // Check for draft on modal open
+  useEffect(() => {
+    if (!showModal) return;
+    const draft = loadDraft();
+    if (draft && formImages.length === 0 && !formMushroomName) {
+      // Only ask if there's meaningful data and form is empty
+      if (draft.images.length > 0 || draft.mushroomName || draft.description) {
+        const shouldRestore = window.confirm('Tenés un borrador guardado. ¿Continuar donde lo dejaste?');
+        if (shouldRestore) {
+          setFormImages(draft.images);
+          setFormMushroomName(draft.mushroomName);
+          setFormDescription(draft.description);
+          setFormToxicity(draft.toxicity);
+          setFormHabitat(draft.habitat);
+          setFormFeatures(draft.features);
+          if (draft.lat && draft.lng) {
+            setNewSightingPos([draft.lat, draft.lng]);
+          }
+        } else {
+          clearDraft();
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showModal]);
 
   const removeFormImage = useCallback((index: number) => {
     setFormImages(prev => prev.filter((_, i) => i !== index));
@@ -84,7 +204,8 @@ export function useSightingForm(
     setShowModal(false);
     setIsAddingMode(false);
     setNewSightingPos(null);
-  }, []);
+    clearDraft();
+  }, [clearDraft]);
 
   const handleAddNewSighting = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,5 +320,8 @@ export function useSightingForm(
     runAiRecognition,
     handleAddNewSighting,
     resetForm,
+    prefillFromCapture,
+    loadDraft,
+    clearDraft,
   };
 }
