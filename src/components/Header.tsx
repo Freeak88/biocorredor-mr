@@ -35,18 +35,18 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-6">
-        {user && (
-          <>
-            <LeaderboardPanel />
-            <button
-              onClick={() => setShowSidebar(!showSidebar)}
-              className={`p-2 transition-all ${showSidebar ? 'text-atlas-earth' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
-              title="Buscar / Filtros"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-          </>
-        )}
+            {user && (
+              <>
+                <LeaderboardPanel />
+                <button
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className={`p-2 transition-all ${showSidebar ? 'text-atlas-earth' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
+                  title="Buscar / Filtros"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              </>
+            )}
         {user ? (
           <div className="flex items-center gap-4 font-sans font-black uppercase tracking-widest text-[9px]">
             <span className="hidden sm:inline-block border-b border-atlas-ink/20">

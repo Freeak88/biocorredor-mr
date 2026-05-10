@@ -6,7 +6,7 @@ import './index.css';
 import { installGlobalErrorLogging, logError } from './lib/logger';
 
 // ── Emergency SW unregister + version check ──
-const APP_VERSION = 'v5';
+const APP_VERSION = 'v7';
 
 if ('serviceWorker' in navigator) {
   // Unregister any old SWs

@@ -11,10 +11,6 @@ migrate((app) => {
       { name: "species", type: "text", required: true },
       { name: "radius_km", type: "number", required: false },
     ],
-    indexes: [
-      "CREATE INDEX idx_first_log_species_type ON first_sightings_log (species, type)",
-      "CREATE INDEX idx_first_log_user ON first_sightings_log (user, type)",
-    ],
   });
   app.save(collection);
 }, (app) => {
