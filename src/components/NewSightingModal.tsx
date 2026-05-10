@@ -1,6 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, MapPin, Smartphone } from 'lucide-react';
+import { Plus, MapPin, Smartphone, Camera, ImageIcon } from 'lucide-react';
 import { useITISValidation } from '../hooks/useITISValidation';
 import { fetchIUCNStatus, iucnCategoryText, parseBinomial } from '../lib/iucn';
 
@@ -30,6 +30,7 @@ interface NewSightingModalProps {
   runAiRecognition: () => void;
   handleAddNewSighting: (e: FormEvent) => void;
   resetForm: () => void;
+  prefillFromCapture?: (file: File, lat: number, lng: number) => void;
 }
 
 export default function NewSightingModal({
@@ -57,7 +58,8 @@ export default function NewSightingModal({
   removeFormImage,
   runAiRecognition,
   handleAddNewSighting,
-  resetForm
+  resetForm,
+  prefillFromCapture
 }: NewSightingModalProps) {
   const { validation, isValidating, isValid, kingdom, phylum, class: class_, order, family, genus, species, suggestions, error } = useITISValidation(formMushroomName);
 
@@ -85,6 +87,47 @@ export default function NewSightingModal({
     }, 800);
     return () => clearTimeout(timer);
   }, [isValid, formMushroomName]);
+
+  // ── Camera capture refs and handlers ──
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCameraClick = () => {
+    if (!prefillFromCapture) {
+      // Fallback: just open camera without GPS prefill
+      cameraInputRef.current?.click();
+      return;
+    }
+    // Capture GPS before opening camera
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        (window as any).__captureCoords = { lat, lng };
+        cameraInputRef.current?.click();
+      },
+      () => {
+        // GPS failed, still open camera
+        cameraInputRef.current?.click();
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  };
+
+  const handleCameraFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const coords = (window as any).__captureCoords;
+    delete (window as any).__captureCoords;
+
+    if (prefillFromCapture && coords?.lat != null && coords?.lng != null) {
+      prefillFromCapture(file, coords.lat, coords.lng);
+    } else {
+      handleImageUpload(file);
+    }
+    e.target.value = '';
+  };
 
   if (!showModal) return null;
 
@@ -119,19 +162,44 @@ export default function NewSightingModal({
                     </button>
                   </div>
                 ))}
-                <div className="aspect-square border-2 border-dashed border-atlas-ink/30 flex flex-col items-center justify-center gap-2 bg-atlas-stone/10 hover:border-atlas-ink transition-all cursor-pointer relative overflow-hidden group">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
-                  />
-                  <Plus className="w-6 h-6 text-atlas-earth group-hover:scale-110 transition-transform" />
-                  <p className="text-[8px] font-sans font-black uppercase tracking-widest opacity-40 text-center px-2">Añadir Toma</p>
-                </div>
+                {/* Hidden inputs */}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleCameraFile}
+                />
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file);
+                    e.target.value = '';
+                  }}
+                />
+                {/* Camera option - always first when adding */}
+                <button
+                  type="button"
+                  onClick={handleCameraClick}
+                  className="aspect-square border-2 border-atlas-ink flex flex-col items-center justify-center gap-2 bg-atlas-earth/10 hover:bg-atlas-earth/20 transition-all cursor-pointer relative overflow-hidden group"
+                >
+                  <Camera className="w-6 h-6 text-atlas-earth group-hover:scale-110 transition-transform" />
+                  <p className="text-[8px] font-sans font-black uppercase tracking-widest opacity-60 text-center px-2">Cámara</p>
+                </button>
+                {/* Gallery option */}
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="aspect-square border-2 border-dashed border-atlas-ink/30 flex flex-col items-center justify-center gap-2 bg-atlas-stone/10 hover:border-atlas-ink transition-all cursor-pointer relative overflow-hidden group"
+                >
+                  <ImageIcon className="w-6 h-6 text-atlas-ink/40 group-hover:scale-110 transition-transform" />
+                  <p className="text-[8px] font-sans font-black uppercase tracking-widest opacity-40 text-center px-2">Galería</p>
+                </button>
               </div>
 
               {formImages.length > 0 && !isAiLoading && (
