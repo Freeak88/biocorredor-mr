@@ -5,6 +5,23 @@ import App from './App.tsx';
 import './index.css';
 import { installGlobalErrorLogging, logError } from './lib/logger';
 
+// ── Emergency SW unregister ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => {
+      reg.unregister().then(() => {
+        console.log('[SW] Unregistered:', reg.scope);
+      });
+    });
+    // Also clear all caches
+    if (window.caches) {
+      caches.keys().then((names) => {
+        names.forEach((n) => caches.delete(n));
+      });
+    }
+  });
+}
+
 installGlobalErrorLogging();
 
 class ErrorBoundary extends React.Component<{children: ReactNode}, {error: string | null}> {
