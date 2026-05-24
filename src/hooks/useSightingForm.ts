@@ -5,6 +5,7 @@ import { compressImage, fileToDataUrl } from '../services/imagesService';
 import { createSighting, updateSighting } from '../services/sightingsService';
 import { updateUserProfile } from '../services/usersService';
 import type { AuthUser, UserProfile } from '../types';
+import type { MushroomIdentification } from '../lib/gemini';
 
 export function useSightingForm(
   user: AuthUser | null,
@@ -26,6 +27,7 @@ export function useSightingForm(
   const [showModal, setShowModal] = useState(false);
   const [isAddingMode, setIsAddingMode] = useState(false);
   const [newSightingPos, setNewSightingPos] = useState<[number, number] | null>(null);
+  const [aiResult, setAiResult] = useState<MushroomIdentification | null>(null);
   const submitInFlightRef = useRef(false);
 
   const handleImageUpload = useCallback(async (file: File) => {
@@ -40,7 +42,6 @@ export function useSightingForm(
     }
   }, []);
 
-  // ── Prefill from camera capture ──
   const prefillFromCapture = useCallback(async (file: File, lat: number, lng: number) => {
     try {
       const compressed = await compressImage(file);
@@ -49,7 +50,6 @@ export function useSightingForm(
       setFormImageFiles([compressed]);
       setNewSightingPos([lat, lng]);
       setShowModal(true);
-      // Save draft immediately
       saveDraft({
         images: [dataUrl],
         mushroomName: '',
@@ -66,7 +66,6 @@ export function useSightingForm(
     }
   }, []);
 
-  // ── Draft localStorage ──
   const DRAFT_KEY = user ? `fungimap_draft_${user.uid}` : 'fungimap_draft_guest';
 
   interface DraftData {
@@ -101,7 +100,6 @@ export function useSightingForm(
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return null;
       const draft = JSON.parse(raw) as DraftData;
-      // Draft expires after 24 hours
       if (Date.now() - draft.timestamp > 24 * 60 * 60 * 1000) {
         localStorage.removeItem(DRAFT_KEY);
         return null;
@@ -116,7 +114,6 @@ export function useSightingForm(
     localStorage.removeItem(DRAFT_KEY);
   }, [DRAFT_KEY]);
 
-  // Auto-save draft on form changes
   useEffect(() => {
     if (!showModal) return;
     const timeout = setTimeout(() => {
@@ -134,12 +131,10 @@ export function useSightingForm(
     return () => clearTimeout(timeout);
   }, [formImages, formMushroomName, formDescription, formToxicity, formHabitat, formFeatures, newSightingPos, userLocation, showModal, saveDraft]);
 
-  // Check for draft on modal open
   useEffect(() => {
     if (!showModal) return;
     const draft = loadDraft();
     if (draft && formImages.length === 0 && !formMushroomName) {
-      // Only ask if there's meaningful data and form is empty
       if (draft.images.length > 0 || draft.mushroomName || draft.description) {
         const shouldRestore = window.confirm('Tenés un borrador guardado. ¿Continuar donde lo dejaste?');
         if (shouldRestore) {
@@ -169,25 +164,59 @@ export function useSightingForm(
     if (formImages.length === 0) return;
     try {
       setIsAiLoading(true);
+      setAiResult(null);
       const dataUrl = formImages[0];
       const base64 = dataUrl.split(',')[1];
       const mimeType = /data:(.*?);base64/.exec(dataUrl)?.[1] || "image/jpeg";
 
       const { identifyMushroomFromImage } = await import('../lib/gemini');
       const analysis = await identifyMushroomFromImage(base64, mimeType);
+      setAiResult(analysis);
 
-      if (analysis) {
-        setFormMushroomName(`${analysis.scientificName} (${analysis.commonName})`);
-        setFormDescription(analysis.description);
-        setFormToxicity(analysis.toxicity);
-        setFormHabitat(analysis.habitat);
-        setFormFeatures(analysis.features);
-      } else {
-        alert("La IA no pudo identificar este ejemplar. Intente con otra foto.");
+      if (analysis.status === 'unidentifiable') {
+        setFormMushroomName('');
+        setFormDescription(
+          (analysis.warnings?.[0] || 'La foto no permite identificación. ') +
+          'Tips: usá buena luz, que se vea el pie, las láminas y el sombrero completos.'
+        );
+        setFormToxicity('Desconocido');
+        setFormHabitat('');
+        setFormFeatures('');
+        return;
       }
+
+      if (analysis.status === 'unknown') {
+        setFormMushroomName(analysis.displayName);
+        setFormDescription(
+          (analysis.description || '') +
+          '\n\n[IA] Este hongo no fue reconocido en la base de datos. ' +
+          'Si sos experto, ayudanos a identificarlo.'
+        );
+        setFormToxicity(analysis.toxicity || 'Desconocido');
+        setFormHabitat(analysis.habitat || '');
+        setFormFeatures(analysis.features || '');
+        return;
+      }
+
+      const display = analysis.taxonomy.species
+        ? `${analysis.taxonomy.species} (${analysis.commonName || analysis.displayName})`
+        : analysis.displayName;
+
+      setFormMushroomName(display);
+      setFormDescription(
+        (analysis.description || '') +
+        (analysis.confidence < 80 && analysis.candidates
+          ? `\n\n[IA] Identificación con ${analysis.confidence}% de confianza. ` +
+            `Otras posibilidades: ${analysis.candidates.slice(0, 3).map(c => `${c.taxon} (${c.confidence}%)`).join(', ')}.`
+          : '')
+      );
+      setFormToxicity(analysis.toxicity || 'Desconocido');
+      setFormHabitat(analysis.habitat || '');
+      setFormFeatures(analysis.features || '');
+
     } catch (err) {
       console.error("AI Analysis error", err);
-      alert("Error en el reconocimiento. Verifique su conexi\u00f3n.");
+      alert("Error en el reconocimiento. Verificá tu conexión.");
     } finally {
       setIsAiLoading(false);
     }
@@ -204,6 +233,7 @@ export function useSightingForm(
     setShowModal(false);
     setIsAddingMode(false);
     setNewSightingPos(null);
+    setAiResult(null);
     clearDraft();
   }, [clearDraft]);
 
@@ -219,7 +249,7 @@ export function useSightingForm(
 
     const pos = newSightingPos || userLocation;
     if (!pos) {
-      alert("No se ha podido determinar su ubicaci\u00f3n actual. Inicie la geolocalizaci\u00f3n o seleccione un punto en el mapa.");
+      alert("No se ha podido determinar su ubicación actual. Inicie la geolocalización o seleccione un punto en el mapa.");
       return;
     }
 
@@ -233,7 +263,6 @@ export function useSightingForm(
       const points = initialStatus === 'draft' ? 5 : 25;
       const networkId = findNearbyMycelium(pos[0], pos[1], mushroomName);
 
-      // Build FormData for file uploads
       const formData = new FormData();
       formData.append('user', user.uid);
       formData.append('mushroom_name', mushroomName);
@@ -247,18 +276,16 @@ export function useSightingForm(
       formData.append('status', initialStatus);
       formData.append('network_id', networkId || '');
 
-      // Append all image files
       formImageFiles.forEach(file => {
         formData.append('images', file);
       });
 
       const record = await createSighting(formData);
 
-      // Fetch weather context for the sighting
       if (record && record.id) {
         const sightingLat = pos[0];
         const sightingLng = pos[1];
-        const sightingDate = new Date().toISOString().split('T')[0]; // Today
+        const sightingDate = new Date().toISOString().split('T')[0];
         
         const weatherContext = await fetchWeatherContext(sightingLat, sightingLng, sightingDate, 10);
         if (weatherContext) {
@@ -273,7 +300,6 @@ export function useSightingForm(
         }
       }
 
-      // Update user points
       if (currentUserProfile) {
         const newMerits = [...(currentUserProfile.merits || [])];
         await updateUserProfile(user.uid, {
@@ -282,7 +308,7 @@ export function useSightingForm(
         });
       }
 
-      await createLog('sighting_add', `Registr\u00f3 "${mushroomName}" como ${initialStatus === 'draft' ? 'Borrador remoto' : 'Hallazgo local'}`);
+      await createLog('sighting_add', `Registró "${mushroomName}" como ${initialStatus === 'draft' ? 'Borrador remoto' : 'Hallazgo local'}`);
       alert('Hallazgo archivado en el Atlas.');
       resetForm();
     } catch (err) {
@@ -315,6 +341,7 @@ export function useSightingForm(
     setIsAddingMode,
     newSightingPos,
     setNewSightingPos,
+    aiResult,
     handleImageUpload,
     removeFormImage,
     runAiRecognition,

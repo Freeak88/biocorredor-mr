@@ -35,7 +35,7 @@ export default function App() {
     formDescription, setFormDescription, formToxicity, setFormToxicity,
     formHabitat, setFormHabitat, formFeatures, setFormFeatures,
     isAiLoading, isSubmittingSighting, showModal, setShowModal, isAddingMode, setIsAddingMode,
-    newSightingPos, setNewSightingPos, handleImageUpload, runAiRecognition,
+    newSightingPos, setNewSightingPos, aiResult, handleImageUpload, runAiRecognition,
     handleAddNewSighting, removeFormImage, resetForm, prefillFromCapture
   } = useSightingForm(user, userLocation, currentUserProfile, findNearbyMycelium, getDistance, createLog);
 
@@ -275,6 +275,7 @@ export default function App() {
         handleAddNewSighting={handleAddNewSighting}
         resetForm={resetForm}
         prefillFromCapture={prefillFromCapture}
+        aiResult={aiResult}
       />
 
       <ReportModal

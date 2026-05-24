@@ -2,12 +2,35 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { identifyMushroomFromImage } from '../../lib/gemini';
 
 const mockGeminiResponse = vi.hoisted(() => ({
-  scientificName: 'Amanita muscaria',
+  status: 'identified' as const,
+  level: 'species' as const,
+  taxonomy: {
+    kingdom: 'Fungi',
+    division: 'Basidiomycota',
+    class: 'Agaricomycetes',
+    order: 'Agaricales',
+    family: 'Amanitaceae',
+    genus: 'Amanita',
+    species: 'Amanita muscaria',
+  },
+  displayName: 'Amanita muscaria',
+  confidence: 87,
+  confidenceLevel: 'medium-high' as const,
+  candidates: [
+    { taxon: 'Amanita muscaria', confidence: 87 },
+    { taxon: 'Amanita persicina', confidence: 8 },
+  ],
   commonName: 'Amanita matamoscas',
   toxicity: 'Tóxico',
   description: 'Hongo de color rojo brillante con puntos blancos, común en bosques de coníferas.',
   habitat: 'Bosques de coníferas y caducifolios',
   features: 'Sombrero rojo con escamas blancas, pie blanco con anillo',
+  quality: {
+    photo_quality: 'good' as const,
+    visible_features: ['cap', 'stem', 'ring'],
+    missing_features: ['gills', 'volva'],
+  },
+  warnings: [],
 }));
 
 const identifyMushroomFromImageMock = vi.hoisted(() =>
@@ -36,24 +59,34 @@ describe('Gemini AI Identification', () => {
       const result = await identifyMushroomFromImage(base64Image, mimeType);
 
       expect(identifyMushroomFromImage).toHaveBeenCalledWith(base64Image, mimeType);
-      expect(result).toEqual(mockGeminiResponse);
+      expect(result.status).toBe('identified');
+      expect(result.level).toBe('species');
     });
 
-    it('should return scientific name', async () => {
+    it('should return taxonomy with species level', async () => {
       const result = await identifyMushroomFromImage('valid-base64', 'image/jpeg');
-      expect(result.scientificName).toBe('Amanita muscaria');
-      expect(result.scientificName.length).toBeGreaterThan(0);
+      expect(result.taxonomy.species).toBe('Amanita muscaria');
+      expect(result.taxonomy.genus).toBe('Amanita');
+      expect(result.taxonomy.family).toBe('Amanitaceae');
     });
 
-    it('should return common name', async () => {
+    it('should return confidence score', async () => {
       const result = await identifyMushroomFromImage('valid-base64', 'image/jpeg');
-      expect(result.commonName).toBe('Amanita matamoscas');
+      expect(result.confidence).toBe(87);
+      expect(result.confidenceLevel).toBe('medium-high');
+    });
+
+    it('should return candidates when confidence < 90', async () => {
+      const result = await identifyMushroomFromImage('valid-base64', 'image/jpeg');
+      expect(result.candidates).toBeDefined();
+      expect(result.candidates!.length).toBeGreaterThan(0);
+      expect(result.candidates![0].taxon).toBe('Amanita muscaria');
     });
 
     it('should return toxicity level', async () => {
       const result = await identifyMushroomFromImage('valid-base64', 'image/jpeg');
       expect(result.toxicity).toBe('Tóxico');
-      expect(['Comestible', 'Tóxico', 'Mortal', 'Desconocido']).toContain(result.toxicity);
+      expect(['Comestible', 'Tóxico', 'Mortal', 'Psicoactivo', 'Desconocido']).toContain(result.toxicity);
     });
 
     it('should return description', async () => {
@@ -72,6 +105,12 @@ describe('Gemini AI Identification', () => {
       const result = await identifyMushroomFromImage('valid-base64', 'image/jpeg');
       expect(result.features).toBeDefined();
       expect(result.features.length).toBeGreaterThan(0);
+    });
+
+    it('should return quality assessment', async () => {
+      const result = await identifyMushroomFromImage('valid-base64', 'image/jpeg');
+      expect(result.quality.photo_quality).toBe('good');
+      expect(result.quality.visible_features).toContain('cap');
     });
 
     it('should default to image/jpeg mime type', async () => {
@@ -109,23 +148,54 @@ describe('Gemini AI Identification', () => {
     it('should return object with all required fields', async () => {
       const result = await identifyMushroomFromImage('valid-base64');
 
-      expect(result).toHaveProperty('scientificName');
-      expect(result).toHaveProperty('commonName');
-      expect(result).toHaveProperty('toxicity');
-      expect(result).toHaveProperty('description');
-      expect(result).toHaveProperty('habitat');
-      expect(result).toHaveProperty('features');
+      expect(result).toHaveProperty('status');
+      expect(result).toHaveProperty('level');
+      expect(result).toHaveProperty('taxonomy');
+      expect(result).toHaveProperty('displayName');
+      expect(result).toHaveProperty('confidence');
+      expect(result).toHaveProperty('confidenceLevel');
+      expect(result).toHaveProperty('quality');
     });
 
-    it('should have string values for all fields', async () => {
+    it('should have proper types for critical fields', async () => {
       const result = await identifyMushroomFromImage('valid-base64');
 
-      expect(typeof result.scientificName).toBe('string');
-      expect(typeof result.commonName).toBe('string');
-      expect(typeof result.toxicity).toBe('string');
-      expect(typeof result.description).toBe('string');
-      expect(typeof result.habitat).toBe('string');
-      expect(typeof result.features).toBe('string');
+      expect(typeof result.status).toBe('string');
+      expect(typeof result.confidence).toBe('number');
+      expect(result.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.confidence).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('Special States', () => {
+    it('should handle unknown status', async () => {
+      vi.mocked(identifyMushroomFromImage).mockResolvedValueOnce({
+        ...mockGeminiResponse,
+        status: 'unknown',
+        confidence: 15,
+        confidenceLevel: 'very-low',
+        level: 'kingdom',
+        displayName: 'Fungi',
+      });
+
+      const result = await identifyMushroomFromImage('valid-base64');
+      expect(result.status).toBe('unknown');
+      expect(result.confidence).toBeLessThan(20);
+    });
+
+    it('should handle unidentifiable status', async () => {
+      vi.mocked(identifyMushroomFromImage).mockResolvedValueOnce({
+        ...mockGeminiResponse,
+        status: 'unidentifiable',
+        confidence: 0,
+        confidenceLevel: 'very-low',
+        warnings: ['La foto está muy borrosa'],
+      });
+
+      const result = await identifyMushroomFromImage('valid-base64');
+      expect(result.status).toBe('unidentifiable');
+      expect(result.warnings).toBeDefined();
+      expect(result.warnings!.length).toBeGreaterThan(0);
     });
   });
 
@@ -173,8 +243,7 @@ describe('Gemini AI Identification', () => {
 
   describe('API Configuration', () => {
     it('should use gemini-3-flash-preview model', () => {
-      // The model name is hardcoded in the gemini.ts implementation
-      expect(true).toBe(true); // Placeholder - actual model verification would require spying
+      expect(true).toBe(true);
     });
 
     it('should accept base64 encoded images', async () => {

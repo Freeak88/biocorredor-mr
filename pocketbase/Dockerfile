@@ -18,5 +18,5 @@ EXPOSE 8090
 # Data persistence
 VOLUME /pb/pb_data
 
-# Start PocketBase
-CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8090"]
+# Start PocketBase with explicit hooks directory and dev mode
+CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8090", "--hooksDir=/pb/pb_hooks", "--dev"]

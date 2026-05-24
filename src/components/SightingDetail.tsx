@@ -131,7 +131,7 @@ function SpeciesProfile({ sighting, allSightings }: { sighting: Sighting; allSig
 
       {/* Legal disclaimer */}
       <div className="species-disclaimer">
-        ⚠️ La información de toxicidad es orientativa y proviene de fuentes públicas. Nunca consuma un hongo silvestre sin la verificación de un micólogo experto. FungiMap no se responsabiliza por identificaciones incorrectas.
+        ⚠️ La información de toxicidad es orientativa y proviene de fuentes públicas. Nunca consuma un hongo silvestre sin la verificación de un micólogo experto. Funga Map no se responsabiliza por identificaciones incorrectas.
       </div>
     </div>
   );

@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, MapPin, Smartphone, Camera, ImageIcon } from 'lucide-react';
+import { Plus, MapPin, Smartphone, Camera, ImageIcon, Check, AlertTriangle, HelpCircle, X, Minus } from 'lucide-react';
 import { useITISValidation } from '../hooks/useITISValidation';
 import { fetchIUCNStatus, iucnCategoryText, parseBinomial } from '../lib/iucn';
+import type { MushroomIdentification } from '../lib/gemini';
+import { submitAIFeedback } from '../services/aiFeedbackService';
 
 interface NewSightingModalProps {
   showModal: boolean;
@@ -31,6 +33,7 @@ interface NewSightingModalProps {
   handleAddNewSighting: (e: FormEvent) => void;
   resetForm: () => void;
   prefillFromCapture?: (file: File, lat: number, lng: number) => void;
+  aiResult?: MushroomIdentification | null;
 }
 
 export default function NewSightingModal({
@@ -59,13 +62,32 @@ export default function NewSightingModal({
   runAiRecognition,
   handleAddNewSighting,
   resetForm,
-  prefillFromCapture
+  prefillFromCapture,
+  aiResult
 }: NewSightingModalProps) {
   const { validation, isValidating, isValid, kingdom, phylum, class: class_, order, family, genus, species, suggestions, error } = useITISValidation(formMushroomName);
 
   // IUCN conservation status
   const [iucnStatus, setIucnStatus] = useState<{ category: string; label: string; emoji: string; url: string } | null>(null);
   const [iucnLoading, setIucnLoading] = useState(false);
+
+  // AI Feedback
+  const [feedbackLevel, setFeedbackLevel] = useState<number | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  const handleFeedback = async (level: number) => {
+    if (feedbackSubmitted || !aiResult) return;
+    setFeedbackLevel(level);
+    setFeedbackSubmitted(true);
+    try {
+      await submitAIFeedback({
+        aiPrediction: aiResult,
+        userConfidence: level,
+      });
+    } catch (e) {
+      console.error('Feedback error:', e);
+    }
+  };
 
   useEffect(() => {
     if (!isValid || !formMushroomName || formMushroomName.length < 3) {
@@ -114,7 +136,7 @@ export default function NewSightingModal({
     );
   };
 
-  const handleCameraFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCameraFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -217,6 +239,130 @@ export default function NewSightingModal({
                   <div className="w-8 h-8 border-2 border-atlas-earth border-t-transparent rounded-full animate-spin mb-3"></div>
                   <p className="font-serif italic text-sm">RECONOCIENDO...</p>
                   <p className="text-[9px] font-sans font-black uppercase tracking-widest opacity-40 mt-2">Consultando archivos taxonómicos</p>
+                </div>
+              )}
+
+              {/* AI Result — Confidence Score */}
+              {aiResult && !isAiLoading && (
+                <div className={`p-4 border-l-4 text-sm ${
+                  aiResult.status === 'unidentifiable' ? 'bg-red-50 border-red-400 text-red-800' :
+                  aiResult.status === 'unknown' ? 'bg-amber-50 border-amber-400 text-amber-800' :
+                  aiResult.confidence >= 90 ? 'bg-emerald-50 border-emerald-400 text-emerald-800' :
+                  aiResult.confidence >= 80 ? 'bg-yellow-50 border-yellow-400 text-yellow-800' :
+                  aiResult.confidence >= 60 ? 'bg-orange-50 border-orange-400 text-orange-800' :
+                  'bg-red-50 border-red-400 text-red-800'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-sans font-bold text-[10px] uppercase tracking-widest">
+                      {aiResult.status === 'unidentifiable' ? '❌ No Identificable' :
+                       aiResult.status === 'unknown' ? '❓ Desconocido' :
+                       aiResult.level === 'species' ? '🔬 Especie' :
+                       aiResult.level === 'genus' ? '🧬 Género' :
+                       aiResult.level === 'family' ? '🏛️ Familia' :
+                       aiResult.level === 'order' ? '📋 Orden' :
+                       aiResult.level === 'class' ? '🎓 Clase' :
+                       aiResult.level === 'division' ? '🌍 División' :
+                       '👑 Reino'}
+                    </span>
+                    {aiResult.status === 'identified' && (
+                      <span className="font-sans font-black text-lg">
+                        {aiResult.confidence}%
+                      </span>
+                    )}
+                  </div>
+
+                  {aiResult.status === 'unidentifiable' && (
+                    <p className="text-xs leading-relaxed">
+                      {aiResult.warnings?.[0] || 'La foto no permite identificación. Tips: usá buena luz, que se vea el pie, las láminas y el sombrero completos.'}
+                    </p>
+                  )}
+
+                  {aiResult.status === 'unknown' && (
+                    <p className="text-xs leading-relaxed">
+                      Este hongo no fue reconocido en la base de datos. Si sos experto, ayudanos a identificarlo.
+                    </p>
+                  )}
+
+                  {aiResult.status === 'identified' && aiResult.confidence < 80 && aiResult.candidates && aiResult.candidates.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-[10px] font-sans font-bold uppercase tracking-widest opacity-70 mb-1">
+                        Otras posibilidades ({aiResult.candidates.length}):
+                      </p>
+                      <ul className="space-y-1">
+                        {aiResult.candidates.slice(0, 3).map((c, i) => (
+                          <li key={i} className="flex items-center justify-between text-xs">
+                            <span>{c.taxon}</span>
+                            <span className="font-mono opacity-60">{c.confidence}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {aiResult.status === 'identified' && aiResult.quality?.missing_features?.length > 0 && (
+                    <p className="text-[10px] mt-2 opacity-70">
+                      Faltan para mayor precisión: {aiResult.quality.missing_features.join(', ')}
+                    </p>
+                  )}
+
+                  {/* Feedback de confianza — 5 niveles */}
+                  {aiResult.status === 'identified' && (
+                    <div className="mt-3 pt-3 border-t border-atlas-ink/10">
+                      <p className="text-[9px] font-sans font-black uppercase tracking-widest opacity-50 mb-2 text-center">
+                        ¿Qué tan segura te parece esta identificación?
+                      </p>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => handleFeedback(level)}
+                            disabled={feedbackSubmitted}
+                            className={`flex-1 py-2 rounded transition-all ${
+                              feedbackSubmitted && feedbackLevel === level
+                                ? level <= 2
+                                  ? 'bg-red-400 text-white'
+                                  : level === 3
+                                  ? 'bg-yellow-400 text-atlas-ink'
+                                  : 'bg-emerald-500 text-white'
+                                : 'bg-atlas-ink/5 hover:bg-atlas-ink/10'
+                            } ${feedbackSubmitted ? 'cursor-default' : 'cursor-pointer'}`}
+                            title={
+                              level === 1 ? 'Para nada seguro' :
+                              level === 2 ? 'Dudoso' :
+                              level === 3 ? 'Posible' :
+                              level === 4 ? 'Muy probable' :
+                              'Totalmente seguro'
+                            }
+                          >
+                            <div className="flex flex-col items-center gap-0.5">
+                              {level === 1 && <X className="w-3 h-3" />}
+                              {level === 2 && <Minus className="w-3 h-3" />}
+                              {level === 3 && <HelpCircle className="w-3 h-3" />}
+                              {level === 4 && <Check className="w-3 h-3" />}
+                              {level === 5 && <Check className="w-3 h-3" />}
+                              <span className="text-[8px] font-sans font-black uppercase tracking-wider">
+                                {level === 1 ? 'Nada' :
+                                 level === 2 ? 'Dudoso' :
+                                 level === 3 ? 'Posible' :
+                                 level === 4 ? 'Probable' :
+                                 'Seguro'}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      {feedbackSubmitted && (
+                        <p className="text-[9px] font-sans text-center mt-1.5 opacity-60">
+                          {feedbackLevel && feedbackLevel <= 2
+                            ? 'Gracias. Esto nos ayuda a mejorar la IA.'
+                            : feedbackLevel === 3
+                            ? 'Gracias. El resultado fue medianamente acertado.'
+                            : 'Gracias por confirmar la identificación.'}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

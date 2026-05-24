@@ -1,6 +1,6 @@
 {
-  "name": "FungiMap — Atlas Micológico",
-  "short_name": "FungiMap",
+  "name": "Funga Map — Atlas Micológico",
+  "short_name": "Funga Map",
   "start_url": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],

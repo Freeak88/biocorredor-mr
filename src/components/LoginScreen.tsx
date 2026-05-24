@@ -49,7 +49,7 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
             <div className="w-28 h-28 border-2 border-dashed border-atlas-ink rounded-full animate-[spin_10s_linear_infinite] flex items-center justify-center" />
             <Sprout className="w-10 h-10 text-atlas-ink absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <h1 className="text-3xl font-serif italic text-atlas-ink">FungiMap</h1>
+          <h1 className="text-3xl font-serif italic text-atlas-ink">Funga Map</h1>
           <p className="text-atlas-ink/50 font-serif italic text-sm mt-1">Atlas Micológico Colaborativo</p>
         </div>
 
@@ -148,8 +148,19 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
         </button>
       </div>
 
-      {/* Bottom accent */}
-      <div className="absolute bottom-8 w-24 h-px bg-atlas-earth/30" />
-    </div>
+        {/* Bottom accent */}
+        <div className="absolute bottom-8 w-24 h-px bg-atlas-earth/30" />
+
+        {/* Legal links */}
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-4">
+          <a href="/privacidad/" className="text-[9px] font-sans uppercase tracking-widest text-atlas-ink/30 hover:text-atlas-earth transition-colors">
+            Privacidad
+          </a>
+          <span className="text-atlas-ink/20 text-[9px]">·</span>
+          <a href="/terminos/" className="text-[9px] font-sans uppercase tracking-widest text-atlas-ink/30 hover:text-atlas-earth transition-colors">
+            Términos
+          </a>
+        </div>
+      </div>
   );
 }

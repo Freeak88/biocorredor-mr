@@ -7,7 +7,7 @@ interface UserBadgesProps {
 function parseBadge(badge: string): { icon: string; label: string; color: string } {
   if (badge.startsWith('first_global:')) {
     const species = badge.replace('first_global:', '').replace(/_/g, ' ');
-    return { icon: '🥇', label: `Primero en Fungimap: ${species}`, color: '#D4A574' };
+    return { icon: '🥇', label: `Primero en Funga Map: ${species}`, color: '#D4A574' };
   }
   if (badge.startsWith('first_local:')) {
     const parts = badge.replace('first_local:', '').split(':');
