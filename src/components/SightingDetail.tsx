@@ -305,7 +305,7 @@ export default function SightingDetail({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 md:p-10 space-y-10 font-serif">
+          <div className="flex-1 overflow-y-auto p-8 pb-[calc(2rem+env(safe-area-inset-bottom))] md:p-10 space-y-10 font-serif">
             {s.images && s.images.length > 1 && (
               <section>
                 <h4 className="text-[10px] font-sans font-black text-atlas-ink uppercase mb-4 tracking-[0.2em] flex items-center gap-3">
