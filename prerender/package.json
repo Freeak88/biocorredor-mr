@@ -1,0 +1,13 @@
+{
+  "name": "funga-prerender",
+  "version": "1.0.0",
+  "description": "Prerender microservice for Funga Map public observations",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0"
+  }
+}
