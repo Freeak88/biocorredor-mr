@@ -15,9 +15,25 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Core React + framework
+            'vendor': ['react', 'react-dom'],
+            // Heavy libraries
+            'leaflet': ['leaflet', 'react-leaflet', 'react-leaflet-cluster'],
+            'motion': ['motion/react'],
+            'pocketbase': ['pocketbase'],
+            'lucide': ['lucide-react'],
+          },
+        },
+      },
+      // Optimize chunk loading
+      chunkSizeWarningLimit: 500,
+      sourcemap: false,
+    },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
   };

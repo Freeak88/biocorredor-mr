@@ -1,6 +1,4 @@
-import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
+import React, { useState, useCallback, Suspense, lazy } from 'react';
 import { pb } from './lib/pb';
 import { logError } from './lib/logger';
 import { useAuth } from './hooks/useAuth';
@@ -11,15 +9,29 @@ import { useAdmin } from './hooks/useAdmin';
 import { useSightingForm } from './hooks/useSightingForm';
 import { Sighting } from './types';
 import Header from './components/Header';
-import MapView from './components/MapView';
-import SightingDetail from './components/SightingDetail';
-import NewSightingModal from './components/NewSightingModal';
-import ChatPanel from './components/ChatPanel';
-import AdminPanel from './components/AdminPanel';
-import ReportModal from './components/ReportModal';
-import Sidebar from './components/Sidebar';
 import LoginScreen from './components/LoginScreen';
+
+// Lazy load heavy components
+const MapView = lazy(() => import('./components/MapView'));
+const Sidebar = lazy(() => import('./components/Sidebar'));
+const ChatPanel = lazy(() => import('./components/ChatPanel'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const SightingDetail = lazy(() => import('./components/SightingDetail'));
+const NewSightingModal = lazy(() => import('./components/NewSightingModal'));
+const ReportModal = lazy(() => import('./components/ReportModal'));
+
+import { motion, AnimatePresence } from 'motion/react';
+import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
 import SectionBoundary from './components/SectionBoundary';
+
+// Minimal loading fallback for lazy components
+function LazyFallback() {
+  return (
+    <div className="flex items-center justify-center w-full h-full bg-atlas-paper">
+      <div className="w-6 h-6 border-2 border-atlas-earth/30 border-t-atlas-earth rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export default function App() {
   const { user, loading, isAdmin, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
@@ -116,6 +128,7 @@ export default function App() {
 
       <main className="flex-1 relative overflow-hidden">
         <SectionBoundary name="MapView">
+        <Suspense fallback={<LazyFallback />}>
         <MapView
           filteredSightings={filteredSightings}
           onlineUsers={onlineUsers}
@@ -132,6 +145,7 @@ export default function App() {
           updateLayerToggle={updateLayerToggle}
           onBoundsChange={setMapBounds}
         />
+        </Suspense>
         </SectionBoundary>
 
         {isAddingMode && !newSightingPos && (
@@ -187,6 +201,7 @@ export default function App() {
         </div>
 
         <SectionBoundary name="Sidebar">
+        <Suspense fallback={<LazyFallback />}>
         <Sidebar
           showSidebar={showSidebar}
           searchQuery={searchQuery}
@@ -196,9 +211,11 @@ export default function App() {
           isAdmin={isAdmin}
           onExport={handleExport}
         />
+        </Suspense>
         </SectionBoundary>
 
         <SectionBoundary name="ChatPanel">
+        <Suspense fallback={<LazyFallback />}>
         <ChatPanel
           showChat={showChat}
           setShowChat={setShowChat}
@@ -212,9 +229,11 @@ export default function App() {
           user={user}
           onReport={handleReport}
         />
+        </Suspense>
         </SectionBoundary>
 
         <SectionBoundary name="AdminPanel">
+        <Suspense fallback={<LazyFallback />}>
         <AdminPanel
           showAdminPanel={showAdminPanel}
           setShowAdminPanel={setShowAdminPanel}
@@ -229,9 +248,11 @@ export default function App() {
           handleSendMessage={handleSendMessage}
           createLog={createLog}
         />
+        </Suspense>
         </SectionBoundary>
 
         <SectionBoundary name="SightingDetail">
+        <Suspense fallback={<LazyFallback />}>
         <SightingDetail
           selectedSighting={selectedSighting}
           onClose={() => setSelectedSighting(null)}
@@ -245,9 +266,11 @@ export default function App() {
           activeGalleryIndex={activeGalleryIndex}
           setActiveGalleryIndex={setActiveGalleryIndex}
         />
+        </Suspense>
         </SectionBoundary>
       </main>
 
+      <Suspense fallback={<div className="fixed inset-0 z-[3000] bg-atlas-paper/80 flex items-center justify-center"><div className="w-6 h-6 border-2 border-atlas-earth/30 border-t-atlas-earth rounded-full animate-spin" /></div>}>
       <NewSightingModal
         showModal={showModal}
         setShowModal={setShowModal}
@@ -277,12 +300,15 @@ export default function App() {
         prefillFromCapture={prefillFromCapture}
         aiResult={aiResult}
       />
+      </Suspense>
 
+      <Suspense fallback={null}>
       <ReportModal
         showReportModal={showReportModal}
         setShowReportModal={setShowReportModal}
         submitReport={handleSubmitReport}
       />
+      </Suspense>
 
       <AnimatePresence>
         {activeGalleryIndex !== null && selectedSighting?.images && (
