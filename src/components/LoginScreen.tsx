@@ -153,11 +153,11 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
 
         {/* Mission statement */}
         <div className="mt-6 px-4 text-center space-y-2 flex-shrink-0">
-          <div className="w-8 h-px bg-atlas-earth/20 mx-auto" />
-          <p className="font-serif italic text-[11px] text-atlas-ink/40 leading-relaxed max-w-[260px] mx-auto">
+          <div className="w-8 h-px bg-atlas-earth/40 mx-auto" />
+          <p className="font-serif italic text-[11px] text-atlas-ink/70 leading-relaxed max-w-[260px] mx-auto">
             Redescubrí lo autóctono. Cada registro fortalece una red comunitaria de conocimiento soberano sobre hongos silvestres — una base validada para conservación y modelos de aprendizaje que identifican lo conocido y lo aún por descubrir.
           </p>
-          <p className="text-[9px] font-sans uppercase tracking-[0.25em] text-atlas-earth/50">
+          <p className="text-[9px] font-sans uppercase tracking-[0.25em] text-atlas-earth">
             Conservación · Ciencia · Territorio
           </p>
         </div>
