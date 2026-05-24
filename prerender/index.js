@@ -75,7 +75,7 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 }
 
-function renderPage({ title, description, image, url, schema, bodyContent, redirectToApp }) {
+function renderPage({ title, description, image, url, schema, bodyContent, id }) {
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -300,14 +300,6 @@ function renderPage({ title, description, image, url, schema, bodyContent, redir
       .cta { flex-direction: row; justify-content: center; }
     }
   </style>
-  ${redirectToApp ? `
-  <script>
-    // If user has JS and comes from a normal browser (not bot), redirect to SPA
-    // Bots typically don't execute JS, so they stay on this static page
-    if (!navigator.userAgent.match(/bot|crawler|spider|googlebot|bingbot|facebookexternalhit|twitterbot|linkedinbot/i)) {
-      window.location.replace('${redirectToApp}');
-    }
-  </script>` : ''}
 </head>
 <body>
   <div class="container">
@@ -328,11 +320,10 @@ function renderPage({ title, description, image, url, schema, bodyContent, redir
   </div>
   <div class="cta">
     <div class="cta-text">
-      ${redirectToApp 
-        ? 'Esta observación forma parte de un atlas colaborativo gestionado por la comunidad.' 
-        : 'Descubrí más observaciones y sumá las tuyas al Atlas.'}
+      Esta observación forma parte de un atlas colaborativo gestionado por la comunidad.
+      Registrate para explorar el mapa completo, identificar especies con IA y contribuir.
     </div>
-    <a href="${redirectToApp || APP_URL}" class="cta-button">${redirectToApp ? 'Ver en el Atlas' : 'Explorar Funga Map'}</a>
+    <a href="${APP_URL}/?redirect=/observacion/${id || ''}" class="cta-button">Ingresar al Atlas</a>
     <a href="${MONEYSITE_URL}" class="cta-secondary" target="_blank">Conocé Funga →</a>
   </div>
 </body>
@@ -356,8 +347,9 @@ app.get('/observacion/:id', async (req, res) => {
       bodyContent: `
         <div class="observation" style="text-align:center;padding:40px">
           <p style="color:var(--muted);font-style:italic">No pudimos cargar esta observación. El servidor de datos puede estar en mantenimiento.</p>
-          <a href="${APP_URL}" class="cta-button" style="margin-top:20px;display:inline-block">Volver al Atlas</a>
+          <a href="${APP_URL}/?redirect=/observacion/${id || ''}" class="cta-button">Ingresar al Atlas</a>
         </div>`,
+      id,
     }));
   }
 
@@ -373,14 +365,18 @@ app.get('/observacion/:id', async (req, res) => {
           <p style="color:var(--muted);font-size:13px;margin-top:12px">
             Puede haber sido eliminada, o su autor decidió mantenerla privada.
           </p>
-          <a href="${APP_URL}" class="cta-button" style="margin-top:24px;display:inline-block">Explorar el Atlas</a>
+          <a href="${APP_URL}/?redirect=/observacion/${id || ''}" class="cta-button" style="margin-top:24px;display:inline-block">Explorar el Atlas</a>
         </div>`,
+      id,
     }));
   }
 
   const s = data;
   const user = s.expand?.user || {};
-  const imageUrl = s.images?.[0] ? getFileUrl('sightings', s.id, s.images[0]) : null;
+  // Try local images first, then gbif_image_url, then fallback to OG image
+  const imageUrl = s.images?.[0] 
+    ? getFileUrl('sightings', s.id, s.images[0]) 
+    : s.gbif_image_url || null;
   const taxonomy = buildTaxonomy(s);
   const locationParts = [s.locality, s.state_province, s.country].filter(Boolean);
   const locationText = locationParts.join(', ') || `${s.lat?.toFixed(3)}, ${s.lng?.toFixed(3)}`;
@@ -405,7 +401,7 @@ app.get('/observacion/:id', async (req, res) => {
 
   const bodyContent = `
     <div class="observation">
-      ${imageUrl ? `<img class="observation-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" loading="eager">` : ''}
+      ${imageUrl ? `<img class="observation-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" loading="eager" crossorigin="anonymous">` : ''}
       <div class="observation-title">${escapeHtml(title)}</div>
       <div class="observation-meta">
         ${s.status ? `<span class="meta-tag">${escapeHtml(s.status === 'expert_verified' ? 'Verificado por experto' : s.status === 'unconfirmed' ? 'Pendiente de confirmación' : s.status)}</span>` : ''}
@@ -478,7 +474,7 @@ app.get('/observacion/:id', async (req, res) => {
     url: `${APP_URL}/observacion/${id}`,
     schema,
     bodyContent,
-    redirectToApp: `${APP_URL}/app/observacion/${id}`,
+    id: s.id,
   }));
 });
 
