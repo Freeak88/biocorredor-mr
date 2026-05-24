@@ -92,6 +92,7 @@ function renderPage({ title, description, image, url, schema, bodyContent, id })
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:image" content="${escapeHtml(image || APP_URL + '/og-image.png')}">
+  <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta property="og:site_name" content="Funga Map">
   <meta property="og:locale" content="es_AR">
   
@@ -384,7 +385,7 @@ app.get('/observacion/:id', async (req, res) => {
   const title = s.species || s.mushroom_name || 'Observación micológica';
   const fullTitle = `${title} — ${locationText} — Funga Map`;
   const description = s.description 
-    ? `${s.description.substring(0, 150)}${s.description.length > 150 ? '...' : ''} — ${locationText}`
+    ? `${s.description.substring(0, 150).replace(/\s+/g, ' ')}${s.description.length > 150 ? '...' : ''} — ${locationText}`
     : `Observación de ${title} en ${locationText}. Atlas colaborativo de hongos silvestres de Sudamérica.`;
 
   const taxonomyHtml = taxonomy.length > 0 ? `
