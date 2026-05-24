@@ -38,6 +38,11 @@
   }
 }
 
+/* Safe area for mobile controls */
+.leaflet-bottom {
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}
+
 /* Leaflet Overrides */
 .leaflet-container {
   @apply transition-all overflow-hidden! z-0;

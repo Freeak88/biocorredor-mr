@@ -161,7 +161,7 @@ export default function App() {
           </div>
         )}
 
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1001] w-full max-w-lg px-6">
+        <div className="absolute left-1/2 -translate-x-1/2 z-[1001] w-full max-w-lg px-6" style={{ bottom: 'max(32px, env(safe-area-inset-bottom))' }}>
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
