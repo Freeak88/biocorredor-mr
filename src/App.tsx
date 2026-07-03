@@ -1,5 +1,5 @@
 import React, { useState, useCallback, Suspense, lazy } from 'react';
-import { pb } from './lib/pb';
+import { pb, getFileURL } from './lib/pb';
 import { logError } from './lib/logger';
 import { useAuth } from './hooks/useAuth';
 import { useSightings } from './hooks/useSightings';
@@ -331,7 +331,11 @@ export default function App() {
               className="relative w-full h-full flex items-center justify-center"
             >
               <img
-                src={selectedSighting.images[activeGalleryIndex]}
+                src={(() => {
+                  const fn = selectedSighting.images![activeGalleryIndex];
+                  if (fn.startsWith('data:') || fn.startsWith('http')) return fn;
+                  return getFileURL(selectedSighting as any, fn);
+                })()}
                 alt=""
                 className="max-w-full max-h-full object-contain shadow-2xl border-4 border-atlas-paper"
               />

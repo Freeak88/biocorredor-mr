@@ -1,6 +1,8 @@
 // ── PocketBase base record fields ──
 export interface PBRecord {
   id: string;
+  collectionId: string;
+  collectionName: string;
   created: string;
   updated: string;
 }
