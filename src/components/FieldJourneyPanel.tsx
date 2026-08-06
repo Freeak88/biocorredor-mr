@@ -55,6 +55,7 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
   const persistJourney = (next: JourneyState) => {
     setJourney(next);
     localStorage.setItem(`biocorredor_journey_${user.uid}`, JSON.stringify(next));
+    window.dispatchEvent(new Event('biocorredor:journey-changed'));
   };
 
   const toggleChecklist = (index: number) => {

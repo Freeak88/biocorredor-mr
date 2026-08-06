@@ -4,7 +4,7 @@ import { pb } from '../lib/pb';
 import { clearQueue, drainQueue, enqueueOp, isOnline, onOnlineChange, type QueuedOp } from '../lib/offline';
 import type { AuthUser } from '../hooks/useAuth';
 import { matchParcel } from '../services/territorialService';
-import { loadCurrentAssignment } from '../services/fieldAssignment';
+import { hasActiveLocalJourney, loadCurrentAssignment } from '../services/fieldAssignment';
 
 type Site = { id: string; code: string; name: string };
 type Event = { id: string; event_id: string; title: string; site: string };
@@ -81,6 +81,10 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!hasActiveLocalJourney(user.uid)) {
+      setMessage('Iniciá una jornada activa antes de registrar una observación.');
+      return;
+    }
     if (!draft.event || !draft.site) {
       setMessage('La jornada todavía no tiene evento o sector asignado.');
       return;

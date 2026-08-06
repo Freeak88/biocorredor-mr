@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
 import SectionBoundary from './components/SectionBoundary';
 import FieldRouteTracker from './components/FieldRouteTracker';
+import { hasActiveLocalJourney, loadCurrentAssignment } from './services/fieldAssignment';
 
 // Minimal loading fallback for lazy components
 function LazyFallback() {
@@ -62,6 +63,7 @@ export default function App() {
   const [showFieldSurvey, setShowFieldSurvey] = useState(false);
   const [showCoordinator, setShowCoordinator] = useState(false);
   const [showJourney, setShowJourney] = useState(false);
+  const [canFieldRecord, setCanFieldRecord] = useState(false);
   const journeyAutoOpenedRef = useRef(false);
 
   useEffect(() => {
@@ -73,6 +75,24 @@ export default function App() {
       journeyAutoOpenedRef.current = true;
       setShowJourney(true);
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setCanFieldRecord(false); return; }
+    let disposed = false;
+    const refreshFieldAccess = async () => {
+      const assignment = await loadCurrentAssignment(user.uid);
+      const eventIsActive = assignment?.expand?.event?.status === 'active';
+      const allowed = Boolean(assignment && assignment.status !== 'cancelled' && eventIsActive && hasActiveLocalJourney(user.uid));
+      if (!disposed) {
+        setCanFieldRecord(allowed);
+        if (!allowed) { setShowFieldSurvey(false); setShowModal(false); setIsAddingMode(false); }
+      }
+    };
+    void refreshFieldAccess();
+    const interval = window.setInterval(() => void refreshFieldAccess(), 1000);
+    window.addEventListener('biocorredor:journey-changed', refreshFieldAccess);
+    return () => { disposed = true; window.clearInterval(interval); window.removeEventListener('biocorredor:journey-changed', refreshFieldAccess); };
   }, [user]);
 
   const handleSightingClick = useCallback((s: Sighting) => {
@@ -144,6 +164,7 @@ export default function App() {
         handleLogin={handleLogin}
         handleLogout={handleLogout}
         onOpenFieldSurvey={() => setShowFieldSurvey(true)}
+        canFieldRecord={canFieldRecord}
         canCoordinate={isCoordinator}
         onOpenCoordinator={() => setShowCoordinator(true)}
         onOpenJourney={() => setShowJourney(true)}
@@ -163,7 +184,7 @@ export default function App() {
           isAddingMode={isAddingMode}
           setIsAddingMode={setIsAddingMode}
           setNewSightingPos={setNewSightingPos}
-          setShowModal={setShowModal}
+          setShowModal={(value) => { if (!value || canFieldRecord) setShowModal(value); }}
           userLocation={userLocation}
           mapCentered={mapCentered}
           setMapCentered={setMapCentered}
@@ -211,13 +232,13 @@ export default function App() {
                 <MessageSquare className="w-5 h-5" />
               </button>
             </div>
-            <button
+            {canFieldRecord && <button
               onClick={() => { setNewSightingPos(null); setShowModal(true); }}
               className="flex-1 bg-atlas-ink text-atlas-paper py-4 border-2 border-atlas-ink shadow-atlas hover:bg-atlas-earth transition-all flex items-center justify-center gap-3"
             >
               <Plus className="w-5 h-5" />
               <span className="text-[10px] font-sans font-black uppercase tracking-[0.2em]">Añadir Hallazgo</span>
-            </button>
+            </button>}
             <button
               onClick={() => { if (userLocation) { setMapCentered(false); } else { requestUserLocation(); } }}
               className="bg-atlas-paper p-4 border-2 border-atlas-ink shadow-atlas hover:bg-atlas-stone transition-all"
@@ -300,7 +321,7 @@ export default function App() {
 
       <Suspense fallback={<div className="fixed inset-0 z-[3000] bg-atlas-paper/80 flex items-center justify-center"><div className="w-6 h-6 border-2 border-atlas-earth/30 border-t-atlas-earth rounded-full animate-spin" /></div>}>
       <NewSightingModal
-        showModal={showModal}
+        showModal={showModal && canFieldRecord}
         setShowModal={setShowModal}
         isAddingMode={isAddingMode}
         setIsAddingMode={setIsAddingMode}

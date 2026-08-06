@@ -18,6 +18,15 @@ export type FieldAssignment = {
 
 const cacheKey = (userId: string) => `biocorredor_assignment_${userId}`;
 
+export function hasActiveLocalJourney(userId: string): boolean {
+  try {
+    const state = JSON.parse(localStorage.getItem(`biocorredor_journey_${userId}`) || '{}') as { status?: string };
+    return state.status === 'active';
+  } catch {
+    return false;
+  }
+}
+
 export async function loadCurrentAssignment(userId: string): Promise<FieldAssignment | null> {
   try {
     const result = await pb.collection('event_assignments').getList<FieldAssignment>(1, 1, {

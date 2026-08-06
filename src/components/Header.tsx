@@ -14,6 +14,7 @@ interface HeaderProps {
   handleLogin: () => void;
   handleLogout: () => void;
   onOpenFieldSurvey: () => void;
+  canFieldRecord: boolean;
   canCoordinate: boolean;
   onOpenCoordinator: () => void;
   onOpenJourney: () => void;
@@ -31,6 +32,7 @@ export default function Header({
   handleLogin,
   handleLogout,
   onOpenFieldSurvey,
+  canFieldRecord,
   canCoordinate,
   onOpenCoordinator,
   onOpenJourney
@@ -61,9 +63,9 @@ export default function Header({
               {user.displayName || user.email?.split('@')[0]}
             </span>
             <div className="flex items-center gap-4 border-l border-atlas-ink/10 pl-4">
-              <button onClick={onOpenFieldSurvey} className="inline-flex items-center gap-1 text-atlas-earth hover:underline" title="Abrir relevamiento de campo">
+              {canFieldRecord && <button onClick={onOpenFieldSurvey} className="inline-flex items-center gap-1 text-atlas-earth hover:underline" title="Abrir relevamiento de campo">
                 <ClipboardPenLine className="h-4 w-4" /> <span className="hidden sm:inline">Relevar</span>
-              </button>
+              </button>}
               <button onClick={onOpenJourney} className="inline-flex items-center gap-1 text-atlas-ink hover:underline" title="Abrir jornada de campo">
                 <Route className="h-4 w-4" /> <span className="hidden sm:inline">Jornada</span>
               </button>
