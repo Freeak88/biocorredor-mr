@@ -33,6 +33,16 @@ Hora, coordenadas, precision GPS, fotografia original, organismo o grupo observa
 
 La identificacion debe conservar el nivel de certeza real: grupo, morfoespecie, genero o especie. Los registros dudosos se marcan para revision y nunca se eliminan.
 
+## Trayecto de cada asistente
+
+Mientras una jornada esta activa, cada telefono asignado registra puntos GPS vinculados al evento y al usuario autenticado. El registro conserva latitud, longitud, precision, hora, origen GPS y secuencia del punto.
+
+- Se toma como maximo un punto cada 30 segundos o cuando el desplazamiento supera 15 metros.
+- Los puntos se guardan primero en el dispositivo y se sincronizan al recuperar conexion.
+- La coordinacion puede revisar y exportar los trayectos; no forman parte de la vista publica.
+- La ruta se detiene al cerrar la jornada y se reinicia al comenzar un nuevo evento.
+- Una falla de GPS no bloquea el relevamiento ni elimina observaciones.
+
 ## Evidencia fotografica
 
 Siempre que sea posible registrar: ambiente general, organismo completo, caracter diagnostico y escala.
@@ -56,5 +66,4 @@ Las imagenes se suben originales, sin editar. El sistema conserva hash SHA-256 y
 
 ## Cierre de jornada
 
-La coordinacion debe sincronizar todos los telefonos, controlar eventos sin cierre, detectar duplicados, revisar coordenadas anomalas, generar hashes, bloquear originales, generar manifiesto, exportar CSV y GeoJSON, crear copia de respaldo y firmar el acta.
-
+La coordinacion debe sincronizar todos los telefonos, controlar eventos sin cierre, detectar duplicados, revisar coordenadas anomalas y trayectos imposibles, generar hashes, bloquear originales, generar manifiesto, exportar CSV y GeoJSON, crear copia de respaldo y firmar el acta.

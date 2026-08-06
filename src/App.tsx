@@ -26,6 +26,7 @@ const FieldJourneyPanel = lazy(() => import('./components/FieldJourneyPanel'));
 import { motion, AnimatePresence } from 'motion/react';
 import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
 import SectionBoundary from './components/SectionBoundary';
+import FieldRouteTracker from './components/FieldRouteTracker';
 
 // Minimal loading fallback for lazy components
 function LazyFallback() {
@@ -129,6 +130,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-atlas-paper relative">
+      <FieldRouteTracker user={user} />
       <SectionBoundary name="Header">
       <Header
         user={user}

@@ -130,6 +130,11 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
 
   const syncPending = async (ops: QueuedOp[]) => {
     for (const op of ops) {
+      if (op.type === 'route-point') {
+        const payload = op.payload as { routePoint: Record<string, unknown> };
+        await pb.collection('route_points').create(payload.routePoint);
+        continue;
+      }
       if (op.type !== 'field-occurrence') continue;
       const payload = op.payload as { occurrence: Record<string, unknown>; media?: { dataUrl: string; sha256: string; mimeType: string; fileSize: number } };
       const occurrence = await pb.collection('occurrences').create(payload.occurrence);

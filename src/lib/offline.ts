@@ -107,6 +107,24 @@ export async function dequeueOp(id: string): Promise<void> {
   }
 }
 
+export async function removeQueuedOps(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  try {
+    const db = await openQueueDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      ids.forEach((id) => store.delete(id));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    const pending = new Set(ids);
+    setLegacyQueue(getLegacyQueue().filter((op) => !pending.has(op.id)));
+  }
+}
+
 export async function drainQueue(): Promise<QueuedOp[]> {
   try {
     const db = await openQueueDb();
