@@ -51,16 +51,24 @@ interface ParcelFeatureCollection {
 
 function TerritorialParcelsOverlay({ visible }: { visible: boolean }) {
   const [data, setData] = useState<ParcelFeatureCollection | null>(null);
+  const map = useMapEvents({});
+  const [zoom, setZoom] = useState(map.getZoom());
 
   useEffect(() => {
-    if (!visible || data) return;
+    const updateZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', updateZoom);
+    return () => { map.off('zoomend', updateZoom); };
+  }, [map]);
+
+  useEffect(() => {
+    if (!visible || zoom < 15 || data) return;
     fetch('/data/geoarba/ministro-rivadavia-parcels.geojson')
       .then(response => response.ok ? response.json() : Promise.reject(new Error('Parcelario no disponible')))
       .then(value => setData(value as ParcelFeatureCollection))
       .catch(() => setData(null));
-  }, [visible, data]);
+  }, [visible, zoom, data]);
 
-  if (!visible || !data) return null;
+  if (!visible || zoom < 15 || !data) return null;
 
   return (
     <GeoJSON
