@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardPenLine, Sprout, Search } from 'lucide-react';
+import { ClipboardPenLine, LayoutDashboard, Sprout, Search } from 'lucide-react';
 import LeaderboardPanel from './LeaderboardPanel';
 
 interface HeaderProps {
@@ -14,6 +14,8 @@ interface HeaderProps {
   handleLogin: () => void;
   handleLogout: () => void;
   onOpenFieldSurvey: () => void;
+  canCoordinate: boolean;
+  onOpenCoordinator: () => void;
 }
 
 export default function Header({
@@ -27,7 +29,9 @@ export default function Header({
   setShowAdminPanel,
   handleLogin,
   handleLogout,
-  onOpenFieldSurvey
+  onOpenFieldSurvey,
+  canCoordinate,
+  onOpenCoordinator
 }: HeaderProps) {
   return (
     <header className="bg-atlas-paper text-atlas-ink p-3 flex justify-between items-center border-b border-atlas-ink z-50 relative shrink-0">
@@ -58,6 +62,9 @@ export default function Header({
               <button onClick={onOpenFieldSurvey} className="inline-flex items-center gap-1 text-atlas-earth hover:underline" title="Abrir relevamiento de campo">
                 <ClipboardPenLine className="h-4 w-4" /> <span className="hidden sm:inline">Relevar</span>
               </button>
+              {canCoordinate && <button onClick={onOpenCoordinator} className="inline-flex items-center gap-1 text-atlas-ink hover:underline" title="Abrir control de relevamientos">
+                <LayoutDashboard className="h-4 w-4" /> <span className="hidden sm:inline">Control</span>
+              </button>}
               <button
                 onClick={() => setShowChat(!showChat)}
                 className={`transition-all ${showChat ? 'text-atlas-ink underline underline-offset-4' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}

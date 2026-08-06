@@ -9,6 +9,7 @@ export interface AuthUser {
   displayName: string;
   photoURL: string | null;
   isAnonymous: false;
+  role: string;
 }
 
 function toAuthUser(record: Record<string, any> | null): AuthUser | null {
@@ -19,6 +20,7 @@ function toAuthUser(record: Record<string, any> | null): AuthUser | null {
     displayName: record.name || record.email?.split('@')[0] || `Explorador_${record.id.slice(0, 5)}`,
     photoURL: record.avatar ? pb.files.getURL(record, record.avatar) : null,
     isAnonymous: false,
+    role: record.role || 'observador',
   };
 }
 
@@ -26,7 +28,9 @@ export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isAdmin = pb.authStore.record?.role === 'admin';
+  const role = pb.authStore.record?.role || '';
+  const isAdmin = role === 'admin' || role === 'administrador';
+  const isCoordinator = isAdmin || role === 'coordinador';
   const isAnonymous = false; // PocketBase has no anonymous auth
 
   useEffect(() => {
@@ -92,6 +96,7 @@ export function useAuth() {
     user,
     loading,
     isAdmin,
+    isCoordinator,
     isAnonymous,
     handleLogin,
     handleEmailLogin,

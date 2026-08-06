@@ -20,6 +20,7 @@ const SightingDetail = lazy(() => import('./components/SightingDetail'));
 const NewSightingModal = lazy(() => import('./components/NewSightingModal'));
 const ReportModal = lazy(() => import('./components/ReportModal'));
 const FieldSurveyPanel = lazy(() => import('./components/FieldSurveyPanel'));
+const CoordinatorPanel = lazy(() => import('./components/CoordinatorPanel'));
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
@@ -35,7 +36,7 @@ function LazyFallback() {
 }
 
 export default function App() {
-  const { user, loading, isAdmin, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
+  const { user, loading, isAdmin, isCoordinator, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
   const { sightings, filteredSightings, searchQuery, setSearchQuery, findNearbyMycelium, layerToggles, updateLayerToggle, setMapBounds } = useSightings(user?.uid);
   const { userLocation, onlineUsers, currentUserProfile, mapCentered, setMapCentered, requestUserLocation, getDistance } = usePresence(user);
   const {
@@ -57,6 +58,7 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
   const [showFieldSurvey, setShowFieldSurvey] = useState(false);
+  const [showCoordinator, setShowCoordinator] = useState(false);
 
   const handleSightingClick = useCallback((s: Sighting) => {
     setSelectedSighting(s);
@@ -126,10 +128,13 @@ export default function App() {
         handleLogin={handleLogin}
         handleLogout={handleLogout}
         onOpenFieldSurvey={() => setShowFieldSurvey(true)}
+        canCoordinate={isCoordinator}
+        onOpenCoordinator={() => setShowCoordinator(true)}
       />
       </SectionBoundary>
 
       {showFieldSurvey && <Suspense fallback={<LazyFallback />}><FieldSurveyPanel user={user} onClose={() => setShowFieldSurvey(false)} /></Suspense>}
+      {showCoordinator && <Suspense fallback={<LazyFallback />}><CoordinatorPanel user={user} onClose={() => setShowCoordinator(false)} /></Suspense>}
 
       <main className="flex-1 relative overflow-hidden">
         <SectionBoundary name="MapView">
