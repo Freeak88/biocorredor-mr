@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import { getFileURL, pb } from '../lib/pb';
@@ -20,6 +20,7 @@ interface LayerToggles {
   showGbif: boolean;
   showMine: boolean;
   showOthers: boolean;
+  showParcels: boolean;
 }
 
 interface TerritorialLayer {
@@ -42,6 +43,43 @@ const TERRITORIAL_LAYER_CATALOG: TerritorialLayer[] = [
   { id: 'biodiversidad', code: 'BIODIVERSIDAD-AMBIENTES', title: 'Biodiversidad y ambientes', category: 'biodiversidad', source_organization: 'IDEBA / fuentes validadas', source_url: 'https://visualizador.ideba.gba.gob.ar/', service_type: 'WMS/WFS', status: 'reference' },
   { id: 'transformaciones', code: 'OBRAS-EXPEDIENTES', title: 'Obras, cambios territoriales y expedientes', category: 'transformaciones', source_organization: 'Biocorredor MR', service_type: 'internal', status: 'active' },
 ];
+
+interface ParcelFeatureCollection {
+  type: 'FeatureCollection';
+  features: Array<{ type: 'Feature'; properties?: Record<string, unknown>; geometry: unknown }>;
+}
+
+function TerritorialParcelsOverlay({ visible }: { visible: boolean }) {
+  const [data, setData] = useState<ParcelFeatureCollection | null>(null);
+
+  useEffect(() => {
+    if (!visible || data) return;
+    fetch('/data/geoarba/ministro-rivadavia-parcels.geojson')
+      .then(response => response.ok ? response.json() : Promise.reject(new Error('Parcelario no disponible')))
+      .then(value => setData(value as ParcelFeatureCollection))
+      .catch(() => setData(null));
+  }, [visible, data]);
+
+  if (!visible || !data) return null;
+
+  return (
+    <GeoJSON
+      data={data as never}
+      style={() => ({ color: '#7d5f42', weight: 0.6, opacity: 0.72, fillColor: '#caa77c', fillOpacity: 0.08 })}
+      onEachFeature={(feature, layer) => {
+        const properties = (feature.properties || {}) as Record<string, unknown>;
+        layer.bindPopup(`
+          <div class="font-sans text-[11px] leading-relaxed">
+            <strong>Parcela GeoARBA</strong><br/>
+            Nomenclatura: ${properties.nomenclatura || 'no disponible'}<br/>
+            Partida: ${properties.partida || 'no disponible'}<br/>
+            Superficie: ${properties.superficie_m2 || 'no disponible'} m²
+          </div>
+        `);
+      }}
+    />
+  );
+}
 
 // ── Islas Malvinas overlay — covers colonial name with Argentine toponym ──
 function MalvinasOverlay() {
@@ -292,6 +330,15 @@ function LayerTogglePanel({
             <span className="layer-toggle-label">De otros</span>
             <span className="layer-toggle-dot other-dot" />
           </label>
+          <label className="layer-toggle-item">
+            <input
+              type="checkbox"
+              checked={toggles.showParcels}
+              onChange={e => onChange('showParcels', e.target.checked)}
+            />
+            <span className="layer-toggle-label">Parcelas GeoARBA</span>
+            <span className="layer-toggle-dot" style={{ backgroundColor: '#7d5f42' }} />
+          </label>
           <div className="mt-3 border-t border-atlas-ink/20 pt-3">
             <p className="layer-toggle-title">CONTEXTO TERRITORIAL</p>
             <p className="mb-2 text-[9px] leading-relaxed text-atlas-ink/60">
@@ -509,12 +556,13 @@ export default function MapView({
 
   return (
     <div className="absolute inset-0 z-0">
-      <MapContainer center={[-34.6037, -58.3816]} zoom={13} scrollWheelZoom={true} zoomControl={false} attributionControl={false} className="h-full w-full">
+      <MapContainer center={[-34.85, -58.3667]} zoom={14} scrollWheelZoom={true} zoomControl={false} attributionControl={false} className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MalvinasOverlay />
+        <TerritorialParcelsOverlay visible={layerToggles.showParcels} />
         <PopupClickHandler onSightingClick={onSightingClick} />
         <MarkerClusterGroup
           chunkedLoading

@@ -26,7 +26,7 @@ vi.mock('../hooks/useSightings', () => ({
     searchQuery: '',
     setSearchQuery: vi.fn(),
     findNearbyMycelium: vi.fn(),
-    layerToggles: { showGbif: true, showMine: true, showOthers: true },
+    layerToggles: { showGbif: true, showMine: true, showOthers: true, showParcels: true },
     updateLayerToggle: vi.fn(),
     setMapBounds: vi.fn(),
   }),

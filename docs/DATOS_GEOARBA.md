@@ -18,6 +18,8 @@ Los archivos extraídos se encuentran en `data/geoarba/almirante-brown-parcelas/
 ./scripts/download-geoarba-parcels.ps1
 ```
 
+La aplicación sirve un recorte local en `public/data/geoarba/ministro-rivadavia-parcels.geojson` con 16.385 parcelas y un área operativa aproximada alrededor del centro de Ministro Rivadavia. Ese recorte facilita el uso móvil y no pretende reemplazar un límite administrativo o normativo.
+
 La descarga cubre todo el partido. El recorte operativo a Ministro Rivadavia debe hacerse usando un polígono oficial de sector/localidad o un límite de trabajo validado, no mediante una caja aproximada. La nomenclatura, partida y superficie pueden utilizarse para el expediente de parcela; la titularidad no debe inferirse de esta geometría.
 
 ## Fuente y alcance
