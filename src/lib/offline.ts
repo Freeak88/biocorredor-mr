@@ -1,4 +1,5 @@
 // Offline persistence and queue for field records.
+import { newLocalId } from './localIds';
 
 // ——— Online/offline detection ———
 
@@ -65,7 +66,7 @@ function setLegacyQueue(queue: QueuedOp[]): void {
 }
 
 export async function enqueueOp(type: string, payload: unknown): Promise<string> {
-  const id = `op_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const id = newLocalId('op');
   const operation = { id, type, payload, createdAt: Date.now() };
   try {
     const db = await openQueueDb();

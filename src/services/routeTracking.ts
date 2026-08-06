@@ -1,5 +1,6 @@
 import { enqueueOp, type QueuedOp } from '../lib/offline';
 import { pb } from '../lib/pb';
+import { newLocalId } from '../lib/localIds';
 
 export type RoutePoint = {
   event: string;
@@ -29,7 +30,7 @@ export async function recordRoutePoint(event: string, observer: string, position
   if (lastPoint && now - lastPoint.at < 30_000 && distanceMeters(lastPoint, current) < 15) return false;
   lastPoint = { ...current, at: now };
   const point: RoutePoint = {
-    event, observer, route_point_id: `route-${observer}-${now}-${sequence}`,
+    event, observer, route_point_id: newLocalId('route'),
     latitude: current.lat, longitude: current.lng, accuracy_m: position.coords.accuracy,
     recorded_at: new Date(now).toISOString(), source: 'gps', sequence: sequence++,
   };
@@ -41,7 +42,12 @@ export async function syncRoutePoints(ops: QueuedOp[]): Promise<void> {
   for (const op of ops) {
     if (op.type !== 'route-point') continue;
     const payload = op.payload as { routePoint: RoutePoint };
-    await pb.collection('route_points').create(payload.routePoint);
+    try {
+      await pb.collection('route_points').create(payload.routePoint);
+    } catch (error: any) {
+      if (error?.status !== 400 && error?.status !== 409) throw error;
+      await pb.collection('route_points').getFirstListItem(`route_point_id = "${payload.routePoint.route_point_id}"`);
+    }
   }
 }
 
