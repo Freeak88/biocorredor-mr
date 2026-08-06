@@ -4,6 +4,7 @@ import { pb } from '../lib/pb';
 import { clearQueue, drainQueue, enqueueOp, isOnline, onOnlineChange, type QueuedOp } from '../lib/offline';
 import type { AuthUser } from '../hooks/useAuth';
 import { matchParcel } from '../services/territorialService';
+import { loadCurrentAssignment } from '../services/fieldAssignment';
 
 type Site = { id: string; code: string; name: string };
 type Event = { id: string; event_id: string; title: string; site: string };
@@ -16,11 +17,6 @@ const emptyDraft: Draft = {
   event: '', site: '', record_type: 'biodiversity', scientific_name: '', quantity: '1', substrate: '', microhabitat: '',
   notes: '', sensitive_record: 'false',
 };
-
-// IDs from the seeded local pilot volume. The API values take precedence; this keeps
-// the field form usable while a local PocketBase volume is warming up or offline.
-const localPilotSite: Site = { id: '3mqk3020jn63qcx', code: 'SEC-CENTRO', name: 'Sector Centro' };
-const localPilotEvent: Event = { id: '2hp2demnto50j73', event_id: 'BIO-MR-PILOTO-2026-08-11', title: 'Jornada piloto Biocorredor MR', site: localPilotSite.id };
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -58,23 +54,16 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
 
   useEffect(() => {
     const unsubscribe = onOnlineChange(setOnline);
-    void Promise.all([
-      pb.collection('sites').getList<Site>(1, 50, { sort: 'code', filter: 'status = "active"' }),
-      pb.collection('survey_events').getList<Event>(1, 50, { sort: '-created', filter: 'status = "active"' }),
-    ]).then(([sitePage, eventPage]) => {
-      const siteRecords = sitePage.items;
-      const eventRecords = eventPage.items;
-      setSites(siteRecords);
-      setEvents(eventRecords);
-      if (eventRecords[0]) setDraft((current) => ({ ...current, event: eventRecords[0].id, site: eventRecords[0].site || siteRecords[0]?.id || '' }));
-    }).catch(() => {
-      setSites([localPilotSite]);
-      setEvents([localPilotEvent]);
-      setDraft((current) => ({ ...current, event: localPilotEvent.id, site: localPilotSite.id }));
-      setMessage('Usando configuración piloto local. El registro puede quedar local.');
+    void loadCurrentAssignment(user.uid).then((assignment) => {
+      if (!assignment) { setMessage('No tenés una jornada asignada por coordinación.'); return; }
+      const site: Site = assignment.expand?.site || { id: assignment.site, code: 'Sector asignado', name: 'Sector asignado' };
+      const event: Event = assignment.expand?.event ? { ...assignment.expand.event, site: assignment.site } : { id: assignment.event, event_id: assignment.event, title: 'Jornada asignada', site: assignment.site };
+      setSites([site]);
+      setEvents([event]);
+      setDraft((current) => ({ ...current, event: event.id, site: site.id }));
     });
     return unsubscribe;
-  }, []);
+  }, [user.uid]);
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => ({ ...current, [key]: value }));
 

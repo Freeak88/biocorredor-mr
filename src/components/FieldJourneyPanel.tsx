@@ -3,9 +3,8 @@ import { Check, CloudOff, Compass, Flag, Map, Play, RefreshCw, X } from 'lucide-
 import { pb } from '../lib/pb';
 import { getPendingCount, isOnline, onOnlineChange } from '../lib/offline';
 import type { AuthUser } from '../hooks/useAuth';
+import { loadCurrentAssignment, type FieldAssignment } from '../services/fieldAssignment';
 
-const PILOT_EVENT_ID = '2hp2demnto50j73';
-const PILOT_SITE = 'Sector Centro';
 const CHECKLIST = [
   'Hora del teléfono sincronizada',
   'Mapa y sectores disponibles sin conexión',
@@ -34,8 +33,13 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
     try { return JSON.parse(localStorage.getItem(`biocorredor_checklist_${user.uid}`) || '[]'); } catch { return []; }
   });
   const [message, setMessage] = useState('');
+  const [assignment, setAssignment] = useState<FieldAssignment | null>(null);
   const [showCloseForm, setShowCloseForm] = useState(false);
   const [closeDraft, setCloseDraft] = useState<CloseDraft>({ weather: '', habitat: '', distance_m: '', incidents: '', unvisited_sectors: '' });
+
+  useEffect(() => {
+    void loadCurrentAssignment(user.uid).then(setAssignment);
+  }, [user.uid]);
 
   useEffect(() => {
     const unsubscribe = onOnlineChange(setOnline);
@@ -60,14 +64,15 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
 
   const startJourney = async () => {
     const startedAt = new Date().toISOString();
-    try { await pb.collection('survey_events').update(PILOT_EVENT_ID, { status: 'active', started_at: startedAt, time_sync_status: 'confirmed' }); } catch { setMessage('Inicio guardado localmente. Se confirmará al sincronizar.'); }
+    if (!assignment) { setMessage('Todavía no tenés una jornada asignada.'); return; }
+    try { await pb.collection('survey_events').update(assignment.event, { status: 'active', started_at: startedAt, time_sync_status: 'confirmed' }); } catch { setMessage('Inicio guardado localmente. Se confirmará al sincronizar.'); }
     persistJourney({ status: 'active', startedAt });
   };
 
   const closeJourney = async () => {
     const endedAt = new Date().toISOString();
     const durationMinutes = journey.startedAt ? Math.round((Date.parse(endedAt) - Date.parse(journey.startedAt)) / 60000) : undefined;
-    try { await pb.collection('survey_events').update(PILOT_EVENT_ID, { status: 'completed', ended_at: endedAt, closed_at: endedAt, closed_by: user.uid, duration_minutes: durationMinutes, distance_m: Number(closeDraft.distance_m) || undefined, weather: closeDraft.weather, habitat: closeDraft.habitat, incidents: closeDraft.incidents, unvisited_sectors: closeDraft.unvisited_sectors, observers_count: 1 }); } catch { setMessage('Cierre guardado localmente. Falta confirmación del servidor.'); }
+    if (assignment) { try { await pb.collection('survey_events').update(assignment.event, { status: 'completed', ended_at: endedAt, closed_at: endedAt, closed_by: user.uid, duration_minutes: durationMinutes, distance_m: Number(closeDraft.distance_m) || undefined, weather: closeDraft.weather, habitat: closeDraft.habitat, incidents: closeDraft.incidents, unvisited_sectors: closeDraft.unvisited_sectors, observers_count: 1 }); } catch { setMessage('Cierre guardado localmente. Falta confirmación del servidor.'); } }
     persistJourney({ ...journey, status: 'closed', endedAt });
     setShowCloseForm(false);
   };
@@ -85,8 +90,8 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
       </div>
 
       <section className="border-b border-atlas-ink/20 pb-5">
-        <div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-wider opacity-55">Evento piloto</p><h3 className="mt-1 font-serif text-xl italic">Jornada Biocorredor MR</h3><p className="mt-1 font-sans text-xs opacity-65">{PILOT_SITE} · Equipo asignado por coordinación</p></div><span className={`border px-2 py-1 font-mono text-[10px] uppercase ${journey.status === 'active' ? 'border-green-700 text-green-800' : journey.status === 'closed' ? 'border-atlas-ink/30 opacity-55' : 'border-atlas-earth text-atlas-earth'}`}>{journey.status === 'active' ? 'En curso' : journey.status === 'closed' ? 'Cerrada' : 'Lista para iniciar'}</span></div>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"><div><p className="font-mono text-[9px] uppercase opacity-45">Sector</p><p className="mt-1 font-sans text-sm">SEC-CENTRO</p></div><div><p className="font-mono text-[9px] uppercase opacity-45">Protocolo</p><p className="mt-1 font-sans text-sm">INV-GENERAL v1.0</p></div><div><p className="font-mono text-[9px] uppercase opacity-45">Equipo</p><p className="mt-1 font-sans text-sm">Asignado</p></div><div><p className="font-mono text-[9px] uppercase opacity-45">Inicio</p><p className="mt-1 font-sans text-sm">{journey.startedAt ? new Date(journey.startedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Pendiente'}</p></div></div>
+        <div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-wider opacity-55">Jornada asignada</p><h3 className="mt-1 font-serif text-xl italic">{assignment?.expand?.event?.title || 'Sin jornada asignada'}</h3><p className="mt-1 font-sans text-xs opacity-65">{assignment?.expand?.site?.code || 'Sin sector'} · {assignment?.expand?.team?.code || 'Sin equipo'}</p></div><span className={`border px-2 py-1 font-mono text-[10px] uppercase ${journey.status === 'active' ? 'border-green-700 text-green-800' : journey.status === 'closed' ? 'border-atlas-ink/30 opacity-55' : 'border-atlas-earth text-atlas-earth'}`}>{journey.status === 'active' ? 'En curso' : journey.status === 'closed' ? 'Cerrada' : assignment ? 'Asignada' : 'Pendiente'}</span></div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"><div><p className="font-mono text-[9px] uppercase opacity-45">Sector</p><p className="mt-1 font-sans text-sm">{assignment?.expand?.site?.code || 'Pendiente'}</p></div><div><p className="font-mono text-[9px] uppercase opacity-45">Protocolo</p><p className="mt-1 font-sans text-sm">Asignado</p></div><div><p className="font-mono text-[9px] uppercase opacity-45">Equipo</p><p className="mt-1 font-sans text-sm">{assignment?.expand?.team?.code || 'Pendiente'}</p></div><div><p className="font-mono text-[9px] uppercase opacity-45">Inicio</p><p className="mt-1 font-sans text-sm">{journey.startedAt ? new Date(journey.startedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Pendiente'}</p></div></div>
       </section>
 
       {journey.status === 'ready' && <section className="py-5"><div className="mb-3 flex items-center justify-between"><h3 className="font-sans text-xs font-bold uppercase tracking-wider">Antes de salir</h3><span className="font-mono text-[10px] opacity-55">{completedChecklist}/{CHECKLIST.length}</span></div><p className="mb-3 border-l-4 border-atlas-earth px-3 py-2 font-sans text-xs">La coordinación prepara la jornada. Marcá lo que puedas verificar; no te bloquea la salida.</p><div className="space-y-2">{CHECKLIST.map((item, index) => <button key={item} onClick={() => toggleChecklist(index)} className="flex w-full items-center gap-3 border-b border-atlas-ink/10 py-3 text-left font-sans text-sm"><span className={`flex h-5 w-5 shrink-0 items-center justify-center border ${checked[index] ? 'border-atlas-ink bg-atlas-ink text-atlas-paper' : 'border-atlas-ink/35'}`}>{checked[index] && <Check className="h-3 w-3" />}</span>{item}</button>)}</div></section>}
@@ -96,7 +101,7 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
       {journey.status === 'closed' && <section className="border-l-4 border-atlas-earth px-4 py-5"><h3 className="font-serif text-xl italic">Jornada cerrada</h3><p className="mt-1 font-sans text-sm opacity-70">Esperando sincronización y revisión de coordinación.</p></section>}
 
       {showCloseForm && <section className="mb-4 border border-atlas-ink bg-atlas-stone/30 p-4"><h3 className="font-serif text-xl italic">Cierre rápido</h3><p className="mt-1 mb-4 font-sans text-xs opacity-65">Completá solo lo que coordinación necesita para cerrar el recorrido.</p><div className="grid gap-3 sm:grid-cols-3"><input aria-label="Clima" placeholder="Clima" value={closeDraft.weather} onChange={(e) => setCloseDraft({ ...closeDraft, weather: e.target.value })} className="atlas-input" /><input aria-label="Ambiente" placeholder="Ambiente" value={closeDraft.habitat} onChange={(e) => setCloseDraft({ ...closeDraft, habitat: e.target.value })} className="atlas-input" /><input aria-label="Distancia recorrida en metros" type="number" min="0" placeholder="Distancia (m)" value={closeDraft.distance_m} onChange={(e) => setCloseDraft({ ...closeDraft, distance_m: e.target.value })} className="atlas-input" /></div><div className="mt-3 grid gap-3 sm:grid-cols-2"><textarea aria-label="Incidentes" placeholder="Incidentes" value={closeDraft.incidents} onChange={(e) => setCloseDraft({ ...closeDraft, incidents: e.target.value })} className="min-h-20 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm" /><textarea aria-label="Sectores no recorridos" placeholder="Sectores no recorridos" value={closeDraft.unvisited_sectors} onChange={(e) => setCloseDraft({ ...closeDraft, unvisited_sectors: e.target.value })} className="min-h-20 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm" /></div><div className="mt-3 flex gap-2"><button onClick={() => void closeJourney()} className="bg-atlas-ink px-4 py-3 font-sans text-xs font-black uppercase tracking-wider text-atlas-paper">Confirmar cierre</button><button onClick={() => setShowCloseForm(false)} className="border border-atlas-ink px-4 py-3 font-sans text-xs">Cancelar</button></div></section>}
-      <div className="grid gap-3 sm:grid-cols-2"><button onClick={onOpenMap} className="atlas-button inline-flex items-center justify-center gap-2"><Map className="h-4 w-4" /> Ver mapa y sectores</button>{journey.status === 'ready' && <button onClick={() => void startJourney()} className="inline-flex items-center justify-center gap-2 bg-atlas-earth px-4 py-3 font-sans text-xs font-black uppercase tracking-[0.18em] text-atlas-paper disabled:opacity-50" disabled={!canStart}><Flag className="h-4 w-4" /> Iniciar jornada</button>}{journey.status === 'active' && <button onClick={() => setShowCloseForm(true)} className="inline-flex items-center justify-center gap-2 border border-atlas-ink px-4 py-3 font-sans text-xs font-black uppercase tracking-[0.18em] hover:bg-atlas-ink hover:text-atlas-paper"><Flag className="h-4 w-4" /> Cerrar jornada</button>}</div>
+      <div className="grid gap-3 sm:grid-cols-2"><button onClick={onOpenMap} className="atlas-button inline-flex items-center justify-center gap-2"><Map className="h-4 w-4" /> Ver mapa y sectores</button>{journey.status === 'ready' && <button onClick={() => void startJourney()} className="inline-flex items-center justify-center gap-2 bg-atlas-earth px-4 py-3 font-sans text-xs font-black uppercase tracking-[0.18em] text-atlas-paper disabled:opacity-50" disabled={!canStart || !assignment}><Flag className="h-4 w-4" /> Iniciar jornada</button>}{journey.status === 'active' && <button onClick={() => setShowCloseForm(true)} className="inline-flex items-center justify-center gap-2 border border-atlas-ink px-4 py-3 font-sans text-xs font-black uppercase tracking-[0.18em] hover:bg-atlas-ink hover:text-atlas-paper"><Flag className="h-4 w-4" /> Cerrar jornada</button>}</div>
       {message && <p className="mt-4 border-l-4 border-atlas-earth px-3 py-2 font-sans text-sm">{message}</p>}
     </div>
   </div>;

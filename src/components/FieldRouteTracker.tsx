@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { drainQueue, isOnline, onOnlineChange, removeQueuedOps } from '../lib/offline';
 import { recordRoutePoint, resetRouteTracking, syncRoutePoints } from '../services/routeTracking';
 import type { AuthUser } from '../hooks/useAuth';
-
-const PILOT_EVENT_ID = '2hp2demnto50j73';
+import { loadCurrentAssignment, type FieldAssignment } from '../services/fieldAssignment';
 
 type JourneyState = { status: 'ready' | 'active' | 'closed' };
 
@@ -20,6 +19,7 @@ export default function FieldRouteTracker({ user }: { user: AuthUser }) {
   useEffect(() => {
     let watchId: number | null = null;
     let active = false;
+    let assignment: FieldAssignment | null = null;
 
     const stop = () => {
       if (watchId !== null) navigator.geolocation?.clearWatch(watchId);
@@ -30,9 +30,9 @@ export default function FieldRouteTracker({ user }: { user: AuthUser }) {
 
     const startOrStop = () => {
       const shouldTrack = Boolean(navigator.geolocation) && isJourneyActive(user.uid);
-      if (shouldTrack && !active) {
+      if (shouldTrack && assignment && !active) {
         watchId = navigator.geolocation.watchPosition(
-          (position) => { void recordRoutePoint(PILOT_EVENT_ID, user.uid, position); },
+          (position) => { void recordRoutePoint(assignment!.event, user.uid, position); },
           () => {},
           { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 },
         );
@@ -51,7 +51,8 @@ export default function FieldRouteTracker({ user }: { user: AuthUser }) {
       await removeQueuedOps(routeOps.map((op) => op.id));
     };
 
-    startOrStop();
+    const loadAssignment = async () => { assignment = await loadCurrentAssignment(user.uid); startOrStop(); };
+    void loadAssignment();
     const statePoll = window.setInterval(startOrStop, 1000);
     const unsubscribe = onOnlineChange((online) => { if (online) void syncRoutes().catch(() => {}); });
     void syncRoutes().catch(() => {});
