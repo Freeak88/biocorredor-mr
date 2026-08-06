@@ -26,9 +26,8 @@ test.describe('Map Page', () => {
     await expect(loginButton).toBeVisible();
   });
 
-  test('should display the bottom toolbar', async ({ page }) => {
-    const toolbar = page.locator('button:has-text("Añadir Hallazgo")');
-    await expect(toolbar).toBeVisible();
+  test('should not expose the legacy sighting entry point', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Añadir Hallazgo', exact: true })).toHaveCount(0);
   });
 
   test('should show map tiles loaded', async ({ page }) => {
