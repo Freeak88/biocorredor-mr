@@ -10,12 +10,13 @@ type Site = { id: string; code: string; name: string };
 type Event = { id: string; event_id: string; title: string; site: string };
 type Draft = {
   event: string; site: string; record_type: 'biodiversity' | 'habitat' | 'impact'; scientific_name: string; quantity: string; substrate: string;
-  microhabitat: string; notes: string; sensitive_record: 'false' | 'true'; photo?: string;
+  microhabitat: string; notes: string; sensitive_record: 'false' | 'true'; paper_id: string; taxon_group: string;
+  identification_qualifier: string; count_method: string; photo?: string;
 };
 
 const emptyDraft: Draft = {
   event: '', site: '', record_type: 'biodiversity', scientific_name: '', quantity: '1', substrate: '', microhabitat: '',
-  notes: '', sensitive_record: 'false',
+  notes: '', sensitive_record: 'false', paper_id: '', taxon_group: 'other', identification_qualifier: 'unknown', count_method: 'estimated',
 };
 
 function makeId(prefix: string) {
@@ -93,6 +94,15 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
     try {
       const photoData = photo ? await fileToDataUrl(photo) : undefined;
       const mediaHash = photoData ? await sha256(photoData) : undefined;
+      if (draft.paper_id.trim() && online) {
+        try {
+          await pb.collection('occurrences').getFirstListItem(`paper_id = "${draft.paper_id.trim().replaceAll('"', '\\"')}"`);
+          setMessage('Ese ID de ficha ya existe. Revisá el registro antes de continuar.');
+          return;
+        } catch {
+          // A 404 means the paper ID is available. Other backend failures must not block an offline-capable draft.
+        }
+      }
       const territorialContext = position
         ? await matchParcel(position[0], position[1])
         : { status: 'indeterminate' as const, source: 'local' as const, checked_at: new Date().toISOString(), reason: 'La observación no tiene coordenadas GPS.' };
@@ -101,12 +111,17 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
             occurrence_id: makeId('BIO-MR'), event: draft.event, observer: user.uid,
           observed_at: new Date().toISOString(), latitude: position?.[0] ?? null,
           longitude: position?.[1] ?? null, coordinate_uncertainty_m: position ? 10 : null,
-          location_source: position ? 'gps' : 'none', field_name: 'Biocorredor MR',
+          location_source: position ? 'gps' : 'missing', location_captured_at: position ? new Date().toISOString() : undefined,
+          geodetic_datum: 'WGS84', field_name: 'Biocorredor MR', paper_id: draft.paper_id.trim() || undefined,
           record_type: draft.record_type,
-          scientific_name: draft.scientific_name.trim() || 'Registro pendiente', taxon_group: draft.record_type === 'biodiversity' ? 'other' : undefined,
-          quantity: Number(draft.quantity) || 1, quantity_unit: 'ejemplares', substrate: draft.substrate,
+          scientific_name: draft.scientific_name.trim() || 'Registro pendiente', scientific_name_proposed: draft.scientific_name.trim() || undefined,
+          basis_of_record: 'HumanObservation',
+          taxon_group: draft.record_type === 'biodiversity' ? draft.taxon_group : 'other', identification_qualifier: draft.identification_qualifier,
+          quantity: Number(draft.quantity) || 1, quantity_unit: draft.count_method === 'cover' ? 'cover_percent' : 'individuals', count_method: draft.count_method,
+          evidence_types: photoData ? ['photo'] : [], substrate: draft.substrate,
           microhabitat: draft.microhabitat, occurrence_status: 'detected', identification_status: 'unidentified',
-          sensitive_record: draft.sensitive_record, public_visibility: draft.sensitive_record === 'true' ? 'private' : 'team',
+          sensitive_record: draft.sensitive_record, public_visibility: draft.sensitive_record === 'true' ? 'private' : 'private',
+          completeness_status: photoData && position ? 'complete' : 'usable', record_version: 1,
           notes: draft.notes.trim(), local_status: online ? 'syncing' : 'local_only',
           territorial_context_json: territorialContext,
           territorial_context_status: territorialContext.status,
@@ -142,6 +157,9 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         formData.append('file_size', String(payload.media.fileSize));
         formData.append('media_type', 'photo'); formData.append('is_original', 'true');
         formData.append('sync_status', 'synced'); formData.append('created_by', user.uid);
+        formData.append('original_local_blob_key', payload.media.sha256);
+        formData.append('media_id', `MEDIA-${payload.media.sha256}`);
+        formData.append('ingested_at', new Date().toISOString());
         await pb.collection('media_evidence').create(formData);
       }
     }
@@ -173,7 +191,9 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         {sites.length > 1 && <label className="block font-sans text-xs font-bold uppercase tracking-wider">Cambiar sector<select value={draft.site} onChange={(e) => update('site', e.target.value)} className="atlas-input mt-2 w-full" required><option value="">Seleccionar sector</option>{sites.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</select></label>}
         <fieldset><legend className="mb-2 font-sans text-xs font-bold uppercase tracking-wider">Qué estás registrando</legend><div className="grid grid-cols-3 gap-2">{([['biodiversity', 'Biodiversidad'], ['habitat', 'Ambiente'], ['impact', 'Impacto']] as const).map(([value, label]) => <button type="button" key={value} onClick={() => update('record_type', value)} className={`border px-2 py-3 font-sans text-xs ${draft.record_type === value ? 'border-atlas-ink bg-atlas-ink text-atlas-paper' : 'border-atlas-ink/25'}`}>{label}</button>)}</div></fieldset>
         <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">{draft.record_type === 'biodiversity' ? 'Organismo o grupo' : draft.record_type === 'impact' ? 'Tipo de impacto' : 'Ambiente observado'}<input value={draft.scientific_name} onChange={(e) => update('scientific_name', e.target.value)} placeholder={draft.record_type === 'biodiversity' ? 'Pendiente si no se conoce' : draft.record_type === 'impact' ? 'Relleno, desmonte, obra...' : 'Humedal, bosque, pastizal...'} className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Cantidad o extensión<input type="number" min="1" value={draft.quantity} onChange={(e) => update('quantity', e.target.value)} className="atlas-input mt-2 w-full" /></label></div>
+        {draft.record_type === 'biodiversity' && <div className="grid gap-4 sm:grid-cols-3"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Grupo<select value={draft.taxon_group} onChange={(e) => update('taxon_group', e.target.value)} className="atlas-input mt-2 w-full"><option value="plant">Planta</option><option value="bird">Ave</option><option value="mammal">Mamífero</option><option value="reptile">Reptil</option><option value="amphibian">Anfibio</option><option value="arthropod">Artrópodo</option><option value="fungi">Hongo / funga</option><option value="other">Otro</option></select></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Calificador<select value={draft.identification_qualifier} onChange={(e) => update('identification_qualifier', e.target.value)} className="atlas-input mt-2 w-full"><option value="unknown">No sé</option><option value="sp">sp.</option><option value="cf">cf.</option><option value="aff">aff.</option><option value="tentative">Tentativa</option><option value="probable">Probable</option></select></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Conteo<select value={draft.count_method} onChange={(e) => update('count_method', e.target.value)} className="atlas-input mt-2 w-full"><option value="estimated">Estimado</option><option value="exact">Exacto</option><option value="range">Rango</option><option value="cover">Cobertura %</option></select></label></div>}
         <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Sustrato o referencia<input value={draft.substrate} onChange={(e) => update('substrate', e.target.value)} placeholder="Suelo, tronco, camino..." className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Condición del lugar<input value={draft.microhabitat} onChange={(e) => update('microhabitat', e.target.value)} placeholder="Sombra, humedad, acceso..." className="atlas-input mt-2 w-full" /></label></div>
+        <label className="block font-sans text-xs font-bold uppercase tracking-wider">ID de ficha / QR <span className="font-normal normal-case opacity-50">(opcional)</span><input value={draft.paper_id} onChange={(e) => update('paper_id', e.target.value.toUpperCase())} placeholder="MR-20260815-P001" className="atlas-input mt-2 w-full" /></label>
         <label className="block font-sans text-xs font-bold uppercase tracking-wider">Nota breve <span className="font-normal normal-case opacity-50">(opcional)</span><textarea value={draft.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Qué viste o qué cambió" className="mt-2 min-h-24 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-atlas-earth" /></label>
         <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={locate} className="atlas-button inline-flex items-center justify-center gap-2"><MapPin className="h-4 w-4" />{position ? `${position[0].toFixed(4)}, ${position[1].toFixed(4)}` : 'Capturar ubicación'}</button><label className="atlas-button inline-flex cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{photo ? 'Cambiar foto' : 'Agregar foto original'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setPhoto(file); setPhotoPreview(await fileToDataUrl(file)); } }} /></label></div>
         {photoPreview && <img src={photoPreview} alt="Vista previa de la evidencia" className="max-h-56 w-full object-cover" />}
