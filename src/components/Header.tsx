@@ -37,7 +37,7 @@ export default function Header({
     <header className="bg-atlas-paper text-atlas-ink p-3 flex justify-between items-center border-b border-atlas-ink z-50 relative shrink-0">
       <div className="flex items-center gap-3">
         <Sprout className="w-6 h-6 text-atlas-ink" />
-        <h1 className="text-xl italic font-serif tracking-tight">Fungi Atlas <span className="text-[10px] opacity-50">.03</span></h1>
+        <h1 className="text-xl italic font-serif tracking-tight">Biocorredor MR <span className="text-[10px] opacity-50">· campo</span></h1>
       </div>
 
       <div className="flex items-center gap-6">
