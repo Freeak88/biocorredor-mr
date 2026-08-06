@@ -1,0 +1,17 @@
+services:
+  pb:
+    build: ./pocketbase
+    container_name: biocorredor-mr-pb
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      - pb-data:/pb/pb_data
+      - ./pocketbase/pb_migrations:/pb/pb_migrations
+      - ./pocketbase/pb_hooks:/pb/pb_hooks
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-placeholder}
+
+volumes:
+  pb-data:
+    name: biocorredor_mr_pb_data
