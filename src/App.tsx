@@ -1,4 +1,4 @@
-import React, { useState, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useEffect, Suspense, lazy } from 'react';
 import { pb, getFileURL } from './lib/pb';
 import { logError } from './lib/logger';
 import { useAuth } from './hooks/useAuth';
@@ -21,6 +21,7 @@ const NewSightingModal = lazy(() => import('./components/NewSightingModal'));
 const ReportModal = lazy(() => import('./components/ReportModal'));
 const FieldSurveyPanel = lazy(() => import('./components/FieldSurveyPanel'));
 const CoordinatorPanel = lazy(() => import('./components/CoordinatorPanel'));
+const FieldJourneyPanel = lazy(() => import('./components/FieldJourneyPanel'));
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
@@ -59,6 +60,11 @@ export default function App() {
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
   const [showFieldSurvey, setShowFieldSurvey] = useState(false);
   const [showCoordinator, setShowCoordinator] = useState(false);
+  const [showJourney, setShowJourney] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'observador') setShowJourney(true);
+  }, [user]);
 
   const handleSightingClick = useCallback((s: Sighting) => {
     setSelectedSighting(s);
@@ -130,11 +136,13 @@ export default function App() {
         onOpenFieldSurvey={() => setShowFieldSurvey(true)}
         canCoordinate={isCoordinator}
         onOpenCoordinator={() => setShowCoordinator(true)}
+        onOpenJourney={() => setShowJourney(true)}
       />
       </SectionBoundary>
 
       {showFieldSurvey && <Suspense fallback={<LazyFallback />}><FieldSurveyPanel user={user} onClose={() => setShowFieldSurvey(false)} /></Suspense>}
       {showCoordinator && <Suspense fallback={<LazyFallback />}><CoordinatorPanel user={user} onClose={() => setShowCoordinator(false)} /></Suspense>}
+      {showJourney && <Suspense fallback={<LazyFallback />}><FieldJourneyPanel user={user} onClose={() => setShowJourney(false)} onOpenSurvey={() => { setShowJourney(false); setShowFieldSurvey(true); }} onOpenMap={() => setShowJourney(false)} /></Suspense>}
 
       <main className="flex-1 relative overflow-hidden">
         <SectionBoundary name="MapView">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardPenLine, LayoutDashboard, Sprout, Search } from 'lucide-react';
+import { ClipboardPenLine, LayoutDashboard, Sprout, Search, Route } from 'lucide-react';
 import LeaderboardPanel from './LeaderboardPanel';
 
 interface HeaderProps {
@@ -16,6 +16,7 @@ interface HeaderProps {
   onOpenFieldSurvey: () => void;
   canCoordinate: boolean;
   onOpenCoordinator: () => void;
+  onOpenJourney: () => void;
 }
 
 export default function Header({
@@ -31,7 +32,8 @@ export default function Header({
   handleLogout,
   onOpenFieldSurvey,
   canCoordinate,
-  onOpenCoordinator
+  onOpenCoordinator,
+  onOpenJourney
 }: HeaderProps) {
   return (
     <header className="bg-atlas-paper text-atlas-ink p-3 flex justify-between items-center border-b border-atlas-ink z-50 relative shrink-0">
@@ -61,6 +63,9 @@ export default function Header({
             <div className="flex items-center gap-4 border-l border-atlas-ink/10 pl-4">
               <button onClick={onOpenFieldSurvey} className="inline-flex items-center gap-1 text-atlas-earth hover:underline" title="Abrir relevamiento de campo">
                 <ClipboardPenLine className="h-4 w-4" /> <span className="hidden sm:inline">Relevar</span>
+              </button>
+              <button onClick={onOpenJourney} className="inline-flex items-center gap-1 text-atlas-ink hover:underline" title="Abrir jornada de campo">
+                <Route className="h-4 w-4" /> <span className="hidden sm:inline">Jornada</span>
               </button>
               {canCoordinate && <button onClick={onOpenCoordinator} className="inline-flex items-center gap-1 text-atlas-ink hover:underline" title="Abrir control de relevamientos">
                 <LayoutDashboard className="h-4 w-4" /> <span className="hidden sm:inline">Control</span>
