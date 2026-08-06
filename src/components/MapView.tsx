@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
-import { getFileURL } from '../lib/pb';
+import { getFileURL, pb } from '../lib/pb';
 import { Sighting, UserProfile } from '../types';
 import WeatherBadge from './WeatherBadge';
 import type { ViewportBounds } from '../hooks/useGeoQuery';
@@ -21,6 +21,27 @@ interface LayerToggles {
   showMine: boolean;
   showOthers: boolean;
 }
+
+interface TerritorialLayer {
+  id: string;
+  code: string;
+  title: string;
+  category: string;
+  source_organization?: string;
+  source_url?: string;
+  service_type?: string;
+  status?: string;
+  offline_capable?: boolean;
+}
+
+const TERRITORIAL_LAYER_CATALOG: TerritorialLayer[] = [
+  { id: 'cadastro', code: 'CADASTRO-PARCELAS', title: 'Parcelas catastrales', category: 'parcelas', source_organization: 'ARBA / IDEBA', source_url: 'https://ideba.gba.gob.ar/es/visualizador/arba', service_type: 'WMS/WFS', status: 'reference' },
+  { id: 'zonificacion', code: 'ZONIFICACION-URBASIG', title: 'Zonificación vigente', category: 'zonificacion', source_organization: 'urBAsig', source_url: 'https://urbasig.mgob.gba.gob.ar/urbasig/', service_type: 'WMS/WFS', status: 'reference' },
+  { id: 'ordenanza', code: 'ORD-11819-20', title: 'Ordenanza 11.819/20 y anexos', category: 'normativa', source_organization: 'Municipio / Provincia', source_url: 'https://boletinoficial.gba.gob.ar/secciones/11321/ver', service_type: 'document', status: 'reference' },
+  { id: 'hidrologia', code: 'HIDRO-FORESTACION', title: 'Cursos de agua, inundabilidad y forestación', category: 'hidrologia', source_organization: 'IDEBA', source_url: 'https://visualizador.ideba.gba.gob.ar/', service_type: 'WMS/WFS', status: 'reference' },
+  { id: 'biodiversidad', code: 'BIODIVERSIDAD-AMBIENTES', title: 'Biodiversidad y ambientes', category: 'biodiversidad', source_organization: 'IDEBA / fuentes validadas', source_url: 'https://visualizador.ideba.gba.gob.ar/', service_type: 'WMS/WFS', status: 'reference' },
+  { id: 'transformaciones', code: 'OBRAS-EXPEDIENTES', title: 'Obras, cambios territoriales y expedientes', category: 'transformaciones', source_organization: 'Biocorredor MR', service_type: 'internal', status: 'active' },
+];
 
 // ── Islas Malvinas overlay — covers colonial name with Argentine toponym ──
 function MalvinasOverlay() {
@@ -216,6 +237,17 @@ function LayerTogglePanel({
   onChange: <K extends keyof LayerToggles>(key: K, value: LayerToggles[K]) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [territorialLayers, setTerritorialLayers] = useState<TerritorialLayer[]>(TERRITORIAL_LAYER_CATALOG);
+
+  useEffect(() => {
+    let cancelled = false;
+    pb.collection('territorial_layers').getFullList<TerritorialLayer>({ sort: 'category,title' })
+      .then(records => {
+        if (!cancelled && records.length) setTerritorialLayers(records);
+      })
+      .catch(() => { /* The local catalog keeps the map useful while offline. */ });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="layer-toggle-panel">
@@ -260,6 +292,26 @@ function LayerTogglePanel({
             <span className="layer-toggle-label">De otros</span>
             <span className="layer-toggle-dot other-dot" />
           </label>
+          <div className="mt-3 border-t border-atlas-ink/20 pt-3">
+            <p className="layer-toggle-title">CONTEXTO TERRITORIAL</p>
+            <p className="mb-2 text-[9px] leading-relaxed text-atlas-ink/60">
+              Referencia para ubicar parcelas, restricciones y antecedentes. No determina por sí sola la legalidad de una intervención.
+            </p>
+            <div className="space-y-1.5">
+              {territorialLayers.map(layer => (
+                <div key={layer.id || layer.code} className="flex items-start gap-2 border-b border-atlas-ink/10 pb-1.5 last:border-0">
+                  <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${layer.status === 'active' ? 'bg-atlas-earth' : 'bg-atlas-ink/30'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-sans font-bold leading-tight">{layer.title}</p>
+                    <p className="truncate text-[8px] font-sans text-atlas-ink/55">{layer.source_organization || 'Fuente territorial'} · {layer.service_type || 'referencia'}</p>
+                  </div>
+                  <span className="shrink-0 text-[7px] font-sans font-black uppercase tracking-wide text-atlas-ink/45">
+                    {layer.offline_capable ? 'offline' : 'fuente'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
