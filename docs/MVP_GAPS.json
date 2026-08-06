@@ -1,0 +1,74 @@
+{
+  "audit_date": "2026-08-06",
+  "branch": "mvp-relevamiento-15-agosto",
+  "commit": "72ab8bb",
+  "phase": "audit_without_code_changes",
+  "blockers": [
+    {
+      "id": "B01",
+      "severity": "critical",
+      "title": "No existe exportación operativa completa",
+      "evidence": ["src/components/CoordinatorPanel.tsx:61-71", "src/hooks/useAdmin.ts:109-141"],
+      "impact": "No se puede generar CSV/GeoJSON/backup/ZIP/hashes/manifest exigido; no se puede verificar el cierre digital.",
+      "status": "NO_IMPLEMENTADO"
+    },
+    {
+      "id": "B02",
+      "severity": "critical",
+      "title": "Cierre de jornada no tiene cola offline equivalente",
+      "evidence": ["src/components/FieldJourneyPanel.tsx:69-77", "src/lib/offline.ts:68-201"],
+      "impact": "Si PocketBase falla durante inicio/cierre, sólo se persiste el estado visual en localStorage; los datos operativos del evento pueden no llegar al servidor.",
+      "status": "PARCIAL"
+    },
+    {
+      "id": "B03",
+      "severity": "critical",
+      "title": "Persistencia de fotografías offline no fue demostrada como blob durable",
+      "evidence": ["src/components/FieldSurveyPanel.tsx:97-98", "src/lib/offline.ts:68-90"],
+      "impact": "La operación contiene dataURL dentro de IndexedDB/localStorage fallback; no existe prueba de cierre/reapertura ni almacenamiento de blob dedicado.",
+      "status": "BLOQUEADO"
+    },
+    {
+      "id": "B04",
+      "severity": "high",
+      "title": "Idempotencia incompleta",
+      "evidence": ["pocketbase/pb_migrations/1790000013_operational_field_model.js:70-73", "src/components/FieldSurveyPanel.tsx:171-187"],
+      "impact": "Occurrence y route point tienen apoyo de ID/índice; change_id y media_id no tienen índice único. El doble sync real no fue ejecutado.",
+      "status": "PARCIAL"
+    },
+    {
+      "id": "B05",
+      "severity": "high",
+      "title": "Sellado no impide todas las modificaciones silenciosas",
+      "evidence": ["pocketbase/pb_migrations/1790000014_operational_integrity.js:26", "pocketbase/pb_migrations/1790000000_biocorredor_core.js:214-219"],
+      "impact": "Sólo se agrega una regla para survey_events; occurrences, territorial_changes y media siguen con update autenticado y no hay versión nueva/motivo obligatorio.",
+      "status": "PARCIAL"
+    },
+    {
+      "id": "B06",
+      "severity": "high",
+      "title": "Coordenadas públicas/reservadas sin política de publicación probada",
+      "evidence": ["pocketbase/pb_migrations/1790000001_operational_closure.js:36-39", "src/components/FieldSurveyPanel.tsx:116-119"],
+      "impact": "La captura mantiene public_latitude/public_longitude nulas y visibilidad private, pero no existe generalización ni reglas server-side diferenciadas que hayan sido probadas.",
+      "status": "PARCIAL"
+    }
+  ],
+  "non_blocking_gaps": [
+    "Campos condicionales específicos de plantas, fauna, artrópodos y hongos no implementados.",
+    "No hay ubicación manual ni manual_location_reason.",
+    "No se preservan EXIF ni preview separada.",
+    "No hay curaduría de identifications ni corrección versionada.",
+    "No hay pruebas de migración desde base vacía, backup/restauración ni exportación.",
+    "No hay suite de integración/e2e operativa en el repositorio."
+  ],
+  "test_execution": {
+    "npm run lint": {"exit_code": 0, "result": "typecheck passed"},
+    "npm run test:run -- --pool=forks --poolOptions.forks.singleFork=true": {"exit_code": 0, "files": 7, "tests": 65, "passed": 65, "failed": 0},
+    "npm run build": {"exit_code": 0, "result": "production build passed", "warning": "Generated an empty chunk: vendor"},
+    "npm run e2e": {"result": "BLOCKED", "reason": "la ejecución no completó en el entorno; no se cuenta como prueba aprobada"},
+    "docker compose -f docker-compose.local.yml config --quiet": {"exit_code": 0, "result": "configuration valid"},
+    "migration_from_empty": {"result": "NOT_EXECUTED", "reason": "no se inició una base PocketBase efímera durante la fase sin modificaciones"},
+    "offline_four_records": {"result": "NOT_EXECUTED", "reason": "requiere navegador/PocketBase y no debe inferirse desde código"},
+    "backup_restore_export": {"result": "NOT_EXECUTED", "reason": "no existe exportador operativo"}
+  }
+}
