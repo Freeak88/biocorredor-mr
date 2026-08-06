@@ -232,13 +232,6 @@ export default function App() {
                 <MessageSquare className="w-5 h-5" />
               </button>
             </div>
-            {canFieldRecord && <button
-              onClick={() => { setNewSightingPos(null); setShowModal(true); }}
-              className="flex-1 bg-atlas-ink text-atlas-paper py-4 border-2 border-atlas-ink shadow-atlas hover:bg-atlas-earth transition-all flex items-center justify-center gap-3"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="text-[10px] font-sans font-black uppercase tracking-[0.2em]">Añadir Hallazgo</span>
-            </button>}
             <button
               onClick={() => { if (userLocation) { setMapCentered(false); } else { requestUserLocation(); } }}
               className="bg-atlas-paper p-4 border-2 border-atlas-ink shadow-atlas hover:bg-atlas-stone transition-all"
