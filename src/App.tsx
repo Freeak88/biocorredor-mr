@@ -19,6 +19,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const SightingDetail = lazy(() => import('./components/SightingDetail'));
 const NewSightingModal = lazy(() => import('./components/NewSightingModal'));
 const ReportModal = lazy(() => import('./components/ReportModal'));
+const FieldSurveyPanel = lazy(() => import('./components/FieldSurveyPanel'));
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
@@ -55,6 +56,7 @@ export default function App() {
   const [showReportModal, setShowReportModal] = useState<{ type: 'message' | 'user' | 'sighting' | 'comment', targetId: string, content?: string } | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
+  const [showFieldSurvey, setShowFieldSurvey] = useState(false);
 
   const handleSightingClick = useCallback((s: Sighting) => {
     setSelectedSighting(s);
@@ -123,8 +125,11 @@ export default function App() {
         setShowAdminPanel={setShowAdminPanel}
         handleLogin={handleLogin}
         handleLogout={handleLogout}
+        onOpenFieldSurvey={() => setShowFieldSurvey(true)}
       />
       </SectionBoundary>
+
+      {showFieldSurvey && <Suspense fallback={<LazyFallback />}><FieldSurveyPanel user={user} onClose={() => setShowFieldSurvey(false)} /></Suspense>}
 
       <main className="flex-1 relative overflow-hidden">
         <SectionBoundary name="MapView">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sprout, Search, LogOut, Trophy } from 'lucide-react';
+import { ClipboardPenLine, Sprout, Search } from 'lucide-react';
 import LeaderboardPanel from './LeaderboardPanel';
 
 interface HeaderProps {
@@ -13,6 +13,7 @@ interface HeaderProps {
   setShowAdminPanel: (v: boolean) => void;
   handleLogin: () => void;
   handleLogout: () => void;
+  onOpenFieldSurvey: () => void;
 }
 
 export default function Header({
@@ -25,7 +26,8 @@ export default function Header({
   showAdminPanel,
   setShowAdminPanel,
   handleLogin,
-  handleLogout
+  handleLogout,
+  onOpenFieldSurvey
 }: HeaderProps) {
   return (
     <header className="bg-atlas-paper text-atlas-ink p-3 flex justify-between items-center border-b border-atlas-ink z-50 relative shrink-0">
@@ -53,6 +55,9 @@ export default function Header({
               {user.displayName || user.email?.split('@')[0]}
             </span>
             <div className="flex items-center gap-4 border-l border-atlas-ink/10 pl-4">
+              <button onClick={onOpenFieldSurvey} className="inline-flex items-center gap-1 text-atlas-earth hover:underline" title="Abrir relevamiento de campo">
+                <ClipboardPenLine className="h-4 w-4" /> <span className="hidden sm:inline">Relevar</span>
+              </button>
               <button
                 onClick={() => setShowChat(!showChat)}
                 className={`transition-all ${showChat ? 'text-atlas-ink underline underline-offset-4' : 'text-atlas-ink opacity-40 hover:opacity-100'}`}
