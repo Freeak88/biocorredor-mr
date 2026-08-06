@@ -18,6 +18,8 @@
   "dependencies": {
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
+    "@turf/helpers": "^7.4.0",
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

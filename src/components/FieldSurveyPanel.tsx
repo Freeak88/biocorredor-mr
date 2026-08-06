@@ -3,6 +3,7 @@ import { Camera, Check, CloudOff, LoaderCircle, MapPin, RefreshCw, ShieldAlert, 
 import { pb } from '../lib/pb';
 import { clearQueue, drainQueue, enqueueOp, isOnline, onOnlineChange, type QueuedOp } from '../lib/offline';
 import type { AuthUser } from '../hooks/useAuth';
+import { matchParcel } from '../services/territorialService';
 
 type Site = { id: string; code: string; name: string };
 type Event = { id: string; event_id: string; title: string; site: string };
@@ -99,6 +100,9 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
     try {
       const photoData = photo ? await fileToDataUrl(photo) : undefined;
       const mediaHash = photoData ? await sha256(photoData) : undefined;
+      const territorialContext = position
+        ? await matchParcel(position[0], position[1])
+        : { status: 'indeterminate' as const, source: 'local' as const, checked_at: new Date().toISOString(), reason: 'La observación no tiene coordenadas GPS.' };
       const payload = {
         occurrence: {
           occurrence_id: makeId('BIO-MR'), event: draft.event, observer: user.uid,
@@ -110,6 +114,8 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
           microhabitat: draft.microhabitat, occurrence_status: 'detected', identification_status: 'unidentified',
           sensitive_record: draft.sensitive_record, public_visibility: draft.sensitive_record === 'true' ? 'private' : 'team',
           notes: draft.notes.trim(), local_status: online ? 'syncing' : 'local_only',
+          territorial_context_json: territorialContext,
+          territorial_context_status: territorialContext.status,
         },
         media: photoData ? { dataUrl: photoData, sha256: mediaHash, mimeType: photo?.type, fileSize: photo?.size } : undefined,
       };
