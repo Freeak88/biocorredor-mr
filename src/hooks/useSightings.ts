@@ -38,12 +38,12 @@ interface LayerToggles {
   showParcels: boolean;
 }
 
-const LAYER_STORAGE_KEY = 'fungimap-layers';
+const LAYER_STORAGE_KEY = 'biocorredor-layers-v2';
 const PAGE_SIZE = 500;
 const CACHE_THRESHOLD = 0.20;
 
 function loadLayerToggles(): LayerToggles {
-  const defaults = { showGbif: true, showMine: true, showOthers: true, showParcels: true };
+  const defaults = { showGbif: true, showMine: true, showOthers: true, showParcels: false };
   try {
     const raw = localStorage.getItem(LAYER_STORAGE_KEY);
     if (raw) return { ...defaults, ...JSON.parse(raw) };

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
 import { pb, getFileURL } from './lib/pb';
 import { logError } from './lib/logger';
 import { useAuth } from './hooks/useAuth';
@@ -61,9 +61,17 @@ export default function App() {
   const [showFieldSurvey, setShowFieldSurvey] = useState(false);
   const [showCoordinator, setShowCoordinator] = useState(false);
   const [showJourney, setShowJourney] = useState(false);
+  const journeyAutoOpenedRef = useRef(false);
 
   useEffect(() => {
-    if (user?.role === 'observador') setShowJourney(true);
+    if (!user) {
+      journeyAutoOpenedRef.current = false;
+      return;
+    }
+    if (user.role === 'observador' && !journeyAutoOpenedRef.current) {
+      journeyAutoOpenedRef.current = true;
+      setShowJourney(true);
+    }
   }, [user]);
 
   const handleSightingClick = useCallback((s: Sighting) => {

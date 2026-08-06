@@ -556,7 +556,7 @@ export default function MapView({
 
   return (
     <div className="absolute inset-0 z-0">
-      <MapContainer center={[-34.85, -58.3667]} zoom={14} scrollWheelZoom={true} zoomControl={false} attributionControl={false} className="h-full w-full">
+      <MapContainer center={[-34.85, -58.3667]} zoom={14} scrollWheelZoom={true} zoomControl={false} attributionControl={false} preferCanvas className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
