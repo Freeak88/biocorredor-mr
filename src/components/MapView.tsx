@@ -49,24 +49,39 @@ interface ParcelFeatureCollection {
   features: Array<{ type: 'Feature'; properties?: Record<string, unknown>; geometry: unknown }>;
 }
 
+type ParcelSector = 'noroeste' | 'noreste' | 'suroeste' | 'sureste';
+
+function parcelSector(center: L.LatLng): ParcelSector {
+  const west = center.lng < -58.37;
+  const north = center.lat >= -34.88;
+  return `${north ? 'noroeste' : 'suroeste'}`.replace('oeste', west ? 'oeste' : 'este') as ParcelSector;
+}
+
 function TerritorialParcelsOverlay({ visible }: { visible: boolean }) {
   const [data, setData] = useState<ParcelFeatureCollection | null>(null);
   const map = useMapEvents({});
   const [zoom, setZoom] = useState(map.getZoom());
+  const [sector, setSector] = useState<ParcelSector>(() => parcelSector(map.getCenter()));
+  const [loadedSector, setLoadedSector] = useState<ParcelSector | null>(null);
 
   useEffect(() => {
-    const updateZoom = () => setZoom(map.getZoom());
-    map.on('zoomend', updateZoom);
-    return () => { map.off('zoomend', updateZoom); };
+    const updateView = () => {
+      setZoom(map.getZoom());
+      setSector(parcelSector(map.getCenter()));
+    };
+    map.on('zoomend', updateView);
+    map.on('moveend', updateView);
+    return () => { map.off('zoomend', updateView); map.off('moveend', updateView); };
   }, [map]);
 
   useEffect(() => {
-    if (!visible || zoom < 15 || data) return;
-    fetch('/data/geoarba/ministro-rivadavia-parcels.geojson')
+    if (!visible || zoom < 15 || loadedSector === sector) return;
+    setData(null);
+    fetch(`/data/geoarba/ministro-rivadavia-parcels-${sector}.geojson`)
       .then(response => response.ok ? response.json() : Promise.reject(new Error('Parcelario no disponible')))
-      .then(value => setData(value as ParcelFeatureCollection))
-      .catch(() => setData(null));
-  }, [visible, zoom, data]);
+      .then(value => { setData(value as ParcelFeatureCollection); setLoadedSector(sector); })
+      .catch(() => { setData(null); setLoadedSector(null); });
+  }, [visible, zoom, sector, loadedSector]);
 
   if (!visible || zoom < 15 || !data) return null;
 
