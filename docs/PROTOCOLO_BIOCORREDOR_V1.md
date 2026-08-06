@@ -29,7 +29,7 @@ Al finalizar: hora de cierre, distancia recorrida, tiempo efectivo, cantidad de 
 
 ## Registro minimo de una especie u organismo
 
-Hora, coordenadas, precision GPS, fotografia original, organismo o grupo observado, sustrato o ambiente, cantidad aproximada, observador y evento al que pertenece.
+Hora, coordenadas, precision GPS, fotografia original cuando corresponda, tipo de registro (biodiversidad, ambiente o impacto), organismo o grupo observado, sustrato o ambiente, cantidad aproximada, observador y evento al que pertenece.
 
 La identificacion debe conservar el nivel de certeza real: grupo, morfoespecie, genero o especie. Los registros dudosos se marcan para revision y nunca se eliminan.
 

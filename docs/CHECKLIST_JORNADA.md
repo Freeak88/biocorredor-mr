@@ -14,8 +14,8 @@
 
 ## Durante el recorrido
 
-- [ ] Evento iniciado con equipo, sector, integrantes, protocolo, clima, ambiente y objetivo.
-- [ ] Cada observacion tiene hora, GPS/precision, organismo, sustrato, cantidad y observador.
+- [ ] Evento iniciado con equipo, sector, integrantes, protocolo, clima, ambiente y objetivo. El asistente recibe estos datos preasignados.
+- [ ] Cada observacion tiene hora, GPS/precision, tipo de registro, organismo o ambiente, sustrato, cantidad y observador.
 - [ ] Fotos originales completas y diagnosticas tomadas.
 - [ ] Registros dudosos marcados para revision.
 - [ ] Incidentes y sectores no recorridos anotados.
@@ -30,4 +30,3 @@
 - [ ] Originales bloqueados.
 - [ ] CSV, GeoJSON y copia de respaldo descargados.
 - [ ] Acta completada y firmada.
-

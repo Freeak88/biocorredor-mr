@@ -8,12 +8,12 @@ import { matchParcel } from '../services/territorialService';
 type Site = { id: string; code: string; name: string };
 type Event = { id: string; event_id: string; title: string; site: string };
 type Draft = {
-  event: string; site: string; scientific_name: string; quantity: string; substrate: string;
+  event: string; site: string; record_type: 'biodiversity' | 'habitat' | 'impact'; scientific_name: string; quantity: string; substrate: string;
   microhabitat: string; notes: string; sensitive_record: 'false' | 'true'; photo?: string;
 };
 
 const emptyDraft: Draft = {
-  event: '', site: '', scientific_name: '', quantity: '1', substrate: '', microhabitat: '',
+  event: '', site: '', record_type: 'biodiversity', scientific_name: '', quantity: '1', substrate: '', microhabitat: '',
   notes: '', sensitive_record: 'false',
 };
 
@@ -92,8 +92,8 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!draft.event || !draft.site || !draft.notes.trim()) {
-      setMessage('Completá evento, sector y observación objetiva.');
+    if (!draft.event || !draft.site) {
+      setMessage('La jornada todavía no tiene evento o sector asignado.');
       return;
     }
     setSaving(true);
@@ -104,12 +104,13 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         ? await matchParcel(position[0], position[1])
         : { status: 'indeterminate' as const, source: 'local' as const, checked_at: new Date().toISOString(), reason: 'La observación no tiene coordenadas GPS.' };
       const payload = {
-        occurrence: {
-          occurrence_id: makeId('BIO-MR'), event: draft.event, observer: user.uid,
+          occurrence: {
+            occurrence_id: makeId('BIO-MR'), event: draft.event, observer: user.uid,
           observed_at: new Date().toISOString(), latitude: position?.[0] ?? null,
           longitude: position?.[1] ?? null, coordinate_uncertainty_m: position ? 10 : null,
           location_source: position ? 'gps' : 'none', field_name: 'Biocorredor MR',
-          scientific_name: draft.scientific_name.trim() || 'Morfoespecie pendiente', taxon_group: 'fungi',
+          record_type: draft.record_type,
+          scientific_name: draft.scientific_name.trim() || 'Registro pendiente', taxon_group: draft.record_type === 'biodiversity' ? 'other' : undefined,
           quantity: Number(draft.quantity) || 1, quantity_unit: 'ejemplares', substrate: draft.substrate,
           microhabitat: draft.microhabitat, occurrence_status: 'detected', identification_status: 'unidentified',
           sensitive_record: draft.sensitive_record, public_visibility: draft.sensitive_record === 'true' ? 'private' : 'team',
@@ -174,11 +175,13 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         {online ? <RefreshCw className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />} {online ? 'Con conexión: se guardará y sincronizará.' : 'Sin conexión: se guardará en este teléfono.'}
       </div>
       <form onSubmit={submit} className="space-y-5">
-        <label className="block font-sans text-xs font-bold uppercase tracking-wider">Evento<select value={draft.event} onChange={(e) => update('event', e.target.value)} className="atlas-input mt-2 w-full" required><option value="">Seleccionar evento</option>{events.map((item) => <option key={item.id} value={item.id}>{item.title || item.event_id}</option>)}</select></label>
-        <label className="block font-sans text-xs font-bold uppercase tracking-wider">Sector<select value={draft.site} onChange={(e) => update('site', e.target.value)} className="atlas-input mt-2 w-full" required><option value="">Seleccionar sector</option>{sites.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</select></label>
-        <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Morfoespecie<input value={draft.scientific_name} onChange={(e) => update('scientific_name', e.target.value)} placeholder="Pendiente si no se conoce" className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Cantidad<input type="number" min="1" value={draft.quantity} onChange={(e) => update('quantity', e.target.value)} className="atlas-input mt-2 w-full" /></label></div>
-        <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Sustrato<input value={draft.substrate} onChange={(e) => update('substrate', e.target.value)} placeholder="Suelo, tronco..." className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Microhábitat<input value={draft.microhabitat} onChange={(e) => update('microhabitat', e.target.value)} placeholder="Sombra, humedad..." className="atlas-input mt-2 w-full" /></label></div>
-        <label className="block font-sans text-xs font-bold uppercase tracking-wider">Observación objetiva<textarea value={draft.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Qué viste, dónde estaba y qué condiciones había" className="mt-2 min-h-28 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-atlas-earth" required /></label>
+        <div className="grid gap-3 sm:grid-cols-2"><div className="border border-atlas-ink/20 px-3 py-3"><p className="font-mono text-[9px] uppercase opacity-50">Jornada asignada</p><p className="mt-1 font-sans text-sm">{selectedEvent?.title || 'Cargando jornada...'}</p></div><div className="border border-atlas-ink/20 px-3 py-3"><p className="font-mono text-[9px] uppercase opacity-50">Sector asignado</p><p className="mt-1 font-sans text-sm">{sites.find((site) => site.id === draft.site)?.code || 'Cargando sector...'}</p></div></div>
+        {events.length > 1 && <label className="block font-sans text-xs font-bold uppercase tracking-wider">Cambiar jornada<select value={draft.event} onChange={(e) => update('event', e.target.value)} className="atlas-input mt-2 w-full" required><option value="">Seleccionar evento</option>{events.map((item) => <option key={item.id} value={item.id}>{item.title || item.event_id}</option>)}</select></label>}
+        {sites.length > 1 && <label className="block font-sans text-xs font-bold uppercase tracking-wider">Cambiar sector<select value={draft.site} onChange={(e) => update('site', e.target.value)} className="atlas-input mt-2 w-full" required><option value="">Seleccionar sector</option>{sites.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.name}</option>)}</select></label>}
+        <fieldset><legend className="mb-2 font-sans text-xs font-bold uppercase tracking-wider">Qué estás registrando</legend><div className="grid grid-cols-3 gap-2">{([['biodiversity', 'Biodiversidad'], ['habitat', 'Ambiente'], ['impact', 'Impacto']] as const).map(([value, label]) => <button type="button" key={value} onClick={() => update('record_type', value)} className={`border px-2 py-3 font-sans text-xs ${draft.record_type === value ? 'border-atlas-ink bg-atlas-ink text-atlas-paper' : 'border-atlas-ink/25'}`}>{label}</button>)}</div></fieldset>
+        <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">{draft.record_type === 'biodiversity' ? 'Organismo o grupo' : draft.record_type === 'impact' ? 'Tipo de impacto' : 'Ambiente observado'}<input value={draft.scientific_name} onChange={(e) => update('scientific_name', e.target.value)} placeholder={draft.record_type === 'biodiversity' ? 'Pendiente si no se conoce' : draft.record_type === 'impact' ? 'Relleno, desmonte, obra...' : 'Humedal, bosque, pastizal...'} className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Cantidad o extensión<input type="number" min="1" value={draft.quantity} onChange={(e) => update('quantity', e.target.value)} className="atlas-input mt-2 w-full" /></label></div>
+        <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Sustrato o referencia<input value={draft.substrate} onChange={(e) => update('substrate', e.target.value)} placeholder="Suelo, tronco, camino..." className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Condición del lugar<input value={draft.microhabitat} onChange={(e) => update('microhabitat', e.target.value)} placeholder="Sombra, humedad, acceso..." className="atlas-input mt-2 w-full" /></label></div>
+        <label className="block font-sans text-xs font-bold uppercase tracking-wider">Nota breve <span className="font-normal normal-case opacity-50">(opcional)</span><textarea value={draft.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Qué viste o qué cambió" className="mt-2 min-h-24 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-atlas-earth" /></label>
         <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={locate} className="atlas-button inline-flex items-center justify-center gap-2"><MapPin className="h-4 w-4" />{position ? `${position[0].toFixed(4)}, ${position[1].toFixed(4)}` : 'Capturar ubicación'}</button><label className="atlas-button inline-flex cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{photo ? 'Cambiar foto' : 'Agregar foto original'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setPhoto(file); setPhotoPreview(await fileToDataUrl(file)); } }} /></label></div>
         {photoPreview && <img src={photoPreview} alt="Vista previa de la evidencia" className="max-h-56 w-full object-cover" />}
         <label className="flex items-start gap-3 border border-atlas-ink/20 p-3 font-sans text-xs"><input type="checkbox" checked={draft.sensitive_record === 'true'} onChange={(e) => update('sensitive_record', e.target.checked ? 'true' : 'false')} className="mt-0.5" /><span><span className="flex items-center gap-1 font-bold"><ShieldAlert className="h-4 w-4" /> Registro sensible</span><span className="mt-1 block opacity-70">Oculta la ubicación precisa y limita la visibilidad al equipo.</span></span></label>
