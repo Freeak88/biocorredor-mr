@@ -16,6 +16,11 @@ const emptyDraft: Draft = {
   notes: '', sensitive_record: 'false',
 };
 
+// IDs from the seeded local pilot volume. The API values take precedence; this keeps
+// the field form usable while a local PocketBase volume is warming up or offline.
+const localPilotSite: Site = { id: '3mqk3020jn63qcx', code: 'SEC-CENTRO', name: 'Sector Centro' };
+const localPilotEvent: Event = { id: '2hp2demnto50j73', event_id: 'BIO-MR-PILOTO-2026-08-11', title: 'Jornada piloto Biocorredor MR', site: localPilotSite.id };
+
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -53,13 +58,20 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
   useEffect(() => {
     const unsubscribe = onOnlineChange(setOnline);
     void Promise.all([
-      pb.collection('sites').getFullList<Site>({ sort: 'code' }),
-      pb.collection('survey_events').getFullList<Event>({ filter: 'status = "active" || status = "draft"', sort: '-created' }),
-    ]).then(([siteRecords, eventRecords]) => {
+      pb.collection('sites').getList<Site>(1, 50, { sort: 'code', filter: 'status = "active"' }),
+      pb.collection('survey_events').getList<Event>(1, 50, { sort: '-created', filter: 'status = "active"' }),
+    ]).then(([sitePage, eventPage]) => {
+      const siteRecords = sitePage.items;
+      const eventRecords = eventPage.items;
       setSites(siteRecords);
       setEvents(eventRecords);
       if (eventRecords[0]) setDraft((current) => ({ ...current, event: eventRecords[0].id, site: eventRecords[0].site || siteRecords[0]?.id || '' }));
-    }).catch(() => setMessage('No se pudieron cargar los sectores. El registro puede quedar local.'));
+    }).catch(() => {
+      setSites([localPilotSite]);
+      setEvents([localPilotEvent]);
+      setDraft((current) => ({ ...current, event: localPilotEvent.id, site: localPilotSite.id }));
+      setMessage('Usando configuración piloto local. El registro puede quedar local.');
+    });
     return unsubscribe;
   }, []);
 
