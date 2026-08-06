@@ -30,7 +30,7 @@ export function useAuth() {
 
   const role = pb.authStore.record?.role || '';
   const isAdmin = role === 'admin' || role === 'administrador';
-  const isCoordinator = isAdmin || role === 'coordinador';
+  const isCoordinator = isAdmin || role === 'coordinador' || role === 'curador';
   const isAnonymous = false; // PocketBase has no anonymous auth
 
   useEffect(() => {
