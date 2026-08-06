@@ -38,12 +38,12 @@ interface LayerToggles {
   showParcels: boolean;
 }
 
-const LAYER_STORAGE_KEY = 'biocorredor-layers-v2';
+const LAYER_STORAGE_KEY = 'biocorredor-layers-v3';
 const PAGE_SIZE = 500;
 const CACHE_THRESHOLD = 0.20;
 
 function loadLayerToggles(): LayerToggles {
-  const defaults = { showGbif: true, showMine: true, showOthers: true, showParcels: false };
+  const defaults = { showGbif: true, showMine: true, showOthers: true, showParcels: true };
   try {
     const raw = localStorage.getItem(LAYER_STORAGE_KEY);
     if (raw) return { ...defaults, ...JSON.parse(raw) };

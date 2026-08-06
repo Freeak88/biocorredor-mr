@@ -75,7 +75,7 @@ function TerritorialParcelsOverlay({ visible }: { visible: boolean }) {
   }, [map]);
 
   useEffect(() => {
-    if (!visible || zoom < 15 || loadedSector === sector) return;
+    if (!visible || zoom < 14 || loadedSector === sector) return;
     setData(null);
     fetch(`/data/geoarba/ministro-rivadavia-parcels-${sector}.geojson`)
       .then(response => response.ok ? response.json() : Promise.reject(new Error('Parcelario no disponible')))
@@ -83,7 +83,7 @@ function TerritorialParcelsOverlay({ visible }: { visible: boolean }) {
       .catch(() => { setData(null); setLoadedSector(null); });
   }, [visible, zoom, sector, loadedSector]);
 
-  if (!visible || zoom < 15 || !data) return null;
+  if (!visible || zoom < 14 || !data) return null;
 
   return (
     <GeoJSON
@@ -359,7 +359,7 @@ function LayerTogglePanel({
               checked={toggles.showParcels}
               onChange={e => onChange('showParcels', e.target.checked)}
             />
-            <span className="layer-toggle-label">Parcelas GeoARBA</span>
+            <span className="layer-toggle-label">Parcelas GeoARBA · sector visible</span>
             <span className="layer-toggle-dot" style={{ backgroundColor: '#7d5f42' }} />
           </label>
           <div className="mt-3 border-t border-atlas-ink/20 pt-3">
