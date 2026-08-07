@@ -85,3 +85,10 @@ La jornada exportada conserva `eventId`, `eventName`, `teamId`, `observerName`, 
 ## Microfase A.1: papel y QR
 
 Se agregó trazabilidad manual offline mediante `paper_id`, incluyendo normalización, validación local, detección de duplicado en IndexedDB, URL `?paper=`, imagen original de ficha como `paper_original`, hash y exportación bajo `paper/<paper_id>/`. La prueba específica es `e2e/offline-paper-id.spec.ts`. El escaneo QR por cámara y la sincronización/conflicto remoto no se declaran implementados en esta microfase.
+
+
+## Bloque B: ciclo offline de jornadas y metodología mínima
+
+Estado: **IMPLEMENTADO Y PROBADO**. La prueba de aceptación pasó en producción con perfil persistente. Se añadieron `strata`, `sampling_units`, campos metodológicos de `survey_events`, `morphospecies_code` y `evidence_type` en la migración `1790000016_sampling_methodology.js`. El fallback precarga catálogos, permite una jornada estandarizada/estratificada con `MR-PAS-T01`, conserva dos observaciones con/sin `paper_id`, morfoespecie y fotografías, y permite recuperación y cierre offline.
+
+La prueba de aceptación es `e2e/offline-survey-methodology.spec.ts`. Se mantienen fuera de B QR por cámara, sincronización remota, `paper_record`, integraciones taxonómicas y análisis estadístico. La especificación de datos está en `docs/SAMPLING_MODEL.md`.

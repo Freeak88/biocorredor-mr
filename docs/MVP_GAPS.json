@@ -79,6 +79,14 @@
     "No hay pruebas de migración desde base vacía, backup/restauración ni exportación.",
     "No hay suite de integración/e2e operativa en el repositorio."
   ],
+  "block_b_sampling_methodology": {
+    "status": "IMPLEMENTADO_Y_PROBADO",
+    "migration": "pocketbase/pb_migrations/1790000016_sampling_methodology.js",
+    "offline_catalog": ["MR-PAS", "MR-HUM", "MR-MON", "MR-ECO", "MR-PAS-T01"],
+    "e2e": "e2e/offline-survey-methodology.spec.ts",
+    "scope": "strata, sampling_units, event methodology, morphospecies_code, evidence_type, offline recovery and closure",
+    "excluded": ["QR camera scan", "remote sync/conflict", "paper_record", "GBIF/iNaturalist/Merlin", "indices/statistical analysis"]
+  },
   "test_execution": {
     "npm run lint": {"exit_code": 0, "result": "typecheck passed"},
     "npm run test:run -- --pool=forks --poolOptions.forks.singleFork=true": {"exit_code": 0, "files": 7, "tests": 65, "passed": 65, "failed": 0},

@@ -223,3 +223,12 @@ El escenario `e2e/offline-fallback.spec.ts` ahora valida el seed `MR-20260815`, 
 ## Microfase A.1: ficha física, `paper_id` y QR
 
 La implementación elige `paper_id` directo en ocurrencias y cambios territoriales, sin convertirlo en clave primaria ni imponer unicidad. El fallback valida `MR-20260815-P001` a `MR-20260815-P120`, acepta manualmente el código offline, conserva una foto/escaneo `paper_original` como Blob y detecta coincidencias locales antes de guardar. La apertura por `?paper=` y la normalización de entrada están implementadas; el escaneo por cámara permanece pendiente. La sincronización/conflicto remoto y la auditoría completa de cambios de `paper_id` quedan documentadas como deuda porque esta microfase no incorpora un backend de sincronización nuevo.
+
+
+## Bloque B: ciclo offline de jornadas y metodología mínima
+
+Se agregaron las colecciones PocketBase `strata` y `sampling_units` mediante la migración `1790000016_sampling_methodology.js`. `survey_events` incorpora modo de inventario, estrato, unidad, diseño, método normalizado, esfuerzo, observadores, clima, limitaciones y protocolo; `occurrences` incorpora `morphospecies_code` y `evidence_type`. La migración es aditiva y conserva los campos previos.
+
+El fallback independiente de PocketBase precarga catálogos en IndexedDB, permite iniciar una jornada estandarizada/estratificada con `MR-PAS-T01`, registrar observaciones con y sin `paper_id`, conservar morfoespecie y medios originales, cerrar offline y recuperar tras cerrar/reabrir el navegador. La prueba reproducible es `e2e/offline-survey-methodology.spec.ts`; el detalle conceptual está en `docs/SAMPLING_MODEL.md`.
+
+El comportamiento de borrador incompleto es intencional para el modo offline: el formulario ofrece los datos metodológicos y los persiste, mientras la validación de completitud para sincronización remota queda fuera de este bloque.
