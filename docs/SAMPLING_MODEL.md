@@ -28,3 +28,21 @@ La evidencia reutiliza `evidence_type`: `visual`, `photo`, `auditory`, `visual_a
 ## Alcance deliberadamente excluido
 
 Este bloque no implementa índices, análisis estadístico, integraciones GBIF/iNaturalist/Merlin, escaneo QR por cámara, `paper_record`, sincronización remota ni exportación ZIP completa del backend. El `paper_id` directo y el fallback offline de A.1 permanecen compatibles.
+
+
+## Contrato canónico de esfuerzo
+
+La lista única es `minutes`, `observer_minutes`, `meters`, `kilometers`, `square_meters`, `points`, `point_minutes`, `other`.
+
+| Unidad | Significado |
+|---|---|
+| `minutes` | Duración cronológica del evento. |
+| `observer_minutes` | Suma del tiempo de observación de todos los observadores. |
+| `meters` | Distancia lineal relevada en metros. |
+| `kilometers` | Distancia lineal relevada en kilómetros. |
+| `square_meters` | Superficie relevada en metros cuadrados. |
+| `points` | Cantidad de puntos o unidades puntuales relevados. |
+| `point_minutes` | Puntos multiplicados por su duración. |
+| `other` | Unidad extraordinaria documentada en `sampling_effort_notes`. |
+
+Los aliases históricos inequívocos `kilometres` y `square_metres` se normalizan a sus formas canónicas. `observer_minutes` y `point_minutes` se conservan sin conversión. `sampling_effort_value/unit` describe el esfuerzo normalizado y no reemplaza `duration_minutes`, `distance_m`, `area_m2` u `observers_count`.

@@ -99,3 +99,8 @@ La prueba de aceptación es `e2e/offline-survey-methodology.spec.ts`. Se mantien
 Estado: **IMPLEMENTADO Y PROBADO** para PHOTO P0. Se consolidó la persistencia del original como Blob en IndexedDB, con SHA-256 sobre bytes exactos, roles de evidencia, relaciones padre, metadatos de ciclo de vida y reconstrucción de previews con `objectURL`. El fallback y el campo principal comparten la garantía de almacenamiento; la sincronización remota queda preparada mediante `local_id`, `server_id`, `retry_count` y `last_sync_error`, pero sigue fuera de este bloque.
 
 La prueba `e2e/offline-media-persistence.spec.ts` verifica cinco fotografías correspondientes a ocurrencia, ambiente, detalle diagnóstico, cambio territorial y ficha `MR-20260815-P017`. Tras cerrar página y contexto, se recuperan los cinco Blob, se recalculan sus hashes y se vuelven a mostrar las cinco previews. Las cuatro pruebas offline A/A.1/B/C pasan juntas. No se implementan audio, video, documentos ni upload remoto.
+
+
+## Corrección Gate D.0: contrato de unidad de esfuerzo
+
+Se corrigió de forma aditiva el catálogo de unidades de esfuerzo. La aplicación, el fallback y PocketBase comparten ahora `minutes`, `observer_minutes`, `meters`, `kilometers`, `square_meters`, `points`, `point_minutes` y `other`. Los aliases históricos inequívocos se normalizan sin convertir magnitudes distintas. `sampling_effort_notes` permite documentar unidades extraordinarias. La reconstrucción limpia de PocketBase, las ocho escrituras reales y el rechazo de `banana` quedaron verificadas; el Bloque D de sincronización remota no se inició.

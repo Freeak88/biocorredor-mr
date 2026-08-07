@@ -96,9 +96,26 @@
     "verified": ["five blobs", "five hashes after restart", "five reconstructed object URLs", "occurrence", "territorial_change", "paper_original"],
     "excluded": ["remote upload", "remote sync/conflicts", "audio", "video", "document", "scientific ZIP export"]
   },
+  "gate_d0_sampling_effort_contract": {
+    "status": "IMPLEMENTADO_Y_PROBADO",
+    "migration": "pocketbase/pb_migrations/1790000018_fix_sampling_effort_unit_catalog.js",
+    "frontend_contract": "src/lib/sampling.ts",
+    "canonical_units": ["minutes", "observer_minutes", "meters", "kilometers", "square_meters", "points", "point_minutes", "other"],
+    "aliases_normalized": ["kilometres -> kilometers", "square_metres -> square_meters"],
+    "preserved": ["observer_minutes", "point_minutes"],
+    "scope": "Gate D.0 only; remote synchronization not started",
+    "docker_verification": {
+      "result": "PASSED",
+      "collections_verified": ["strata", "sampling_units", "survey_events", "occurrences", "territorial_changes", "media_evidence"],
+      "real_events_created": 8,
+      "invalid_banana_rejected": true,
+      "canonical_values_persisted": true,
+      "sampling_effort_notes_persisted": true
+    }
+  },
   "test_execution": {
     "npm run lint": {"exit_code": 0, "result": "typecheck passed"},
-    "npm run test:run -- --pool=forks --poolOptions.forks.singleFork=true": {"exit_code": 0, "files": 7, "tests": 65, "passed": 65, "failed": 0},
+    "npm run test:run -- --pool=forks --poolOptions.forks.singleFork=true": {"exit_code": 0, "files": 8, "tests": 67, "passed": 67, "failed": 0},
     "npm run build": {"exit_code": 0, "result": "production build passed", "warning": "Generated an empty chunk: vendor"},
     "npm run e2e": {"result": "BLOCKED", "reason": "la ejecución no completó en el entorno; no se cuenta como prueba aprobada"},
     "docker compose -f docker-compose.local.yml config --quiet": {"exit_code": 0, "result": "configuration valid"},

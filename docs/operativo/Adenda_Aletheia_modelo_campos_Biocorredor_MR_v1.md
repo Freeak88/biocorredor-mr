@@ -38,7 +38,8 @@ interface SurveyEvent {
   endedAt?: string;
   samplingMethod: 'free_search' | 'transect' | 'fixed_point' | 'plot' | 'bioblitz';
   samplingEffortValue?: number;
-  samplingEffortUnit?: 'observer_minutes' | 'kilometres' | 'square_metres' | 'point_minutes';
+  samplingEffortUnit?: 'minutes' | 'observer_minutes' | 'meters' | 'kilometers' | 'square_meters' | 'points' | 'point_minutes' | 'other';
+  samplingEffortNotes?: string;
   observersCount: number;
   weather?: string[];
   habitatSummary: string[];

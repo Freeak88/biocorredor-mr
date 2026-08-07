@@ -239,3 +239,8 @@ El comportamiento de borrador incompleto es intencional para el modo offline: el
 La auditoría previa distinguió el fallback independiente del campo principal. El fallback ya tenía Blob, MIME, tamaño, timestamps, SHA-256, relación local y `paper_original`; se agregó reconstrucción de previews desde Blob, roles explícitos y cinco evidencias verificadas. El campo principal dejó de depender de `dataUrl` como fuente persistente: `src/lib/mediaEvidence.ts` almacena el original en IndexedDB y la sincronización futura lee ese Blob.
 
 La migración `1790000017_media_evidence_lifecycle.js` agrega `parent_type`, `parent_local_id`, `local_id`, `server_id`, `original_sha256`, `retry_count` y `last_sync_error`. La prueba `e2e/offline-media-persistence.spec.ts` valida occurrence, territorial change, paper original, roles de hábitat/diagnóstico, cinco Blob, reinicio, previews y hashes 5/5. Audio, video y documento permanecen fuera de P0.
+
+
+## Corrección Gate D.0: contrato de unidad de esfuerzo
+
+Se agregó `1790000018_fix_sampling_effort_unit_catalog.js`, que amplía el catálogo de `survey_events.sampling_effort_unit`, normaliza únicamente `kilometres` a `kilometers` y `square_metres` a `square_meters`, preserva `observer_minutes` y `point_minutes`, y agrega `sampling_effort_notes`. El contrato frontend está en `src/lib/sampling.ts` y se verifica con `src/__tests__/lib/sampling.test.ts`. La prueba desde PocketBase limpio valida las ocho unidades y rechaza valores arbitrarios.
