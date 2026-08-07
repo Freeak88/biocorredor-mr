@@ -4,7 +4,7 @@ import { pb } from '../lib/pb';
 import type { AuthUser } from '../hooks/useAuth';
 
 type Occurrence = {
-  id: string; occurrence_id: string; observer: string; scientific_name: string;
+  id: string; occurrence_id: string; observer: string; scientific_name: string; paper_id?: string;
   observed_at: string; latitude?: number; longitude?: number; notes: string;
   identification_status: string; sensitive_record: string; local_status: string;
 };
@@ -18,6 +18,7 @@ const escapeCsv = (value: unknown) => `"${String(value ?? '').replaceAll('"', '"
 export default function CoordinatorPanel({ user, onClose }: Props) {
   const [records, setRecords] = useState<Occurrence[]>([]);
   const [status, setStatus] = useState('');
+  const [paperSearch, setPaperSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
@@ -56,11 +57,11 @@ export default function CoordinatorPanel({ user, onClose }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const filtered = useMemo(() => status ? records.filter((record) => record.identification_status === status) : records, [records, status]);
+  const filtered = useMemo(() => records.filter((record) => (!status || record.identification_status === status) && (!paperSearch.trim() || record.paper_id?.toUpperCase().includes(paperSearch.trim().toUpperCase()))), [records, status, paperSearch]);
 
   const download = async (format: 'csv' | 'json') => {
     const payload = format === 'csv'
-      ? [['occurrence_id', 'scientific_name', 'observed_at', 'latitude', 'longitude', 'identification_status', 'sensitive_record', 'notes'], ...filtered.map((record) => [record.occurrence_id, record.scientific_name, record.observed_at, record.latitude, record.longitude, record.identification_status, record.sensitive_record, record.notes])].map((row) => row.map(escapeCsv).join(',')).join('\n')
+      ? [['occurrence_id', 'paper_id', 'scientific_name', 'observed_at', 'latitude', 'longitude', 'identification_status', 'sensitive_record', 'notes'], ...filtered.map((record) => [record.occurrence_id, record.paper_id, record.scientific_name, record.observed_at, record.latitude, record.longitude, record.identification_status, record.sensitive_record, record.notes])].map((row) => row.map(escapeCsv).join(',')).join('\n')
       : JSON.stringify({ project: 'BIOCORREDOR-MR', exportedAt: new Date().toISOString(), records: filtered }, null, 2);
     const blob = new Blob([payload], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -79,6 +80,7 @@ export default function CoordinatorPanel({ user, onClose }: Props) {
       </header>
       <div className="mb-5 flex flex-wrap items-center gap-2 border-b border-atlas-ink/15 pb-4">
         <span className="mr-auto font-sans text-xs uppercase tracking-wider opacity-60"><Shield className="mr-1 inline h-4 w-4" /> {records.length} registros</span>
+        <input aria-label="Buscar ficha" value={paperSearch} onChange={(e) => setPaperSearch(e.target.value)} placeholder="Buscar ficha MR-20260815-P017" className="atlas-input min-w-52" />
         <select aria-label="Filtrar por estado" value={status} onChange={(e) => setStatus(e.target.value)} className="border border-atlas-ink bg-transparent px-3 py-2 font-sans text-xs"><option value="">Todos los estados</option><option value="unidentified">Sin identificar</option><option value="pending_review">Pendiente de revisión</option><option value="probable">Probable</option><option value="confirmed">Confirmado</option></select>
         <button onClick={() => void load()} className="atlas-button inline-flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Actualizar</button>
         <button onClick={() => void download('csv')} className="atlas-button inline-flex items-center gap-2"><Download className="h-4 w-4" /> CSV</button>
@@ -101,7 +103,7 @@ export default function CoordinatorPanel({ user, onClose }: Props) {
         <button onClick={async () => { if (!assignmentForm.event || !assignmentForm.user || !assignmentForm.team || !assignmentForm.site) { setMessage('Completá jornada, participante, equipo y sector.'); return; } try { await pb.collection('event_assignments').create({ ...assignmentForm, device: assignmentForm.device || undefined, assigned_by: user.uid, status: 'assigned' }); setMessage('Asignación creada. El participante la verá al ingresar.'); } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo crear la asignación.'); } }} className="mt-3 atlas-button">Crear asignación</button>
       </section>
       {message && <p className="mb-4 border-l-4 border-atlas-earth px-3 py-2 font-sans text-sm">{message}</p>}
-      {loading ? <p className="py-12 text-center font-serif italic">Cargando ocurrencias...</p> : filtered.length === 0 ? <p className="py-12 text-center font-serif italic opacity-60">No hay registros para este filtro.</p> : <div className="overflow-x-auto border border-atlas-ink/20"><table className="w-full min-w-[760px] text-left font-sans text-xs"><thead className="bg-atlas-ink text-atlas-paper"><tr><th className="p-3">Registro</th><th className="p-3">Taxón</th><th className="p-3">Fecha</th><th className="p-3">Ubicación</th><th className="p-3">Estado</th><th className="p-3">Visibilidad</th></tr></thead><tbody>{filtered.map((record) => <tr key={record.id} className="border-t border-atlas-ink/10"><td className="p-3 font-mono">{record.occurrence_id}</td><td className="p-3 font-serif italic">{record.scientific_name}</td><td className="p-3">{record.observed_at ? new Date(record.observed_at).toLocaleString('es-AR') : 'Sin fecha'}</td><td className="p-3">{record.latitude != null ? `${record.latitude.toFixed(4)}, ${record.longitude?.toFixed(4)}` : 'Sin GPS'}</td><td className="p-3 uppercase tracking-wider">{record.identification_status}</td><td className="p-3">{record.sensitive_record === 'true' ? <span className="text-amber-800">Sensible</span> : <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" /> Equipo</span>}</td></tr>)}</tbody></table></div>}
+      {loading ? <p className="py-12 text-center font-serif italic">Cargando ocurrencias...</p> : filtered.length === 0 ? <p className="py-12 text-center font-serif italic opacity-60">No hay registros para este filtro.</p> : <div className="overflow-x-auto border border-atlas-ink/20"><table className="w-full min-w-[760px] text-left font-sans text-xs"><thead className="bg-atlas-ink text-atlas-paper"><tr><th className="p-3">Registro</th><th className="p-3">Ficha</th><th className="p-3">Taxón</th><th className="p-3">Fecha</th><th className="p-3">Ubicación</th><th className="p-3">Estado</th><th className="p-3">Visibilidad</th></tr></thead><tbody>{filtered.map((record) => <tr key={record.id} className="border-t border-atlas-ink/10"><td className="p-3 font-mono">{record.occurrence_id}</td><td className="p-3 font-mono">{record.paper_id || 'Digital'}</td><td className="p-3 font-serif italic">{record.scientific_name}</td><td className="p-3">{record.observed_at ? new Date(record.observed_at).toLocaleString('es-AR') : 'Sin fecha'}</td><td className="p-3">{record.latitude != null ? `${record.latitude.toFixed(4)}, ${record.longitude?.toFixed(4)}` : 'Sin GPS'}</td><td className="p-3 uppercase tracking-wider">{record.identification_status}</td><td className="p-3">{record.sensitive_record === 'true' ? <span className="text-amber-800">Sensible</span> : <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" /> Equipo</span>}</td></tr>)}</tbody></table></div>}
     </div>
   </div>;
 }

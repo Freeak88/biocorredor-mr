@@ -81,3 +81,7 @@ La ejecución queda detenida al completar Bloque A, como solicitaste. Bloque B y
 Se verificó el bloque recortado de piloto sobre `/field-fallback/`, sin modificar la aplicación React principal ni implementar tracking continuo. El E2E de producción pasó tres veces consecutivas desde perfiles limpios con el ciclo online → offline → cierre total → reapertura → nueva captura offline → cierre → ZIP.
 
 La jornada exportada conserva `eventId`, `eventName`, `teamId`, `observerName`, `sectorId`, `deviceId`, `protocolVersion`, `startedAt`, `completedAt` y `status`. Las observaciones conservan categoría, nombre de campo, nombre científico opcional, certeza, ambiente, abundancia, fenología, timestamp, GPS, precisión y medios originales. El artefacto de aceptación es `artifacts/block-a/biocorredor-MR-20260815-acceptance.zip`.
+
+## Microfase A.1: papel y QR
+
+Se agregó trazabilidad manual offline mediante `paper_id`, incluyendo normalización, validación local, detección de duplicado en IndexedDB, URL `?paper=`, imagen original de ficha como `paper_original`, hash y exportación bajo `paper/<paper_id>/`. La prueba específica es `e2e/offline-paper-id.spec.ts`. El escaneo QR por cámara y la sincronización/conflicto remoto no se declaran implementados en esta microfase.

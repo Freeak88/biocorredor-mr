@@ -3,6 +3,7 @@ import { Camera, Check, CloudOff, LoaderCircle, MapPin, RefreshCw, ShieldAlert, 
 import { pb } from '../lib/pb';
 import { drainQueue, enqueueOp, isOnline, onOnlineChange, removeQueuedOps, type QueuedOp } from '../lib/offline';
 import { newLocalId } from '../lib/localIds';
+import { normalizePaperId } from '../lib/paperId';
 import type { AuthUser } from '../hooks/useAuth';
 import { matchParcel } from '../services/territorialService';
 import { hasActiveLocalJourney, loadCurrentAssignment } from '../services/fieldAssignment';
@@ -93,11 +94,16 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
     }
     setSaving(true);
     try {
+      const normalizedPaperId = normalizePaperId(draft.paper_id);
+      if (draft.paper_id.trim() && !normalizedPaperId) {
+        setMessage('El ID debe tener formato MR-20260815-P001 a MR-20260815-P120.');
+        return;
+      }
       const photoData = photo ? await fileToDataUrl(photo) : undefined;
       const mediaHash = photoData ? await sha256(photoData) : undefined;
-      if (draft.paper_id.trim() && online) {
+      if (normalizedPaperId && online) {
         try {
-          await pb.collection('occurrences').getFirstListItem(`paper_id = "${draft.paper_id.trim().replaceAll('"', '\\"')}"`);
+          await pb.collection('occurrences').getFirstListItem(`paper_id = "${normalizedPaperId}"`);
           setMessage('Ese ID de ficha ya existe. Revisá el registro antes de continuar.');
           return;
         } catch {
@@ -120,7 +126,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
       const payload = draft.record_type === 'impact'
         ? {
           territorialChange: {
-            ...base, change_id: recordId, change_type: draft.impact_type,
+            ...base, change_id: recordId, paper_id: normalizedPaperId || undefined, change_type: draft.impact_type,
             objective_description: draft.scientific_name.trim() || 'Cambio territorial observado',
             estimated_area_m2: Number(draft.quantity) || undefined, initial_severity: 'unknown', status: 'pending_review',
             notes: draft.notes.trim(),
@@ -130,7 +136,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         : {
           occurrence: {
             ...base, occurrence_id: recordId, record_type: draft.record_type,
-          geodetic_datum: 'WGS84', field_name: 'Biocorredor MR', paper_id: draft.paper_id.trim() || undefined,
+          geodetic_datum: 'WGS84', field_name: 'Biocorredor MR', paper_id: normalizedPaperId || undefined,
           scientific_name: draft.scientific_name.trim() || 'Registro pendiente', scientific_name_proposed: draft.scientific_name.trim() || undefined,
           basis_of_record: 'HumanObservation',
           taxon_group: draft.record_type === 'biodiversity' ? draft.taxon_group : 'other', identification_qualifier: draft.identification_qualifier,
@@ -223,7 +229,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         {draft.record_type === 'impact' && <label className="block font-sans text-xs font-bold uppercase tracking-wider">Tipo de cambio territorial<select value={draft.impact_type} onChange={(e) => update('impact_type', e.target.value)} className="atlas-input mt-2 w-full"><option value="other">Otro</option><option value="construction">Obra</option><option value="filling">Relleno</option><option value="clearing">Desmonte</option><option value="soil_movement">Movimiento de suelo</option><option value="road_opening">Apertura de calle</option><option value="fencing">Cercamiento</option><option value="watercourse_change">Cambio en curso de agua</option><option value="vegetation_loss">Pérdida de vegetación</option></select></label>}
         {draft.record_type === 'biodiversity' && <div className="grid gap-4 sm:grid-cols-3"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Grupo<select value={draft.taxon_group} onChange={(e) => update('taxon_group', e.target.value)} className="atlas-input mt-2 w-full"><option value="plant">Planta</option><option value="bird">Ave</option><option value="mammal">Mamífero</option><option value="reptile">Reptil</option><option value="amphibian">Anfibio</option><option value="arthropod">Artrópodo</option><option value="fungi">Hongo / funga</option><option value="other">Otro</option></select></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Calificador<select value={draft.identification_qualifier} onChange={(e) => update('identification_qualifier', e.target.value)} className="atlas-input mt-2 w-full"><option value="unknown">No sé</option><option value="sp">sp.</option><option value="cf">cf.</option><option value="aff">aff.</option><option value="tentative">Tentativa</option><option value="probable">Probable</option></select></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Conteo<select value={draft.count_method} onChange={(e) => update('count_method', e.target.value)} className="atlas-input mt-2 w-full"><option value="estimated">Estimado</option><option value="exact">Exacto</option><option value="range">Rango</option><option value="cover">Cobertura %</option></select></label></div>}
         <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Sustrato o referencia<input value={draft.substrate} onChange={(e) => update('substrate', e.target.value)} placeholder="Suelo, tronco, camino..." className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Condición del lugar<input value={draft.microhabitat} onChange={(e) => update('microhabitat', e.target.value)} placeholder="Sombra, humedad, acceso..." className="atlas-input mt-2 w-full" /></label></div>
-        <label className="block font-sans text-xs font-bold uppercase tracking-wider">ID de ficha / QR <span className="font-normal normal-case opacity-50">(opcional)</span><input value={draft.paper_id} onChange={(e) => update('paper_id', e.target.value.toUpperCase())} placeholder="MR-20260815-P001" className="atlas-input mt-2 w-full" /></label>
+        <label className="block font-sans text-xs font-bold uppercase tracking-wider">Ficha en papel / QR <span className="font-normal normal-case opacity-50">(opcional)</span><input value={draft.paper_id} onChange={(e) => update('paper_id', e.target.value)} onBlur={() => { const normalized = normalizePaperId(draft.paper_id); if (draft.paper_id.trim() && normalized) update('paper_id', normalized); }} placeholder="MR-20260815-P001" className="atlas-input mt-2 w-full" /></label>
         <label className="block font-sans text-xs font-bold uppercase tracking-wider">Nota breve <span className="font-normal normal-case opacity-50">(opcional)</span><textarea value={draft.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Qué viste o qué cambió" className="mt-2 min-h-24 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-atlas-earth" /></label>
         <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={locate} className="atlas-button inline-flex items-center justify-center gap-2"><MapPin className="h-4 w-4" />{position ? `${position.coords[0].toFixed(4)}, ${position.coords[1].toFixed(4)}` : 'Capturar ubicación'}</button><label className="atlas-button inline-flex cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{photo ? 'Cambiar foto' : 'Agregar foto original'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setPhoto(file); setPhotoPreview(await fileToDataUrl(file)); } }} /></label></div>
         <p className={`font-mono text-[10px] uppercase tracking-wider ${!position ? 'text-atlas-ink/55' : position.accuracy <= 15 ? 'text-emerald-700' : position.accuracy <= 50 ? 'text-amber-700' : 'text-red-700'}`}>{!position ? 'GPS pendiente · se puede guardar sin coordenadas' : position.accuracy <= 15 ? `GPS preciso · ±${Math.round(position.accuracy)} m` : position.accuracy <= 50 ? `GPS aceptable · ±${Math.round(position.accuracy)} m` : `GPS impreciso · ±${Math.round(position.accuracy)} m`}</p>

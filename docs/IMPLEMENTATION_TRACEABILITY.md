@@ -219,3 +219,7 @@ La remediación se implementó en `public/field-fallback/` como aplicación est�
 ## Modo Campo MR: aceptación recortada
 
 El escenario `e2e/offline-fallback.spec.ts` ahora valida el seed `MR-20260815`, metadata operativa, categoría de biodiversidad, certeza, `environment`, `abundance`, `phenologicalState`, GPS simulado, precisión, Blob PNG real, hash y recuperación byte-a-byte. La tercera observación se crea después de la reapertura offline y el ZIP `artifacts/block-a/biocorredor-MR-20260815-acceptance.zip` se genera por el mismo flujo. El escenario pasó tres veces consecutivas. No se implementaron tracking continuo, PocketBase, GeoJSON, parcelas, restauración ni curaduría.
+
+## Microfase A.1: ficha física, `paper_id` y QR
+
+La implementación elige `paper_id` directo en ocurrencias y cambios territoriales, sin convertirlo en clave primaria ni imponer unicidad. El fallback valida `MR-20260815-P001` a `MR-20260815-P120`, acepta manualmente el código offline, conserva una foto/escaneo `paper_original` como Blob y detecta coincidencias locales antes de guardar. La apertura por `?paper=` y la normalización de entrada están implementadas; el escaneo por cámara permanece pendiente. La sincronización/conflicto remoto y la auditoría completa de cambios de `paper_id` quedan documentadas como deuda porque esta microfase no incorpora un backend de sincronización nuevo.
