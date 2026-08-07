@@ -13,7 +13,20 @@ La aplicación compila y la suite unitaria pasa, pero eso no demuestra el circui
 
 ## Remediación crítica: Bloque A
 
-Estado: **BLOQUEADO, sin commit de éxito**. Se implementó en el árbol de trabajo un fallback IndexedDB con Blob, SHA-256 y ZIP local, más un service worker cacheable. La prueba E2E real `npx playwright test e2e/offline-fallback.spec.ts --project=chromium` crea la jornada y tres registros con fotografías online, pero al recargar sin red la pantalla no monta: el navegador informa `Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of text/html`. Por el criterio aprobado, no se continúa al Bloque B ni se genera el commit esperado hasta resolver esta falla.
+Estado: **IMPLEMENTADO Y PROBADO** en el commit de éxito `feat: add verified independent offline field fallback`. Se incorporó un fallback estático independiente de PocketBase en `public/field-fallback/`, con jornada local, ocurrencias, cambios territoriales, GPS/precisión, Blob durable en IndexedDB, SHA-256, exportación ZIP y service worker de precache.
+
+La prueba de producción `PLAYWRIGHT_PRODUCTION=1 npx playwright test e2e/offline-fallback.spec.ts --project=chromium` pasó **dos veces consecutivas** usando perfil persistente: tras cerrar/reabrir completamente y sin red se recuperaron 3 registros y 3 fotografías originales. El ZIP demo se encuentra en `artifacts/block-a/biocorredor-field-fallback-demo.zip`; se verificaron hashes de manifiesto, backup y las tres medias.
+
+Tabla de recursos offline observada:
+
+| URL | Destino | Estado | Content-Type | Origen |
+|---|---|---:|---|---|
+| `/field-fallback/index.html` | document | 200 | `text/html;charset=utf-8` | precache |
+| `/field-fallback/fallback.js` | script | 200 | `text/javascript` | precache |
+| `/field-fallback/fallback.css` | style | 200 | `text/css` | precache |
+| `/field-fallback/manifest.webmanifest` | manifest | 200 | `application/manifest+json` | precache |
+
+La regla corregida aplica fallback HTML sólo a navegación/documento; scripts, estilos, workers y manifest requieren respuesta cacheada con MIME propio. El cache versionado es `biocorredor-field-fallback-v2`.
 
 ## Cumplimiento P0
 
@@ -61,4 +74,4 @@ Se revisaron repositorio, rama, commits, migraciones, hooks, colecciones, interf
 
 ## Próxima acción
 
-La auditoría queda detenida aquí, como solicitaste. No se modificó código. Para pasar a implementación hace falta aprobación explícita del orden de corrección, empezando por exportación/manifest, cola durable de eventos y media, y una prueba offline automatizada con PocketBase efímero.
+La ejecución queda detenida al completar Bloque A, como solicitaste. Bloque B y los restantes no fueron iniciados.

@@ -2,13 +2,13 @@
   "audit_date": "2026-08-06",
   "branch": "mvp-relevamiento-15-agosto",
   "commit": "72ab8bb",
-  "phase": "critical_remediation_block_a_blocked",
+  "phase": "critical_remediation_block_a_completed",
   "remediation_block_a": {
-    "status": "BLOQUEADO",
-    "commit": null,
-    "test_command": "npx playwright test e2e/offline-fallback.spec.ts --project=chromium",
-    "failure": "After offline reload, a JavaScript module request receives text/html and the fallback screen does not mount.",
-    "scope": "IndexedDB fallback, Blob media, SHA-256, ZIP writer and cacheable service worker are present in the uncommitted worktree; Block B was not started."
+    "status": "IMPLEMENTADO_Y_PROBADO",
+    "commit": "feat: add verified independent offline field fallback",
+    "test_command": "PLAYWRIGHT_PRODUCTION=1 npx playwright test e2e/offline-fallback.spec.ts --project=chromium",
+    "failure": null,
+    "scope": "Fallback estatico independiente de PocketBase bajo public/field-fallback; jornada, occurrences, territorial changes, GPS, Blob IndexedDB, SHA-256, ZIP y service worker precache. Bloque B no iniciado."
   },
   "blockers": [
     {

@@ -211,3 +211,7 @@ Los campos se toman individualmente del `Diccionario_campos` y `Reglas_validacio
 ## Commits relevantes
 
 `5c2cd19` modelo core; `165ccd1` flujo offline; `f919895` jornada activa; `20d8575` tracking; `66ca55e` parcelas; `319f6f0` asignaciones; `2376204` modelo operativo; `72ab8bb` integridad offline actual. Los commits no sustituyen las pruebas: la matriz sólo los cita como origen de implementación.
+
+## Bloque A: remediación verificada
+
+La remediación se implementó en `public/field-fallback/` como aplicación estática independiente de PocketBase. El E2E de producción con perfil persistente pasó dos veces consecutivas: jornada local, 3 registros (2 ocurrencias y 1 cambio territorial), 3 fotografías Blob en IndexedDB, cierre/reapertura completa offline y exportación ZIP. Se verificaron los hashes SHA-256 del manifiesto, backup y originales. El service worker `biocorredor-field-fallback-v2` precarga HTML, JS, CSS y manifest; el fallback HTML se limita a navegaciones y no sustituye recursos con HTML.

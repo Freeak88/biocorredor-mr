@@ -7,5 +7,6 @@ test-results/
 .DS_Store
 *.log
 data/geoarba/
+artifacts/block-a/*.zip
 .env*
 !.env.example

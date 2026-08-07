@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Biocorredor MR - Fallback de campo</title>
+  <link rel="stylesheet" href="/field-fallback/fallback.css">
+  <link rel="manifest" href="/field-fallback/manifest.webmanifest">
+</head>
+<body>
+  <main class="shell">
+    <header><div><small>MODO CONTINGENCIA</small><h1>Fallback de campo</h1><p class="muted">Sin PocketBase. Los datos quedan en este telefono.</p></div><button id="refresh" class="icon" title="Actualizar">↻</button></header>
+    <section class="notice">Este formulario funciona sin internet. Las fotos originales se guardan como Blob en IndexedDB.</section>
+    <section id="journey-create" class="panel"><h2>Nueva jornada local</h2><div class="grid"><label>Titulo<input id="journey-title" value="Ensayo local Biocorredor MR"></label><label>Protocolo<input id="journey-protocol" value="INV-GENERAL v1.0"></label><label>Sector<input id="journey-site" value="SEC-MR"></label><label>Participantes<input id="journey-participants" value="Equipo local"></label></div><button id="start">Crear jornada local</button></section>
+    <section id="journey-active" class="panel hidden"><div class="row"><div><small id="journey-status"></small><h2 id="journey-name"></h2><p id="journey-meta" class="muted"></p><code id="journey-id"></code></div><button id="close-journey" class="secondary">Cerrar jornada</button></div></section>
+    <section id="capture" class="panel hidden"><div class="tabs"><button id="kind-occurrence" class="selected">Observacion</button><button id="kind-change">Cambio territorial</button></div><label>Descripcion objetiva<input id="description" value="Registro pendiente"></label><label id="group-wrap">Grupo taxonomico<select id="group"><option value="other">Otro</option><option value="plant">Planta</option><option value="bird">Ave</option><option value="mammal">Mamifero</option><option value="arthropod">Artropodo</option><option value="fungi">Hongo</option></select></label><label id="change-wrap" class="hidden">Tipo de cambio<select id="change"><option value="other">Otro</option><option value="construction">Obra</option><option value="filling">Relleno</option><option value="clearing">Desmonte</option><option value="soil_movement">Movimiento de suelo</option></select></label><label>Notas<textarea id="notes"></textarea></label><div class="grid"><button id="gps" class="secondary">Capturar GPS</button><label class="file">Foto original<input id="photo" type="file" accept="image/*" capture="environment"></label></div><p id="gps-status" class="muted">GPS pendiente; se puede guardar sin coordenadas.</p><button id="save">Guardar en este telefono</button></section>
+    <section class="panel"><div class="row"><div><h2>Registros locales</h2><p id="counts" class="muted"></p></div><button id="export" class="secondary">Exportar ZIP</button></div><ul id="records"></ul><p id="message" class="message"></p></section>
+  </main><script src="/field-fallback/fallback.js"></script>
+</body>
+</html>
