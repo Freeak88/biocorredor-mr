@@ -38,7 +38,7 @@ test('Modo Campo MR completa el ciclo offline y captura despues de reabrir', asy
   await page.getByLabel('Descripcion objetiva').fill('Herbacea observada en el bajo');
   await page.getByLabel('Categoria').selectOption('flora');
   await page.getByLabel('Certeza').selectOption('probable');
-  await page.getByLabel('Ambiente').selectOption('bajo_dulce');
+  await page.getByRole('combobox', { name: 'Ambiente' }).selectOption('bajo_dulce');
   await page.getByLabel('Abundancia').selectOption('scarce');
   await page.getByLabel('Fenologia').selectOption('vegetative');
   await page.getByRole('button', { name: /Capturar GPS/i }).click();
@@ -73,7 +73,7 @@ test('Modo Campo MR completa el ciclo offline y captura despues de reabrir', asy
   await offlinePage.getByLabel('Descripcion objetiva').fill('Registro C posterior a reapertura');
   await offlinePage.getByLabel('Categoria').selectOption('funga');
   await offlinePage.getByLabel('Certeza').selectOption('unknown');
-  await offlinePage.getByLabel('Ambiente').selectOption('bajo_dulce');
+  await offlinePage.getByRole('combobox', { name: 'Ambiente' }).selectOption('bajo_dulce');
   await offlinePage.getByLabel('Abundancia').selectOption('isolated');
   await offlinePage.getByLabel('Fenologia').selectOption('unknown');
   await offlinePage.getByRole('button', { name: /Capturar GPS/i }).click();

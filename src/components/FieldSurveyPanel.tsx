@@ -3,6 +3,7 @@ import { Camera, Check, CloudOff, LoaderCircle, MapPin, RefreshCw, ShieldAlert, 
 import { pb } from '../lib/pb';
 import { drainQueue, enqueueOp, isOnline, onOnlineChange, removeQueuedOps, type QueuedOp } from '../lib/offline';
 import { newLocalId } from '../lib/localIds';
+import { getLocalMedia, getStorageEstimate, persistMediaEvidence, requestStoragePersistence, updateLocalMedia } from '../lib/mediaEvidence';
 import { normalizePaperId } from '../lib/paperId';
 import type { AuthUser } from '../hooks/useAuth';
 import { matchParcel } from '../services/territorialService';
@@ -30,12 +31,6 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-async function sha256(dataUrl: string): Promise<string> {
-  const bytes = Uint8Array.from(atob(dataUrl.split(',')[1]), (char) => char.charCodeAt(0));
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
 interface Props { user: AuthUser; onClose: () => void; }
 
 export default function FieldSurveyPanel({ user, onClose }: Props) {
@@ -45,6 +40,8 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
   const [position, setPosition] = useState<{ coords: [number, number]; accuracy: number; capturedAt: string } | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState('');
+  const [paperPhoto, setPaperPhoto] = useState<File | null>(null);
+  const [storageMessage, setStorageMessage] = useState('');
   const [online, setOnline] = useState(isOnline());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -53,6 +50,14 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
 
   useEffect(() => {
     const unsubscribe = onOnlineChange(setOnline);
+    void requestStoragePersistence().then((granted) => {
+      void getStorageEstimate().then((estimate) => {
+        if (!estimate?.quota) return;
+        const used = estimate.usage ? Math.round(estimate.usage / 1024 / 1024) : 0;
+        const quota = Math.round(estimate.quota / 1024 / 1024);
+        setStorageMessage(`${used} MB usados de ${quota} MB${granted === false ? ' · almacenamiento no persistente' : ''}`);
+      });
+    });
     void loadCurrentAssignment(user.uid).then((assignment) => {
       if (!assignment) { setMessage('No tenés una jornada asignada por coordinación.'); return; }
       const site: Site = assignment.expand?.site || { id: assignment.site, code: 'Sector asignado', name: 'Sector asignado' };
@@ -100,7 +105,6 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         return;
       }
       const photoData = photo ? await fileToDataUrl(photo) : undefined;
-      const mediaHash = photoData ? await sha256(photoData) : undefined;
       if (normalizedPaperId && online) {
         try {
           await pb.collection('occurrences').getFirstListItem(`paper_id = "${normalizedPaperId}"`);
@@ -123,6 +127,13 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
           location_source: position ? 'gps' : 'missing', location_captured_at: position?.capturedAt,
           public_visibility: 'private', record_version: 1, sync_status: online ? 'syncing' : 'local_only',
         };
+      const mediaRole = draft.record_type === 'impact' ? 'territorial_evidence' : 'biological_evidence';
+      const photoMediaId = photo ? newLocalId('MEDIA') : undefined;
+      const paperMediaId = paperPhoto ? newLocalId('MEDIA') : undefined;
+      const mediaRefs = [
+        photoMediaId && photo ? { mediaId: photoMediaId, mediaRole, parentType: draft.record_type === 'impact' ? 'territorial_change' : 'occurrence' } : null,
+        paperMediaId && paperPhoto ? { mediaId: paperMediaId, mediaRole: 'paper_original', parentType: 'paper_record_reference' } : null,
+      ].filter(Boolean) as Array<{ mediaId: string; mediaRole: 'biological_evidence' | 'territorial_evidence' | 'paper_original'; parentType: 'occurrence' | 'territorial_change' | 'paper_record_reference' }>;
       const payload = draft.record_type === 'impact'
         ? {
           territorialChange: {
@@ -131,7 +142,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
             estimated_area_m2: Number(draft.quantity) || undefined, initial_severity: 'unknown', status: 'pending_review',
             notes: draft.notes.trim(),
           },
-          media: photoData ? { dataUrl: photoData, sha256: mediaHash!, mediaId: newLocalId('MEDIA'), mimeType: photo?.type || 'image/jpeg', fileSize: photo?.size || 0 } : undefined,
+          media: mediaRefs,
         }
         : {
           occurrence: {
@@ -149,12 +160,16 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
           territorial_context_json: territorialContext,
           territorial_context_status: territorialContext.status,
           },
-          media: photoData ? { dataUrl: photoData, sha256: mediaHash!, mediaId: newLocalId('MEDIA'), mimeType: photo?.type || 'image/jpeg', fileSize: photo?.size || 0 } : undefined,
+          media: mediaRefs,
         };
+      for (const mediaRef of mediaRefs) {
+        const file = mediaRef.mediaId === photoMediaId ? photo : paperPhoto;
+        if (file) await persistMediaEvidence(file, { mediaId: mediaRef.mediaId, parentType: mediaRef.parentType, parentLocalId: recordId, paperId: mediaRef.mediaRole === 'paper_original' ? normalizedPaperId : null, mediaRole: mediaRef.mediaRole });
+      }
       await enqueueOp(draft.record_type === 'impact' ? 'territorial-change' : 'field-occurrence', payload);
       setMessage(online ? 'Registro guardado en la cola de sincronización.' : 'Registro guardado en este teléfono. Se sincronizará al volver la conexión.');
       setDraft({ ...emptyDraft, event: draft.event, site: draft.site });
-      setPhoto(null); setPhotoPreview('');
+      setPhoto(null); setPhotoPreview(''); setPaperPhoto(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo guardar el registro.');
     } finally { setSaving(false); }
@@ -169,7 +184,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
           try { await pb.collection('route_points').create(payload.routePoint); }
           catch (error: any) { if (error?.status !== 400 && error?.status !== 409) throw error; }
         } else if (op.type === 'field-occurrence' || op.type === 'territorial-change') {
-          const payload = op.payload as { occurrence?: Record<string, any>; territorialChange?: Record<string, any>; media?: { dataUrl: string; sha256: string; mediaId: string; mimeType: string; fileSize: number } };
+          const payload = op.payload as { occurrence?: Record<string, any>; territorialChange?: Record<string, any>; media?: Array<{ mediaId: string; mediaRole: string; parentType: string }> };
           const collection = op.type === 'field-occurrence' ? 'occurrences' : 'territorial_changes';
           const key = op.type === 'field-occurrence' ? 'occurrence_id' : 'change_id';
           const record = payload.occurrence || payload.territorialChange!;
@@ -179,18 +194,23 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
             if (error?.status !== 400 && error?.status !== 409) throw error;
             saved = await pb.collection(collection).getFirstListItem(`${key} = "${record[key]}"`);
           }
-          if (payload.media) {
-            const blob = await (await fetch(payload.media.dataUrl)).blob();
+          if (payload.media?.length) {
+            for (const mediaRef of payload.media) {
+              const localMedia = await getLocalMedia(mediaRef.mediaId);
+              if (!localMedia) throw new Error(`Falta media local ${mediaRef.mediaId}`);
+              const blob = localMedia.blob;
             const formData = new FormData();
             formData.append(op.type === 'field-occurrence' ? 'occurrence' : 'territorial_change', saved.id);
-            formData.append('original_file', new File([blob], `${payload.media.mediaId}.jpg`, { type: payload.media.mimeType }));
-            formData.append('sha256', payload.media.sha256); formData.append('mime_type', payload.media.mimeType);
-            formData.append('file_size', String(payload.media.fileSize)); formData.append('media_type', 'photo');
-            formData.append('is_original', 'true'); formData.append('sync_status', 'synced'); formData.append('created_by', user.uid);
-            formData.append('original_local_blob_key', payload.media.sha256); formData.append('media_id', payload.media.mediaId);
+            if (localMedia.paper_id) formData.append('paper_id', localMedia.paper_id);
+            formData.append('original_file', new File([blob], `${localMedia.media_id}.original`, { type: localMedia.mime_type }));
+            if (localMedia.sha256) formData.append('sha256', localMedia.sha256); formData.append('mime_type', localMedia.mime_type);
+            formData.append('file_size', String(localMedia.file_size)); formData.append('media_type', 'photo');
+            formData.append('media_role', localMedia.media_role); formData.append('is_original', 'true'); formData.append('sync_status', 'synced'); formData.append('created_by', user.uid);
+            if (localMedia.sha256) formData.append('original_local_blob_key', localMedia.sha256); formData.append('media_id', localMedia.media_id);
             formData.append('ingested_at', new Date().toISOString());
-            try { await pb.collection('media_evidence').create(formData); }
-            catch (error: any) { if (error?.status !== 400 && error?.status !== 409) throw error; }
+            try { const savedMedia = await pb.collection('media_evidence').create(formData); await updateLocalMedia(localMedia.media_id, { sync_status: 'synced', server_id: savedMedia.id, last_sync_error: null }); }
+            catch (error: any) { await updateLocalMedia(localMedia.media_id, { sync_status: 'failed', retry_count: localMedia.retry_count + 1, last_sync_error: String(error?.message || 'No se pudo sincronizar media') }); if (error?.status !== 400 && error?.status !== 409) throw error; }
+            }
           }
         }
         completed.push(op.id);
@@ -232,8 +252,10 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         <label className="block font-sans text-xs font-bold uppercase tracking-wider">Ficha en papel / QR <span className="font-normal normal-case opacity-50">(opcional)</span><input value={draft.paper_id} onChange={(e) => update('paper_id', e.target.value)} onBlur={() => { const normalized = normalizePaperId(draft.paper_id); if (draft.paper_id.trim() && normalized) update('paper_id', normalized); }} placeholder="MR-20260815-P001" className="atlas-input mt-2 w-full" /></label>
         <label className="block font-sans text-xs font-bold uppercase tracking-wider">Nota breve <span className="font-normal normal-case opacity-50">(opcional)</span><textarea value={draft.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Qué viste o qué cambió" className="mt-2 min-h-24 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-atlas-earth" /></label>
         <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={locate} className="atlas-button inline-flex items-center justify-center gap-2"><MapPin className="h-4 w-4" />{position ? `${position.coords[0].toFixed(4)}, ${position.coords[1].toFixed(4)}` : 'Capturar ubicación'}</button><label className="atlas-button inline-flex cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{photo ? 'Cambiar foto' : 'Agregar foto original'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setPhoto(file); setPhotoPreview(await fileToDataUrl(file)); } }} /></label></div>
+        <label className="atlas-button inline-flex cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{paperPhoto ? `Ficha: ${paperPhoto.name}` : 'Adjuntar foto de ficha (opcional)'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => setPaperPhoto(e.target.files?.[0] || null)} /></label>
         <p className={`font-mono text-[10px] uppercase tracking-wider ${!position ? 'text-atlas-ink/55' : position.accuracy <= 15 ? 'text-emerald-700' : position.accuracy <= 50 ? 'text-amber-700' : 'text-red-700'}`}>{!position ? 'GPS pendiente · se puede guardar sin coordenadas' : position.accuracy <= 15 ? `GPS preciso · ±${Math.round(position.accuracy)} m` : position.accuracy <= 50 ? `GPS aceptable · ±${Math.round(position.accuracy)} m` : `GPS impreciso · ±${Math.round(position.accuracy)} m`}</p>
         {photoPreview && <img src={photoPreview} alt="Vista previa de la evidencia" className="max-h-56 w-full object-cover" />}
+        {storageMessage && <p className="font-mono text-[10px] uppercase tracking-wider opacity-55">Almacenamiento local: {storageMessage}</p>}
         <label className="flex items-start gap-3 border border-atlas-ink/20 p-3 font-sans text-xs"><input type="checkbox" checked={draft.sensitive_record === 'true'} onChange={(e) => update('sensitive_record', e.target.checked ? 'true' : 'false')} className="mt-0.5" /><span><span className="flex items-center gap-1 font-bold"><ShieldAlert className="h-4 w-4" /> Registro sensible</span><span className="mt-1 block opacity-70">Oculta la ubicación precisa y limita la visibilidad al equipo.</span></span></label>
         {message && <p className="border-l-4 border-atlas-earth px-3 py-2 font-sans text-sm">{message}</p>}
         <button disabled={saving || !selectedEvent} className="flex w-full items-center justify-center gap-2 bg-atlas-ink px-4 py-4 font-sans text-xs font-black uppercase tracking-[0.18em] text-atlas-paper hover:bg-atlas-earth disabled:opacity-50">{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4" /> Guardar relevamiento</>}</button>

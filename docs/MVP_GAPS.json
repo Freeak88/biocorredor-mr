@@ -87,6 +87,15 @@
     "scope": "strata, sampling_units, event methodology, morphospecies_code, evidence_type, offline recovery and closure",
     "excluded": ["QR camera scan", "remote sync/conflict", "paper_record", "GBIF/iNaturalist/Merlin", "indices/statistical analysis"]
   },
+  "block_c_offline_media": {
+    "status": "IMPLEMENTADO_Y_PROBADO",
+    "migration": "pocketbase/pb_migrations/1790000017_media_evidence_lifecycle.js",
+    "module": "src/lib/mediaEvidence.ts",
+    "e2e": "e2e/offline-media-persistence.spec.ts",
+    "scope": "photo P0, original Blob, exact SHA-256, roles, parent relations, previews, storage estimate and lifecycle metadata",
+    "verified": ["five blobs", "five hashes after restart", "five reconstructed object URLs", "occurrence", "territorial_change", "paper_original"],
+    "excluded": ["remote upload", "remote sync/conflicts", "audio", "video", "document", "scientific ZIP export"]
+  },
   "test_execution": {
     "npm run lint": {"exit_code": 0, "result": "typecheck passed"},
     "npm run test:run -- --pool=forks --poolOptions.forks.singleFork=true": {"exit_code": 0, "files": 7, "tests": 65, "passed": 65, "failed": 0},

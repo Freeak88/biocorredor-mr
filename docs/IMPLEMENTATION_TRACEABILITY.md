@@ -232,3 +232,10 @@ Se agregaron las colecciones PocketBase `strata` y `sampling_units` mediante la 
 El fallback independiente de PocketBase precarga catálogos en IndexedDB, permite iniciar una jornada estandarizada/estratificada con `MR-PAS-T01`, registrar observaciones con y sin `paper_id`, conservar morfoespecie y medios originales, cerrar offline y recuperar tras cerrar/reabrir el navegador. La prueba reproducible es `e2e/offline-survey-methodology.spec.ts`; el detalle conceptual está en `docs/SAMPLING_MODEL.md`.
 
 El comportamiento de borrador incompleto es intencional para el modo offline: el formulario ofrece los datos metodológicos y los persiste, mientras la validación de completitud para sincronización remota queda fuera de este bloque.
+
+
+## Bloque C: media offline y evidencia
+
+La auditoría previa distinguió el fallback independiente del campo principal. El fallback ya tenía Blob, MIME, tamaño, timestamps, SHA-256, relación local y `paper_original`; se agregó reconstrucción de previews desde Blob, roles explícitos y cinco evidencias verificadas. El campo principal dejó de depender de `dataUrl` como fuente persistente: `src/lib/mediaEvidence.ts` almacena el original en IndexedDB y la sincronización futura lee ese Blob.
+
+La migración `1790000017_media_evidence_lifecycle.js` agrega `parent_type`, `parent_local_id`, `local_id`, `server_id`, `original_sha256`, `retry_count` y `last_sync_error`. La prueba `e2e/offline-media-persistence.spec.ts` valida occurrence, territorial change, paper original, roles de hábitat/diagnóstico, cinco Blob, reinicio, previews y hashes 5/5. Audio, video y documento permanecen fuera de P0.

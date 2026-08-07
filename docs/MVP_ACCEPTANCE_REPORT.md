@@ -92,3 +92,10 @@ Se agregó trazabilidad manual offline mediante `paper_id`, incluyendo normaliza
 Estado: **IMPLEMENTADO Y PROBADO**. La prueba de aceptación pasó en producción con perfil persistente. Se añadieron `strata`, `sampling_units`, campos metodológicos de `survey_events`, `morphospecies_code` y `evidence_type` en la migración `1790000016_sampling_methodology.js`. El fallback precarga catálogos, permite una jornada estandarizada/estratificada con `MR-PAS-T01`, conserva dos observaciones con/sin `paper_id`, morfoespecie y fotografías, y permite recuperación y cierre offline.
 
 La prueba de aceptación es `e2e/offline-survey-methodology.spec.ts`. Se mantienen fuera de B QR por cámara, sincronización remota, `paper_record`, integraciones taxonómicas y análisis estadístico. La especificación de datos está en `docs/SAMPLING_MODEL.md`.
+
+
+## Bloque C: media offline y evidencia
+
+Estado: **IMPLEMENTADO Y PROBADO** para PHOTO P0. Se consolidó la persistencia del original como Blob en IndexedDB, con SHA-256 sobre bytes exactos, roles de evidencia, relaciones padre, metadatos de ciclo de vida y reconstrucción de previews con `objectURL`. El fallback y el campo principal comparten la garantía de almacenamiento; la sincronización remota queda preparada mediante `local_id`, `server_id`, `retry_count` y `last_sync_error`, pero sigue fuera de este bloque.
+
+La prueba `e2e/offline-media-persistence.spec.ts` verifica cinco fotografías correspondientes a ocurrencia, ambiente, detalle diagnóstico, cambio territorial y ficha `MR-20260815-P017`. Tras cerrar página y contexto, se recuperan los cinco Blob, se recalculan sus hashes y se vuelven a mostrar las cinco previews. Las cuatro pruebas offline A/A.1/B/C pasan juntas. No se implementan audio, video, documentos ni upload remoto.
