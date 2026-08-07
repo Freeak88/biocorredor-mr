@@ -5,32 +5,23 @@ import App from './App.tsx';
 import './index.css';
 import { installGlobalErrorLogging, logError } from './lib/logger';
 
-// ── Emergency SW unregister + version check ──
-const APP_VERSION = 'v7';
+// ── Offline app shell ──
+const APP_VERSION = 'v8';
 
 if ('serviceWorker' in navigator) {
-  // Unregister any old SWs
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((reg) => {
-      reg.unregister().then(() => {
-        console.log('[SW] Unregistered:', reg.scope);
-      });
-    });
-  });
-
-  // Clear all caches
-  if (window.caches) {
-    caches.keys().then((names) => {
-      names.forEach((n) => caches.delete(n));
-    });
-  }
-
-  // Register new SW with versioned URL (forces browser to treat as new)
-  const swUrl = `/service-worker.js?v=${APP_VERSION}`;
+  // Keep the shell and already visited assets available for the local fallback.
+  const swUrl = `/sw.js?v=${APP_VERSION}`;
   navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' })
     .then((reg) => {
       console.log('[SW] Registered:', reg.scope);
       reg.update(); // Force check for updates
+      return navigator.serviceWorker.ready;
+    })
+    .then(() => {
+      const assets = [location.origin + '/', ...Array.from(document.querySelectorAll<HTMLScriptElement>('script[src]')).map((item) => item.src), ...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map((item) => item.href)].filter(Boolean);
+      return caches.open(`biocorredor-shell-${APP_VERSION}`).then(async (cache) => {
+        await Promise.allSettled(assets.map((asset) => cache.add(asset)));
+      });
     })
     .catch((err) => {
       console.warn('[SW] Registration failed:', err);

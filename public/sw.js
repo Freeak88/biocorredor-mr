@@ -1,29 +1,24 @@
-// FungiMap Service Worker — EMERGENCY CACHE CLEAR v5
-// This SW unregisters itself and clears all caches immediately
+// Biocorredor MR service worker: cache the app shell and visited assets.
+const CACHE_NAME = 'biocorredor-shell-v8';
+const SHELL = ['/', '/index.html', '/offline.html'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    self.registration.unregister()
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then((clients) => {
-        clients.forEach((client) => {
-          if (client instanceof WindowClient) {
-            client.navigate(client.url);
-          }
-        });
-      })
-      .then(() => self.caches.keys())
-      .then((cacheNames) => Promise.all(
-        cacheNames.map((cacheName) => self.caches.delete(cacheName))
-      ))
-  );
+  event.waitUntil(self.caches.keys().then((cacheNames) => Promise.all(cacheNames.filter((name) => name !== CACHE_NAME).map((name) => self.caches.delete(name)))).then(() => self.clients.claim()));
 });
 
-// Do not intercept any requests — pass through
 self.addEventListener('fetch', (event) => {
-  // No caching, just pass through
+  if (event.request.method !== 'GET') return;
+  event.respondWith(caches.match(event.request, { ignoreSearch: true }).then((cached) => {
+    if (cached) return cached;
+    return fetch(event.request).then((response) => {
+      if (response.ok && new URL(event.request.url).origin === self.location.origin) {
+        const copy = response.clone(); void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+      }
+      return response;
+    }).catch(() => caches.match('/offline.html', { ignoreSearch: true }));
+  }));
 });

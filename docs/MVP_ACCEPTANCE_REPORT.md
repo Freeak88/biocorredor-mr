@@ -11,6 +11,10 @@ Fase: auditoría sin modificar código.
 
 La aplicación compila y la suite unitaria pasa, pero eso no demuestra el circuito operativo solicitado. Faltan exportación del paquete probatorio, prueba offline real con cuatro registros y fotografías, persistencia offline del evento/cierre, generación de preview/EXIF y corrección versionada de registros sellados.
 
+## Remediación crítica: Bloque A
+
+Estado: **BLOQUEADO, sin commit de éxito**. Se implementó en el árbol de trabajo un fallback IndexedDB con Blob, SHA-256 y ZIP local, más un service worker cacheable. La prueba E2E real `npx playwright test e2e/offline-fallback.spec.ts --project=chromium` crea la jornada y tres registros con fotografías online, pero al recargar sin red la pantalla no monta: el navegador informa `Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of text/html`. Por el criterio aprobado, no se continúa al Bloque B ni se genera el commit esperado hasta resolver esta falla.
+
 ## Cumplimiento P0
 
 La planilla declara 71 campos/requisitos P0. La clasificación aplicada es la de `docs/IMPLEMENTATION_TRACEABILITY.md`. El cálculo reproducible es:

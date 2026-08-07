@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import OfflineFallbackPanel from './OfflineFallbackPanel';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -14,6 +15,7 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +31,8 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
   };
 
   return (
+    <>
+    {showFallback && <OfflineFallbackPanel onClose={() => setShowFallback(false)} />}
     <div className="min-h-[100dvh] w-full flex flex-col items-center bg-atlas-paper relative overflow-y-auto overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
       {/* Decorative background */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
@@ -107,6 +111,7 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
         </form>
 
         <p className="mt-5 text-center font-sans text-[10px] uppercase tracking-widest text-atlas-ink/45">Acceso asignado por coordinación</p>
+        <button type="button" onClick={() => setShowFallback(true)} className="mt-4 border border-atlas-earth px-3 py-2 font-sans text-[10px] font-bold uppercase tracking-wider text-atlas-earth">Abrir modo de contingencia sin conexión</button>
 
         {/* Mission statement */}
         <div className="mt-6 px-4 text-center space-y-2 flex-shrink-0">
@@ -134,5 +139,6 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
         </div>
       </div>
     </div>
+    </>
   );
 }

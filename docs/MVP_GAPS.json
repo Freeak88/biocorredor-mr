@@ -2,7 +2,14 @@
   "audit_date": "2026-08-06",
   "branch": "mvp-relevamiento-15-agosto",
   "commit": "72ab8bb",
-  "phase": "audit_without_code_changes",
+  "phase": "critical_remediation_block_a_blocked",
+  "remediation_block_a": {
+    "status": "BLOQUEADO",
+    "commit": null,
+    "test_command": "npx playwright test e2e/offline-fallback.spec.ts --project=chromium",
+    "failure": "After offline reload, a JavaScript module request receives text/html and the fallback screen does not mount.",
+    "scope": "IndexedDB fallback, Blob media, SHA-256, ZIP writer and cacheable service worker are present in the uncommitted worktree; Block B was not started."
+  },
   "blockers": [
     {
       "id": "B01",
