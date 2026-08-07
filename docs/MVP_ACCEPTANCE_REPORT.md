@@ -75,3 +75,9 @@ Se revisaron repositorio, rama, commits, migraciones, hooks, colecciones, interf
 ## Próxima acción
 
 La ejecución queda detenida al completar Bloque A, como solicitaste. Bloque B y los restantes no fueron iniciados.
+
+## Modo Campo MR: `MR-20260815`
+
+Se verificó el bloque recortado de piloto sobre `/field-fallback/`, sin modificar la aplicación React principal ni implementar tracking continuo. El E2E de producción pasó tres veces consecutivas desde perfiles limpios con el ciclo online → offline → cierre total → reapertura → nueva captura offline → cierre → ZIP.
+
+La jornada exportada conserva `eventId`, `eventName`, `teamId`, `observerName`, `sectorId`, `deviceId`, `protocolVersion`, `startedAt`, `completedAt` y `status`. Las observaciones conservan categoría, nombre de campo, nombre científico opcional, certeza, ambiente, abundancia, fenología, timestamp, GPS, precisión y medios originales. El artefacto de aceptación es `artifacts/block-a/biocorredor-MR-20260815-acceptance.zip`.

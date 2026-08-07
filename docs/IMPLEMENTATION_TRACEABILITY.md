@@ -215,3 +215,7 @@ Los campos se toman individualmente del `Diccionario_campos` y `Reglas_validacio
 ## Bloque A: remediación verificada
 
 La remediación se implementó en `public/field-fallback/` como aplicación estática independiente de PocketBase. El E2E de producción con perfil persistente pasó dos veces consecutivas: jornada local, 3 registros (2 ocurrencias y 1 cambio territorial), 3 fotografías Blob en IndexedDB, cierre/reapertura completa offline y exportación ZIP. Se verificaron los hashes SHA-256 del manifiesto, backup y originales. El service worker `biocorredor-field-fallback-v2` precarga HTML, JS, CSS y manifest; el fallback HTML se limita a navegaciones y no sustituye recursos con HTML.
+
+## Modo Campo MR: aceptación recortada
+
+El escenario `e2e/offline-fallback.spec.ts` ahora valida el seed `MR-20260815`, metadata operativa, categoría de biodiversidad, certeza, `environment`, `abundance`, `phenologicalState`, GPS simulado, precisión, Blob PNG real, hash y recuperación byte-a-byte. La tercera observación se crea después de la reapertura offline y el ZIP `artifacts/block-a/biocorredor-MR-20260815-acceptance.zip` se genera por el mismo flujo. El escenario pasó tres veces consecutivas. No se implementaron tracking continuo, PocketBase, GeoJSON, parcelas, restauración ni curaduría.
