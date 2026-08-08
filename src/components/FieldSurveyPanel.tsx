@@ -8,9 +8,10 @@ import { normalizePaperId } from '../lib/paperId';
 import type { AuthUser } from '../hooks/useAuth';
 import { matchParcel } from '../services/territorialService';
 import { hasActiveLocalJourney, loadCurrentAssignment } from '../services/fieldAssignment';
+import { createSyncIdentity, enqueueSyncDataset, listSyncQueue, serializeSurveyEvent, syncQueued, type SyncEntity, type SyncMedia } from '../lib/remoteSync';
 
 type Site = { id: string; code: string; name: string };
-type Event = { id: string; event_id: string; title: string; site: string };
+type Event = { id: string; event_id: string; title: string; site: string; project?: string; protocol?: string; created_by?: string; started_at?: string };
 type Draft = {
   event: string; site: string; record_type: 'biodiversity' | 'habitat' | 'impact'; scientific_name: string; quantity: string; substrate: string;
   microhabitat: string; notes: string; sensitive_record: 'false' | 'true'; paper_id: string; taxon_group: string;
@@ -132,8 +133,8 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
       const paperMediaId = paperPhoto ? newLocalId('MEDIA') : undefined;
       const mediaRefs = [
         photoMediaId && photo ? { mediaId: photoMediaId, mediaRole, parentType: draft.record_type === 'impact' ? 'territorial_change' : 'occurrence' } : null,
-        paperMediaId && paperPhoto ? { mediaId: paperMediaId, mediaRole: 'paper_original', parentType: 'paper_record_reference' } : null,
-      ].filter(Boolean) as Array<{ mediaId: string; mediaRole: 'biological_evidence' | 'territorial_evidence' | 'paper_original'; parentType: 'occurrence' | 'territorial_change' | 'paper_record_reference' }>;
+        paperMediaId && paperPhoto ? { mediaId: paperMediaId, mediaRole: 'paper_original', parentType: draft.record_type === 'impact' ? 'territorial_change' : 'occurrence' } : null,
+      ].filter(Boolean) as Array<{ mediaId: string; mediaRole: 'biological_evidence' | 'territorial_evidence' | 'paper_original'; parentType: 'occurrence' | 'territorial_change' }>;
       const payload = draft.record_type === 'impact'
         ? {
           territorialChange: {
@@ -166,7 +167,27 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         const file = mediaRef.mediaId === photoMediaId ? photo : paperPhoto;
         if (file) await persistMediaEvidence(file, { mediaId: mediaRef.mediaId, parentType: mediaRef.parentType, parentLocalId: recordId, paperId: mediaRef.mediaRole === 'paper_original' ? normalizedPaperId : null, mediaRole: mediaRef.mediaRole });
       }
-      await enqueueOp(draft.record_type === 'impact' ? 'territorial-change' : 'field-occurrence', payload);
+      const entityType = draft.record_type === 'impact' ? 'territorial_change' as const : 'occurrence' as const;
+      const entityIdentity = createSyncIdentity(entityType, recordId);
+      const eventIdentity = createSyncIdentity('survey_event', draft.event);
+      const eventEntity: SyncEntity = {
+        ...eventIdentity,
+        data: serializeSurveyEvent({ identity: eventIdentity, eventId: selectedEvent?.event_id || draft.event, title: selectedEvent?.title || 'Jornada asignada', projectId: selectedEvent?.project || '', siteId: draft.site, protocolId: selectedEvent?.protocol, createdBy: selectedEvent?.created_by || user.uid, startedAt: selectedEvent?.started_at || observedAt, methodology: { status: 'active' } }),
+        local_updated_at: observedAt,
+      };
+      const entityData = payload.occurrence || payload.territorialChange!;
+      const mediaEntities: SyncMedia[] = [];
+      for (const mediaRef of mediaRefs) {
+        const localMedia = await getLocalMedia(mediaRef.mediaId);
+        if (!localMedia) continue;
+        mediaEntities.push({ ...createSyncIdentity('media_evidence', localMedia.local_id), data: { created_by: user.uid }, local_updated_at: observedAt, media: localMedia });
+      }
+      await enqueueSyncDataset({
+        event: eventEntity,
+        occurrences: entityType === 'occurrence' ? [{ ...entityIdentity, data: entityData, local_updated_at: observedAt }] : [],
+        territorial_changes: entityType === 'territorial_change' ? [{ ...entityIdentity, data: entityData, local_updated_at: observedAt }] : [],
+        media: mediaEntities,
+      });
       setMessage(online ? 'Registro guardado en la cola de sincronización.' : 'Registro guardado en este teléfono. Se sincronizará al volver la conexión.');
       setDraft({ ...emptyDraft, event: draft.event, site: draft.site });
       setPhoto(null); setPhotoPreview(''); setPaperPhoto(null);
@@ -222,6 +243,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
   useEffect(() => {
     if (!online) return;
     const sync = async () => {
+      await syncQueued(pb);
       const ops = await drainQueue();
       if (!ops.length) return;
       const completed = await syncPending(ops);
@@ -231,11 +253,21 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
     void sync();
   }, [online]);
 
+  const syncNow = async () => {
+    const queue = await listSyncQueue();
+    if (!queue.length) { setMessage('No hay registros pendientes de sincronización.'); return; }
+    setSaving(true);
+    try {
+      const result = await syncQueued(pb);
+      setMessage(`Sincronización: ${result.synced} sincronizados · ${result.conflicts} conflictos · ${result.errors} errores.`);
+    } finally { setSaving(false); }
+  };
+
   return <div className="fixed inset-0 z-[3000] overflow-y-auto bg-atlas-paper text-atlas-ink">
     <div className="mx-auto min-h-screen w-full max-w-2xl px-4 pb-10 sm:px-8">
       <header className="sticky top-0 z-10 -mx-4 mb-5 flex items-center justify-between border-b border-atlas-ink bg-atlas-paper/95 px-4 py-4 backdrop-blur sm:-mx-8 sm:px-8">
         <div><p className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-55">BIOCORREDOR MR</p><h2 className="font-serif text-2xl italic">Nuevo relevamiento</h2></div>
-        <button aria-label="Cerrar relevamiento" onClick={onClose} className="p-2 hover:bg-atlas-stone"><X /></button>
+        <div className="flex items-center gap-2"><button type="button" onClick={() => void syncNow()} disabled={saving} className="atlas-button inline-flex items-center gap-2 text-[10px]"><RefreshCw className="h-3 w-3" /> Sincronizar ahora</button><button aria-label="Cerrar relevamiento" onClick={onClose} className="p-2 hover:bg-atlas-stone"><X /></button></div>
       </header>
       <div className={`mb-4 flex items-center gap-2 border px-3 py-2 font-sans text-xs ${online ? 'border-atlas-ink/20' : 'border-amber-700 bg-amber-50 text-amber-900'}`}>
         {online ? <RefreshCw className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />} {online ? 'Con conexión: se guardará y sincronizará.' : 'Sin conexión: se guardará en este teléfono.'}
