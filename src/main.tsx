@@ -17,11 +17,18 @@ if ('serviceWorker' in navigator) {
       reg.update(); // Force check for updates
       return navigator.serviceWorker.ready;
     })
-    .then(() => {
-      const assets = [location.origin + '/', ...Array.from(document.querySelectorAll<HTMLScriptElement>('script[src]')).map((item) => item.src), ...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map((item) => item.href)].filter(Boolean);
-      return caches.open(`biocorredor-shell-${APP_VERSION}`).then(async (cache) => {
+    .then(async () => {
+      const warmShellCache = async () => {
+        const loadedResources = performance.getEntriesByType('resource').map((entry) => entry.name);
+        const assets = [location.origin + '/', ...Array.from(document.querySelectorAll<HTMLScriptElement>('script[src]')).map((item) => item.src), ...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map((item) => item.href), ...loadedResources]
+          .filter((asset) => asset.startsWith(location.origin) && !asset.includes('/api/'))
+          .filter((asset, index, list) => list.indexOf(asset) === index);
+        const cache = await caches.open(`biocorredor-shell-${APP_VERSION}`);
         await Promise.allSettled(assets.map((asset) => cache.add(asset)));
-      });
+      };
+      await warmShellCache();
+      // Vendor chunks can finish loading after main.tsx; capture them once the app is idle.
+      window.setTimeout(() => void warmShellCache(), 1000);
     })
     .catch((err) => {
       console.warn('[SW] Registration failed:', err);

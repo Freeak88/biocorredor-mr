@@ -69,7 +69,7 @@ export default function Header({
             )}
         {user ? (
           <div className="flex items-center gap-4 font-sans font-black uppercase tracking-widest text-[9px]">
-            <span className="hidden sm:inline-block border-b border-atlas-ink/20">
+            <span className="inline-block max-w-[112px] truncate border-b border-atlas-ink/20 text-[9px] sm:max-w-none">
               {user.displayName || user.email?.split('@')[0]}
             </span>
             <SyncStatusIndicator status={syncStatus} />

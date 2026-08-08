@@ -31,7 +31,8 @@ export async function loadCurrentAssignment(userId: string): Promise<FieldAssign
   try {
     const result = await pb.collection('event_assignments').getList<FieldAssignment>(1, 1, {
       filter: `user = "${userId}" && status != "cancelled"`,
-      sort: '-created',
+      // PocketBase 0.37.3 rejects sorting this collection by its generated `created` field.
+      sort: '-id',
       expand: 'event,team,site,device',
     });
     const assignment = result.items[0] || null;
