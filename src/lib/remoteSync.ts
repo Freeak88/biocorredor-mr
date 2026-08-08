@@ -59,9 +59,26 @@ export interface SyncSummary {
 
 const DEVICE_KEY = 'biocorredor_device_id';
 const DB_NAME = 'biocorredor-remote-sync';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE = 'sync_queue';
 const ENTITY_STORE = 'sync_entities';
+const META_STORE = 'sync_meta';
+const LAST_SUCCESSFUL_SYNC_KEY = 'last_successful_sync_at';
+
+export type SyncUxState = 'ONLINE_SYNCED' | 'ONLINE_PENDING' | 'OFFLINE' | 'BACKEND_UNAVAILABLE' | 'ERROR' | 'NEVER_SYNCED';
+
+export interface CanonicalSyncStatus {
+  pending_count: number;
+  synced_count: number;
+  conflict_count: number;
+  error_count: number;
+  last_successful_sync_at: string | null;
+  network_available: boolean;
+  backend_reachable: boolean | null;
+  sync_pending: boolean;
+  sync_error: boolean;
+  state: SyncUxState;
+}
 
 function apiBaseUrl(): string {
   return typeof window !== 'undefined' && (window as Window & { __PB_API_URL__?: string }).__PB_API_URL__
@@ -112,6 +129,7 @@ function openQueueDb(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'id' });
       if (!request.result.objectStoreNames.contains(ENTITY_STORE)) request.result.createObjectStore(ENTITY_STORE, { keyPath: 'sync_key' });
+      if (!request.result.objectStoreNames.contains(META_STORE)) request.result.createObjectStore(META_STORE, { keyPath: 'key' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('No se pudo abrir la cola remota.'));
@@ -137,17 +155,77 @@ export async function listLocalSyncEntities(): Promise<SyncEntity[]> {
   return items;
 }
 
+export async function getLocalSyncEntity(syncKey: string): Promise<SyncEntity | undefined> {
+  const db = await openQueueDb();
+  const entity = await new Promise<SyncEntity | undefined>((resolve, reject) => {
+    const request = db.transaction(ENTITY_STORE, 'readonly').objectStore(ENTITY_STORE).get(syncKey);
+    request.onsuccess = () => resolve(request.result as SyncEntity | undefined); request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return entity;
+}
+
+async function setSyncMeta(key: string, value: string): Promise<void> {
+  const db = await openQueueDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(META_STORE, 'readwrite'); tx.objectStore(META_STORE).put({ key, value });
+    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function getSyncMeta(key: string): Promise<string | null> {
+  const db = await openQueueDb();
+  const item = await new Promise<{ key: string; value: string } | undefined>((resolve, reject) => {
+    const request = db.transaction(META_STORE, 'readonly').objectStore(META_STORE).get(key);
+    request.onsuccess = () => resolve(request.result as { key: string; value: string } | undefined); request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return item?.value || null;
+}
+
+export function notifySyncStatusChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('biocorredor:sync-changed'));
+}
+
+export async function getCanonicalSyncStatus(input: { backendReachable?: boolean | null } = {}): Promise<CanonicalSyncStatus> {
+  const [queue, entities] = await Promise.all([listSyncQueue(), listLocalSyncEntities()]);
+  const pending = queue.length;
+  const synced = entities.filter((entity) => entity.sync_status === 'synced').length;
+  const conflicts = entities.filter((entity) => entity.sync_status === 'conflict').length;
+  const errors = entities.filter((entity) => entity.sync_status === 'failed').length;
+  const networkAvailable = typeof navigator === 'undefined' ? true : navigator.onLine;
+  const backendReachable = input.backendReachable ?? null;
+  const lastSuccessful = await getSyncMeta(LAST_SUCCESSFUL_SYNC_KEY);
+  const syncError = errors > 0 || conflicts > 0;
+  const state: SyncUxState = !networkAvailable ? 'OFFLINE'
+    : backendReachable === false ? 'BACKEND_UNAVAILABLE'
+      : syncError ? 'ERROR'
+        : pending > 0 ? 'ONLINE_PENDING'
+          : lastSuccessful ? 'ONLINE_SYNCED' : 'NEVER_SYNCED';
+  return { pending_count: pending, synced_count: synced, conflict_count: conflicts, error_count: errors,
+    last_successful_sync_at: lastSuccessful, network_available: networkAvailable, backend_reachable: backendReachable,
+    sync_pending: pending > 0, sync_error: syncError, state };
+}
+
 async function persistDatasetEntities(dataset: SyncDataset): Promise<void> {
   await Promise.all([entityPut(dataset.event), ...dataset.occurrences.map(entityPut), ...dataset.territorial_changes.map(entityPut)]);
 }
 
 export async function enqueueSyncDataset(dataset: SyncDataset): Promise<SyncQueueItem> {
+  const queuedDataset: SyncDataset = {
+    event: { ...dataset.event, sync_status: 'queued' },
+    occurrences: dataset.occurrences.map((entity) => ({ ...entity, sync_status: 'queued' })),
+    territorial_changes: dataset.territorial_changes.map((entity) => ({ ...entity, sync_status: 'queued' })),
+    media: dataset.media,
+  };
   const item: SyncQueueItem = {
-    id: newLocalId('sync'), entity_type: 'survey_event', local_id: dataset.event.local_id, operation: 'upsert', dataset,
+    id: newLocalId('sync'), entity_type: 'survey_event', local_id: dataset.event.local_id, operation: 'upsert', dataset: queuedDataset,
     attempts: 0, created_at: new Date().toISOString(), last_attempt_at: null, last_error: null,
   };
-  await persistDatasetEntities(dataset);
+  await persistDatasetEntities(queuedDataset);
   await queuePut(item);
+  notifySyncStatusChanged();
   return item;
 }
 
@@ -237,7 +315,9 @@ async function syncMedia(client: PocketBase, mediaEntity: SyncMedia, parent: { c
 export async function syncDataset(dataset: SyncDataset, client = createSyncClient()): Promise<SyncSummary> {
   const result: SyncSummary = { pending: 0, synced: 0, conflicts: 0, errors: 0, conflict_details: [] };
   const knownEvent = dataset.event.data.event_id ? await findByField(client, 'survey_events', 'event_id', dataset.event.data.event_id) : null;
-  const event = knownEvent ? { record: knownEvent } : await upsertEntity(client, 'survey_events', dataset.event);
+  const event = knownEvent
+    ? { record: await client.collection('survey_events').update(knownEvent.id, { ...dataset.event.data, sync_key: dataset.event.sync_key, local_id: dataset.event.local_id, device_id: dataset.event.device_id, sync_status: 'synced', server_id: knownEvent.id }) }
+    : await upsertEntity(client, 'survey_events', dataset.event);
   if (event.conflict) { result.conflicts++; const conflict = event.conflict as { local: Record<string, any>; remote: Record<string, any>; detected_at: string }; result.conflict_details!.push({ entity_type: 'survey_event', local_id: dataset.event.local_id, ...conflict }); return result; }
   const parentId = event.record.id;
   for (const entity of dataset.occurrences) {
@@ -270,6 +350,7 @@ export async function syncQueued(client = createSyncClient()): Promise<SyncSumma
       await Promise.all([updateLocal(item.dataset.event), ...item.dataset.occurrences.map(updateLocal), ...item.dataset.territorial_changes.map(updateLocal)]);
       if (result.conflicts) { item.last_error = 'Conflicto de sincronización'; await queuePut(item); continue; }
       await queueDelete(item.id);
+      await setSyncMeta(LAST_SUCCESSFUL_SYNC_KEY, new Date().toISOString());
     } catch (error) {
       item.last_error = error instanceof Error ? error.message : String(error); summary.errors++;
       const state: SyncState = isAuthError(error) || !isTemporary(error) ? 'failed' : 'retry';
@@ -277,6 +358,7 @@ export async function syncQueued(client = createSyncClient()): Promise<SyncSumma
       await queuePut(item);
     }
   }
+  notifySyncStatusChanged();
   return summary;
 }
 

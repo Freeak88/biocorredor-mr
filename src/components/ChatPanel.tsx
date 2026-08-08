@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, MapPin, Send, Plus, Flag } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ChatMessage, AuthUser } from '../types';
+import type { CanonicalSyncStatus } from '../lib/remoteSync';
 
 function parseDate(d: any): Date {
   if (!d) return new Date();
@@ -24,6 +25,7 @@ interface ChatPanelProps {
   handleSendMessage: (text: string) => Promise<boolean>;
   user: AuthUser | null;
   onReport: (type: 'message', targetId: string, content?: string) => void;
+  syncStatus: CanonicalSyncStatus;
 }
 
 export default function ChatPanel({
@@ -37,7 +39,8 @@ export default function ChatPanel({
   isSendingMessage,
   handleSendMessage,
   user,
-  onReport
+  onReport,
+  syncStatus
 }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState('');
@@ -73,6 +76,7 @@ export default function ChatPanel({
         </div>
 
         <div className="px-5 py-3 sm:px-8 bg-atlas-paper border-b border-atlas-ink/10 shrink-0">
+          {(syncStatus.state === 'OFFLINE' || syncStatus.state === 'BACKEND_UNAVAILABLE') && <div className="mb-3 border border-atlas-earth/40 bg-atlas-stone/30 px-3 py-2 text-[11px] font-sans">Sin conexión. El chat necesita Internet. Tus registros siguen guardándose en este dispositivo.</div>}
           <div className="max-w-3xl mx-auto flex items-center gap-2 overflow-x-auto">
             <MapPin className="w-4 h-4 shrink-0 text-atlas-earth" />
             {chatRadiusOptions.map(radius => (
@@ -142,6 +146,7 @@ export default function ChatPanel({
             className="max-w-3xl mx-auto"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (syncStatus.state === 'OFFLINE' || syncStatus.state === 'BACKEND_UNAVAILABLE') return;
               const sent = await handleSendMessage(draft);
               if (sent) setDraft('');
             }}
@@ -162,11 +167,12 @@ export default function ChatPanel({
                   }
                 }}
                 placeholder="Mensaje..."
+                disabled={syncStatus.state === 'OFFLINE' || syncStatus.state === 'BACKEND_UNAVAILABLE'}
                 className="flex-1 max-h-28 resize-none bg-transparent px-3 py-2 font-serif text-base focus:outline-none"
               />
               <button
                 type="submit"
-                disabled={isSendingMessage || draft.trim().length === 0}
+                disabled={isSendingMessage || draft.trim().length === 0 || syncStatus.state === 'OFFLINE' || syncStatus.state === 'BACKEND_UNAVAILABLE'}
                 className="h-11 w-11 shrink-0 bg-atlas-ink text-atlas-paper border border-atlas-ink flex items-center justify-center hover:bg-atlas-earth transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Enviar"
               >

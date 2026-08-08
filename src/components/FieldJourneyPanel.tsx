@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, CloudOff, Compass, Flag, Map, Play, RefreshCw, X } from 'lucide-react';
-import { pb } from '../lib/pb';
-import { getPendingCount, isOnline, onOnlineChange } from '../lib/offline';
 import type { AuthUser } from '../hooks/useAuth';
 import { loadCurrentAssignment, type FieldAssignment } from '../services/fieldAssignment';
+import { createSyncIdentity, enqueueSyncDataset, getDeviceId, getLocalSyncEntity, makeSyncKey } from '../lib/remoteSync';
+import { useSyncStatus, syncStatusLabel } from '../hooks/useSyncStatus';
 
 const CHECKLIST = [
   'Hora del teléfono sincronizada',
@@ -24,8 +24,7 @@ interface Props {
 }
 
 export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenMap }: Props) {
-  const [online, setOnline] = useState(isOnline());
-  const [pending, setPending] = useState(0);
+  const { status: syncStatus } = useSyncStatus(true);
   const [journey, setJourney] = useState<JourneyState>(() => {
     try { return JSON.parse(localStorage.getItem(`biocorredor_journey_${user.uid}`) || '{"status":"ready"}'); } catch { return { status: 'ready' }; }
   });
@@ -38,16 +37,17 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
   const [closeDraft, setCloseDraft] = useState<CloseDraft>({ weather: '', habitat: '', distance_m: '', incidents: '', unvisited_sectors: '' });
 
   useEffect(() => {
-    void loadCurrentAssignment(user.uid).then(setAssignment);
+    void loadCurrentAssignment(user.uid).then(async (nextAssignment) => {
+      setAssignment(nextAssignment);
+      if (!nextAssignment) return;
+      const key = makeSyncKey(getDeviceId(), 'survey_event', `journey-${nextAssignment.event}`);
+      const localEvent = await getLocalSyncEntity(key);
+      const data = localEvent?.data;
+      if (data?.status === 'active' || data?.status === 'completed') {
+        setJourney({ status: data.status === 'active' ? 'active' : 'closed', startedAt: data.started_at, endedAt: data.ended_at });
+      }
+    });
   }, [user.uid]);
-
-  useEffect(() => {
-    const unsubscribe = onOnlineChange(setOnline);
-    const refresh = () => void getPendingCount().then(setPending);
-    refresh();
-    const interval = window.setInterval(refresh, 4000);
-    return () => { unsubscribe(); window.clearInterval(interval); };
-  }, []);
 
   const completedChecklist = useMemo(() => checked.filter(Boolean).length, [checked]);
   const canStart = true;
@@ -63,17 +63,26 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
     localStorage.setItem(`biocorredor_checklist_${user.uid}`, JSON.stringify(next));
   };
 
+  const queueJourney = async (status: 'active' | 'completed', values: Record<string, any>) => {
+    if (!assignment) return;
+    const identity = createSyncIdentity('survey_event', `journey-${assignment.event}`);
+    await enqueueSyncDataset({
+      event: { ...identity, data: { event_id: assignment.expand?.event?.event_id || assignment.event, title: assignment.expand?.event?.title || 'Jornada de campo', status, ...values }, local_updated_at: new Date().toISOString() },
+      occurrences: [], territorial_changes: [], media: [],
+    });
+  };
+
   const startJourney = async () => {
     const startedAt = new Date().toISOString();
     if (!assignment) { setMessage('Todavía no tenés una jornada asignada.'); return; }
-    try { await pb.collection('survey_events').update(assignment.event, { status: 'active', started_at: startedAt, time_sync_status: 'confirmed' }); } catch { setMessage('Inicio guardado localmente. Se confirmará al sincronizar.'); }
+    try { await queueJourney('active', { started_at: startedAt, time_sync_status: 'confirmed' }); setMessage('Jornada guardada en este dispositivo.'); } catch { setMessage('No se pudo guardar la jornada en este dispositivo.'); return; }
     persistJourney({ status: 'active', startedAt });
   };
 
   const closeJourney = async () => {
     const endedAt = new Date().toISOString();
     const durationMinutes = journey.startedAt ? Math.round((Date.parse(endedAt) - Date.parse(journey.startedAt)) / 60000) : undefined;
-    if (assignment) { try { await pb.collection('survey_events').update(assignment.event, { status: 'completed', ended_at: endedAt, closed_at: endedAt, closed_by: user.uid, duration_minutes: durationMinutes, distance_m: Number(closeDraft.distance_m) || undefined, weather: closeDraft.weather, habitat: closeDraft.habitat, incidents: closeDraft.incidents, unvisited_sectors: closeDraft.unvisited_sectors, observers_count: 1 }); } catch { setMessage('Cierre guardado localmente. Falta confirmación del servidor.'); } }
+    if (assignment) { try { await queueJourney('completed', { ended_at: endedAt, closed_at: endedAt, closed_by: user.uid, duration_minutes: durationMinutes, distance_m: Number(closeDraft.distance_m) || undefined, weather: closeDraft.weather, habitat: closeDraft.habitat, incidents: closeDraft.incidents, unvisited_sectors: closeDraft.unvisited_sectors, observers_count: 1 }); } catch { setMessage('Cierre guardado localmente. Requiere atención para sincronizar.'); return; } }
     persistJourney({ ...journey, status: 'closed', endedAt });
     setShowCloseForm(false);
   };
@@ -85,9 +94,9 @@ export default function FieldJourneyPanel({ user, onClose, onOpenSurvey, onOpenM
         <button aria-label="Cerrar jornada" onClick={onClose} className="p-2 hover:bg-atlas-stone"><X /></button>
       </header>
 
-      <div className={`mb-4 flex items-center justify-between border px-3 py-3 font-sans text-xs ${online ? 'border-atlas-ink/20' : 'border-amber-700 bg-amber-50 text-amber-900'}`}>
-        <span className="inline-flex items-center gap-2">{online ? <RefreshCw className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}{online ? 'Con conexión' : 'Sin conexión'}</span>
-        <span className="font-mono">{pending} pendientes</span>
+      <div className={`mb-4 flex items-center justify-between border px-3 py-3 font-sans text-xs ${syncStatus.state === 'OFFLINE' ? 'border-amber-700 bg-amber-50 text-amber-900' : 'border-atlas-ink/20'}`}>
+        <span className="inline-flex items-center gap-2">{syncStatus.state === 'OFFLINE' ? <CloudOff className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}{syncStatusLabel(syncStatus)}</span>
+        <span className="font-mono">{syncStatus.pending_count} pendientes</span>
       </div>
 
       <section className="border-b border-atlas-ink/20 pb-5">

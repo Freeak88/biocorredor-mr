@@ -22,12 +22,14 @@ const ReportModal = lazy(() => import('./components/ReportModal'));
 const FieldSurveyPanel = lazy(() => import('./components/FieldSurveyPanel'));
 const CoordinatorPanel = lazy(() => import('./components/CoordinatorPanel'));
 const FieldJourneyPanel = lazy(() => import('./components/FieldJourneyPanel'));
+const FieldRecordsPanel = lazy(() => import('./components/FieldRecordsPanel'));
 
 import { motion, AnimatePresence } from 'motion/react';
 import { Map as MapIcon, Plus, MessageSquare, Navigation } from 'lucide-react';
 import SectionBoundary from './components/SectionBoundary';
 import FieldRouteTracker from './components/FieldRouteTracker';
 import { hasActiveLocalJourney, loadCurrentAssignment } from './services/fieldAssignment';
+import { useSyncStatus } from './hooks/useSyncStatus';
 
 // Minimal loading fallback for lazy components
 function LazyFallback() {
@@ -40,6 +42,7 @@ function LazyFallback() {
 
 export default function App() {
   const { user, loading, isAdmin, isCoordinator, isAnonymous, handleLogin, handleEmailLogin, handleRegister, handleLogout, setLoading } = useAuth();
+  const { status: syncStatus } = useSyncStatus(Boolean(user));
   const { sightings, filteredSightings, searchQuery, setSearchQuery, findNearbyMycelium, layerToggles, updateLayerToggle, setMapBounds } = useSightings(user?.uid);
   const { userLocation, onlineUsers, currentUserProfile, mapCentered, setMapCentered, requestUserLocation, getDistance } = usePresence(user);
   const {
@@ -63,6 +66,7 @@ export default function App() {
   const [showFieldSurvey, setShowFieldSurvey] = useState(false);
   const [showCoordinator, setShowCoordinator] = useState(false);
   const [showJourney, setShowJourney] = useState(false);
+  const [showRecords, setShowRecords] = useState(false);
   const [canFieldRecord, setCanFieldRecord] = useState(false);
   const journeyAutoOpenedRef = useRef(false);
 
@@ -82,8 +86,8 @@ export default function App() {
     let disposed = false;
     const refreshFieldAccess = async () => {
       const assignment = await loadCurrentAssignment(user.uid);
-      const eventIsActive = assignment?.expand?.event?.status === 'active';
-      const allowed = Boolean(assignment && assignment.status !== 'cancelled' && eventIsActive && hasActiveLocalJourney(user.uid));
+      const cachedAssignmentIsValid = Boolean(assignment && assignment.status !== 'cancelled' && assignment.event && assignment.user === user.uid);
+      const allowed = Boolean(cachedAssignmentIsValid && hasActiveLocalJourney(user.uid));
       if (!disposed) {
         setCanFieldRecord(allowed);
         if (!allowed) { setShowFieldSurvey(false); setShowModal(false); setIsAddingMode(false); }
@@ -168,12 +172,16 @@ export default function App() {
         canCoordinate={isCoordinator}
         onOpenCoordinator={() => setShowCoordinator(true)}
         onOpenJourney={() => setShowJourney(true)}
+        onOpenRecords={() => setShowRecords(true)}
+        onOpenMap={() => setShowJourney(false)}
+        syncStatus={syncStatus}
       />
       </SectionBoundary>
 
       {showFieldSurvey && <Suspense fallback={<LazyFallback />}><FieldSurveyPanel user={user} onClose={() => setShowFieldSurvey(false)} /></Suspense>}
       {showCoordinator && <Suspense fallback={<LazyFallback />}><CoordinatorPanel user={user} onClose={() => setShowCoordinator(false)} /></Suspense>}
       {showJourney && <Suspense fallback={<LazyFallback />}><FieldJourneyPanel user={user} onClose={() => setShowJourney(false)} onOpenSurvey={() => { setShowJourney(false); setShowFieldSurvey(true); }} onOpenMap={() => setShowJourney(false)} /></Suspense>}
+      {showRecords && <Suspense fallback={<LazyFallback />}><FieldRecordsPanel onClose={() => setShowRecords(false)} /></Suspense>}
 
       <main className="flex-1 relative overflow-hidden">
         <SectionBoundary name="MapView">
@@ -270,6 +278,7 @@ export default function App() {
           handleSendMessage={handleSendMessage}
           user={user}
           onReport={handleReport}
+          syncStatus={syncStatus}
         />
         </Suspense>
         </SectionBoundary>

@@ -46,6 +46,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
   const [online, setOnline] = useState(isOnline());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [gpsBusy, setGpsBusy] = useState(false);
 
   const selectedEvent = useMemo(() => events.find((item) => item.id === draft.event), [draft.event, events]);
 
@@ -73,17 +74,21 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
   const locate = useCallback(() => {
+    if (gpsBusy) return;
     if (!navigator.geolocation) {
       setMessage('Este teléfono no ofrece geolocalización.');
       return;
     }
+    setGpsBusy(true);
+    setMessage('Buscando ubicación…');
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         const capturedAt = new Date().toISOString();
         setPosition({ coords: [coords.latitude, coords.longitude], accuracy: coords.accuracy, capturedAt });
-        setMessage(`Ubicación capturada. Precisión estimada: ${Math.round(coords.accuracy)} m.`);
+        setMessage(`Ubicación registrada · precisión ±${Math.round(coords.accuracy)} m.`);
+        setGpsBusy(false);
       },
-      () => setMessage('No se pudo capturar la ubicación. El registro seguirá sin GPS.'),
+      () => { setMessage('No se pudo capturar la ubicación. El registro seguirá sin GPS.'); setGpsBusy(false); },
       { enableHighAccuracy: true, timeout: 12000 },
     );
   }, []);
@@ -188,7 +193,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         territorial_changes: entityType === 'territorial_change' ? [{ ...entityIdentity, data: entityData, local_updated_at: observedAt }] : [],
         media: mediaEntities,
       });
-      setMessage(online ? 'Registro guardado en la cola de sincronización.' : 'Registro guardado en este teléfono. Se sincronizará al volver la conexión.');
+      setMessage(online ? 'Guardado. Pendiente de sincronización.' : 'Guardado en este dispositivo. Pendiente de sincronización.');
       setDraft({ ...emptyDraft, event: draft.event, site: draft.site });
       setPhoto(null); setPhotoPreview(''); setPaperPhoto(null);
     } catch (error) {
@@ -267,7 +272,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
     <div className="mx-auto min-h-screen w-full max-w-2xl px-4 pb-10 sm:px-8">
       <header className="sticky top-0 z-10 -mx-4 mb-5 flex items-center justify-between border-b border-atlas-ink bg-atlas-paper/95 px-4 py-4 backdrop-blur sm:-mx-8 sm:px-8">
         <div><p className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-55">BIOCORREDOR MR</p><h2 className="font-serif text-2xl italic">Nuevo relevamiento</h2></div>
-        <div className="flex items-center gap-2"><button type="button" onClick={() => void syncNow()} disabled={saving} className="atlas-button inline-flex items-center gap-2 text-[10px]"><RefreshCw className="h-3 w-3" /> Sincronizar ahora</button><button aria-label="Cerrar relevamiento" onClick={onClose} className="p-2 hover:bg-atlas-stone"><X /></button></div>
+        <div className="flex items-center gap-2"><button type="button" onClick={() => void syncNow()} disabled={saving} className="atlas-button inline-flex items-center gap-2 text-[10px]"><RefreshCw className="h-3 w-3" /> Sincronizar ahora</button><button aria-label="Cerrar relevamiento" onClick={() => { const hasDraft = Boolean(photo || paperPhoto || draft.scientific_name || draft.notes || draft.paper_id); if (hasDraft && !window.confirm('Tenés datos sin guardar. ¿Salir sin guardarlos?')) return; onClose(); }} className="p-2 hover:bg-atlas-stone"><X /></button></div>
       </header>
       <div className={`mb-4 flex items-center gap-2 border px-3 py-2 font-sans text-xs ${online ? 'border-atlas-ink/20' : 'border-amber-700 bg-amber-50 text-amber-900'}`}>
         {online ? <RefreshCw className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />} {online ? 'Con conexión: se guardará y sincronizará.' : 'Sin conexión: se guardará en este teléfono.'}
@@ -283,7 +288,7 @@ export default function FieldSurveyPanel({ user, onClose }: Props) {
         <div className="grid grid-cols-2 gap-4"><label className="block font-sans text-xs font-bold uppercase tracking-wider">Sustrato o referencia<input value={draft.substrate} onChange={(e) => update('substrate', e.target.value)} placeholder="Suelo, tronco, camino..." className="atlas-input mt-2 w-full" /></label><label className="block font-sans text-xs font-bold uppercase tracking-wider">Condición del lugar<input value={draft.microhabitat} onChange={(e) => update('microhabitat', e.target.value)} placeholder="Sombra, humedad, acceso..." className="atlas-input mt-2 w-full" /></label></div>
         <label className="block font-sans text-xs font-bold uppercase tracking-wider">Ficha en papel / QR <span className="font-normal normal-case opacity-50">(opcional)</span><input value={draft.paper_id} onChange={(e) => update('paper_id', e.target.value)} onBlur={() => { const normalized = normalizePaperId(draft.paper_id); if (draft.paper_id.trim() && normalized) update('paper_id', normalized); }} placeholder="MR-20260815-P001" className="atlas-input mt-2 w-full" /></label>
         <label className="block font-sans text-xs font-bold uppercase tracking-wider">Nota breve <span className="font-normal normal-case opacity-50">(opcional)</span><textarea value={draft.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Qué viste o qué cambió" className="mt-2 min-h-24 w-full border border-atlas-ink bg-transparent p-3 font-sans text-sm focus:outline-none focus:ring-2 focus:ring-atlas-earth" /></label>
-        <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={locate} className="atlas-button inline-flex items-center justify-center gap-2"><MapPin className="h-4 w-4" />{position ? `${position.coords[0].toFixed(4)}, ${position.coords[1].toFixed(4)}` : 'Capturar ubicación'}</button><label className="atlas-button inline-flex cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{photo ? 'Cambiar foto' : 'Agregar foto original'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setPhoto(file); setPhotoPreview(await fileToDataUrl(file)); } }} /></label></div>
+        <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={locate} disabled={gpsBusy} className="atlas-button inline-flex min-h-11 items-center justify-center gap-2 disabled:opacity-50"><MapPin className="h-4 w-4" />{gpsBusy ? 'Buscando ubicación…' : position ? `Ubicación registrada · ±${Math.round(position.accuracy)} m` : 'Capturar ubicación'}</button><label className="atlas-button inline-flex min-h-11 cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{photo ? 'Cambiar foto' : 'Agregar foto original'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setPhoto(file); setPhotoPreview(await fileToDataUrl(file)); } }} /></label></div>
         <label className="atlas-button inline-flex cursor-pointer items-center justify-center gap-2"><Camera className="h-4 w-4" />{paperPhoto ? `Ficha: ${paperPhoto.name}` : 'Adjuntar foto de ficha (opcional)'}<input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => setPaperPhoto(e.target.files?.[0] || null)} /></label>
         <p className={`font-mono text-[10px] uppercase tracking-wider ${!position ? 'text-atlas-ink/55' : position.accuracy <= 15 ? 'text-emerald-700' : position.accuracy <= 50 ? 'text-amber-700' : 'text-red-700'}`}>{!position ? 'GPS pendiente · se puede guardar sin coordenadas' : position.accuracy <= 15 ? `GPS preciso · ±${Math.round(position.accuracy)} m` : position.accuracy <= 50 ? `GPS aceptable · ±${Math.round(position.accuracy)} m` : `GPS impreciso · ±${Math.round(position.accuracy)} m`}</p>
         {photoPreview && <img src={photoPreview} alt="Vista previa de la evidencia" className="max-h-56 w-full object-cover" />}
