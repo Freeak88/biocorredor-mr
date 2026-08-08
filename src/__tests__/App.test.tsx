@@ -16,7 +16,7 @@ vi.mock('../hooks/useAuth', () => ({
 }));
 
 vi.mock('../components/LoginScreen', () => ({
-  default: () => <div>Login FungiMap</div>,
+  default: () => <div>Login Biocorredor MR</div>,
 }));
 
 vi.mock('../hooks/useSightings', () => ({
@@ -103,6 +103,6 @@ import App from '../App';
 describe('App', () => {
   it('renders login screen when no PocketBase user is authenticated', () => {
     render(<App />);
-    expect(screen.getByText('Login FungiMap')).toBeInTheDocument();
+    expect(screen.getByText('Login Biocorredor MR')).toBeInTheDocument();
   });
 });

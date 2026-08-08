@@ -37,7 +37,7 @@ FungiMap es una aplicación PWA para registro y mapeo de hongos con:
               ┌───────────────┴───────────────┐
               ▼                               ▼
 ┌─────────────────────────┐   ┌─────────────────────────────┐
-│  fungimap-web (Docker)  │   │  fungimap-pb (Docker)       │
+│  biocorredor-mr-web     │   │  biocorredor-mr-pb           │
 │  ├── Nginx:80           │   │  ├── PocketBase:8090        │
 │  └── /usr/share/nginx/  │   │  ├── pb_data (SQLite DB)    │
 │      └── html/ (SPA)    │   │  ├── pb_hooks (JS hooks)    │

@@ -12,11 +12,11 @@ migrate((app) => {
 
   // Create bot user only if not exists
   try {
-    app.findAuthRecordByEmail("users", "gbif@fungimap.bot");
+    app.findAuthRecordByEmail("users", "gbif@biocorredor-mr.local");
     console.log("GBIF bot already exists, skipping creation.");
   } catch (e) {
     const bot = new Record(app.findCollectionByNameOrId("users"));
-    bot.setEmail("gbif@fungimap.bot");
+    bot.setEmail("gbif@biocorredor-mr.local");
     bot.setPassword("Gb1f_B0t_2024!xK9$mZ");
     bot.set("name", "GBIF Import Bot");
     bot.set("verified", true);
@@ -27,7 +27,7 @@ migrate((app) => {
 }, (app) => {
   // Remove bot user
   try {
-    const bot = app.findAuthRecordByEmail("users", "gbif@fungimap.bot");
+    const bot = app.findAuthRecordByEmail("users", "gbif@biocorredor-mr.local");
     app.delete(bot);
   } catch (e) {}
 

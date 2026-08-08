@@ -130,7 +130,7 @@ export function useAdmin(user: AuthUser | null, isAdmin: boolean, currentUserPro
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `fungimap_qgis_export_${new Date().toISOString().split('T')[0]}.geojson`;
+    link.download = `biocorredor_mr_qgis_export_${new Date().toISOString().split('T')[0]}.geojson`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

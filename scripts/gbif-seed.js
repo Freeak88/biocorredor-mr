@@ -11,7 +11,7 @@ const GBIF_LIMIT = 300;
 const GBIF_DELAY_MS = 200;
 const PB_BATCH_SIZE = 50;
 const PB_BATCH_DELAY_MS = 300;
-const BOT_EMAIL = "gbif@fungimap.bot";
+const BOT_EMAIL = "gbif@biocorredor-mr.local";
 const MAX_RECORDS = parseInt(process.env.MAX_RECORDS || "500", 10);
 
 const AR_LAT_MIN = -56, AR_LAT_MAX = -21, AR_LNG_MIN = -74, AR_LNG_MAX = -52;

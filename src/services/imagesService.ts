@@ -62,7 +62,7 @@ export async function compressImage(file: File, targetBytes = TARGET_IMAGE_BYTES
     blob = await canvasToBlob(canvas, outputType, quality);
   }
 
-  const baseName = file.name.replace(/\.[^.]+$/, '') || 'fungimap';
+  const baseName = file.name.replace(/\.[^.]+$/, '') || 'biocorredor-mr';
   const compressedFile = new File([blob], `${baseName}.jpg`, { type: outputType, lastModified: Date.now() });
   validateCompressedImageFile(compressedFile);
   return compressedFile;

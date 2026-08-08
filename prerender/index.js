@@ -3,9 +3,9 @@ const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PB_URL = process.env.PB_URL || 'http://fungimap-pb:8090';
-const APP_URL = process.env.APP_URL || 'https://map.funga.com.ar';
-const MONEYSITE_URL = process.env.MONEYSITE_URL || 'https://funga.com.ar';
+const PB_URL = process.env.PB_URL || 'http://biocorredor-mr-pb:8090';
+const APP_URL = process.env.APP_URL || 'https://biocorredor-mr.example.org';
+const MONEYSITE_URL = process.env.MONEYSITE_URL || 'https://biocorredor-mr.example.org';
 
 // Simple in-memory cache with TTL
 const cache = new Map();
@@ -93,7 +93,7 @@ function renderPage({ title, description, image, url, schema, bodyContent, id })
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:image" content="${escapeHtml(image || APP_URL + '/og-image.png')}">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
-  <meta property="og:site_name" content="Funga Map">
+  <meta property="og:site_name" content="Biocorredor MR">
   <meta property="og:locale" content="es_AR">
   
   <!-- Twitter -->
@@ -310,12 +310,12 @@ function renderPage({ title, description, image, url, schema, bodyContent, id })
         <path d="M24 14c-2 0-4 2-4 5s2 6 4 8c2-2 4-5 4-8s-2-5-4-5z" fill="#8B6B4E"/>
         <path d="M20 22c-3 2-5 5-4 8s4 5 8 5 7-2 8-5-1-6-4-8" stroke="#8B6B4E" stroke-width="1.5" fill="none"/>
       </svg>
-      <div class="brand">Funga Map</div>
+      <div class="brand">Biocorredor MR</div>
       <div class="subtitle">Atlas Micológico Colaborativo</div>
     </div>
     ${bodyContent}
     <div class="money-site">
-      <a href="${MONEYSITE_URL}" target="_blank">Funga — Hongos Silvestres de Sudamérica</a>
+      <a href="${MONEYSITE_URL}" target="_blank">Biocorredor MR — Biodiversidad y territorio</a>
       <p>Productos, comunidad y conocimiento micológico.</p>
     </div>
   </div>
@@ -325,7 +325,7 @@ function renderPage({ title, description, image, url, schema, bodyContent, id })
       Registrate para explorar el mapa completo, identificar especies con IA y contribuir.
     </div>
     <a href="${APP_URL}/?redirect=/observacion/${id || ''}" class="cta-button">Ingresar al Atlas</a>
-    <a href="${MONEYSITE_URL}" class="cta-secondary" target="_blank">Conocé Funga →</a>
+    <a href="${MONEYSITE_URL}" class="cta-secondary" target="_blank">Conocé el Biocorredor MR →</a>
   </div>
 </body>
 </html>`;
@@ -341,10 +341,10 @@ app.get('/observacion/:id', async (req, res) => {
 
   if (data.error) {
     return res.status(503).send(renderPage({
-      title: 'Funga Map — Atlas Micológico Colaborativo',
+      title: 'Biocorredor MR — Atlas Micológico Colaborativo',
       description: 'Servicio temporalmente no disponible. Intentá de nuevo en unos minutos.',
       url: `${APP_URL}/observacion/${id}`,
-      schema: { '@context': 'https://schema.org', '@type': 'WebPage', name: 'Funga Map' },
+      schema: { '@context': 'https://schema.org', '@type': 'WebPage', name: 'Biocorredor MR' },
       bodyContent: `
         <div class="observation" style="text-align:center;padding:40px">
           <p style="color:var(--muted);font-style:italic">No pudimos cargar esta observación. El servidor de datos puede estar en mantenimiento.</p>
@@ -356,7 +356,7 @@ app.get('/observacion/:id', async (req, res) => {
 
   if (data.notFound || data.public === false) {
     return res.status(404).send(renderPage({
-      title: 'Observación no encontrada — Funga Map',
+      title: 'Observación no encontrada — Biocorredor MR',
       description: 'Esta observación no existe o ha sido marcada como privada.',
       url: `${APP_URL}/observacion/${id}`,
       schema: { '@context': 'https://schema.org', '@type': 'WebPage', name: 'Observación no encontrada' },
@@ -383,7 +383,7 @@ app.get('/observacion/:id', async (req, res) => {
   const locationText = locationParts.join(', ') || `${s.lat?.toFixed(3)}, ${s.lng?.toFixed(3)}`;
   
   const title = s.species || s.mushroom_name || 'Observación micológica';
-  const fullTitle = `${title} — ${locationText} — Funga Map`;
+  const fullTitle = `${title} — ${locationText} — Biocorredor MR`;
   const description = s.description 
     ? `${s.description.substring(0, 150).replace(/\s+/g, ' ')}${s.description.length > 150 ? '...' : ''} — ${locationText}`
     : `Observación de ${title} en ${locationText}. Atlas colaborativo de hongos silvestres de Sudamérica.`;
@@ -439,7 +439,7 @@ app.get('/observacion/:id', async (req, res) => {
     url: `${APP_URL}/observacion/${id}`,
     creator: {
       '@type': 'Person',
-      name: user.name || 'Observador Funga Map'
+      name: user.name || 'Observador Biocorredor MR'
     },
     contentLocation: {
       '@type': 'Place',
@@ -463,7 +463,7 @@ app.get('/observacion/:id', async (req, res) => {
     license: 'https://creativecommons.org/licenses/by-sa/4.0/',
     isPartOf: {
       '@type': 'WebApplication',
-      name: 'Funga Map',
+      name: 'Biocorredor MR',
       url: APP_URL
     }
   };

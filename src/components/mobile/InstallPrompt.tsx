@@ -46,7 +46,7 @@ export default function InstallPrompt() {
         {/* Copy */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-serif italic leading-snug">
-            Instalar Funga Map en tu dispositivo
+            Instalar Biocorredor MR en tu dispositivo
           </p>
           <p className="text-[10px] font-sans text-atlas-paper/60 mt-1 uppercase tracking-wider">
             Acceso rápido · Funciona offline

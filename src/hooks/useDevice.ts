@@ -139,14 +139,14 @@ export function useInstallPrompt() {
     dismissedRef.current = true;
     // Store dismissal timestamp so we don't re-prompt immediately
     try {
-      localStorage.setItem('fungimap_install_dismissed', Date.now().toString());
+      localStorage.setItem('biocorredor_mr_install_dismissed', Date.now().toString());
     } catch {}
   }, []);
 
   const wasRecentlyDismissed = useCallback((): boolean => {
     if (dismissedRef.current) return true;
     try {
-      const ts = localStorage.getItem('fungimap_install_dismissed');
+      const ts = localStorage.getItem('biocorredor_mr_install_dismissed');
       if (!ts) return false;
       // Don't re-prompt for 7 days after dismissal
       return Date.now() - parseInt(ts, 10) < 7 * 24 * 60 * 60 * 1000;

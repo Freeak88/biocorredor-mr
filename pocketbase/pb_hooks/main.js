@@ -1,4 +1,4 @@
-// PocketBase JS Hooks - FungiMap Gemini Proxy
+// PocketBase JS Hooks - Biocorredor MR Gemini Proxy
 // This file hooks into PocketBase to handle AI mushroom identification
 // through Gemini Vision API, keeping the API key secure on the server.
 
@@ -274,4 +274,4 @@ onRecordUpdateRequest((e) => {
   return e.next();
 });
 
-$app.logger().info("FungiMap Gemini Proxy hooks loaded successfully");
+$app.logger().info("Biocorredor MR Gemini Proxy hooks loaded successfully");

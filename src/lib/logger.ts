@@ -14,7 +14,7 @@ const MAX_LOGS = 250;
 
 declare global {
   interface Window {
-    __FUNGIMAP_LOGS__?: ClientLogEntry[];
+    __BIOCORREDOR_MR_LOGS__?: ClientLogEntry[];
   }
 }
 
@@ -48,9 +48,9 @@ function normalizeError(error: unknown): Record<string, unknown> {
 
 function pushLog(entry: ClientLogEntry) {
   if (typeof window === 'undefined') return;
-  const logs = window.__FUNGIMAP_LOGS__ ?? [];
+  const logs = window.__BIOCORREDOR_MR_LOGS__ ?? [];
   logs.unshift(entry);
-  window.__FUNGIMAP_LOGS__ = logs.slice(0, MAX_LOGS);
+  window.__BIOCORREDOR_MR_LOGS__ = logs.slice(0, MAX_LOGS);
 }
 
 export function logClientEvent(
@@ -73,7 +73,7 @@ export function logClientEvent(
   pushLog(entry);
 
   const method = level === 'debug' ? 'debug' : level;
-  console[method](`[FungiMap:${scope}] ${message}`, {
+  console[method](`[Biocorredor MR:${scope}] ${message}`, {
     context,
     error: entry.error,
     logId: entry.id,

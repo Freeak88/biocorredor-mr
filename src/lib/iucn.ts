@@ -1,4 +1,4 @@
-// iucn.ts — IUCN Red List v4 API integration for FungiMap
+// iucn.ts — IUCN Red List v4 API integration for Biocorredor MR
 // Free for non-commercial/research use
 // API key required: https://api.iucnredlist.org/users/sign_up
 

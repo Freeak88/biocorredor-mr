@@ -1,4 +1,4 @@
-// weather.ts — Open-Meteo + Sunrise-Sunset + WeatherAPI (moon phase) for FungiMap
+// weather.ts — Open-Meteo + Sunrise-Sunset + WeatherAPI (moon phase) for Biocorredor MR
 // All APIs are free, no auth required
 
 const OPEN_METEO_FORECAST = "https://api.open-meteo.com/v1/forecast";

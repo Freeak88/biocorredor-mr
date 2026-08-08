@@ -1,6 +1,6 @@
 {
-  "name": "FungiMap: Mapeo de Hongos Silvestres",
-  "description": "Plataforma colaborativa para registrar, compartir y discutir avistamientos de hongos silvestres mediante mapas interactivos y asistencia de IA.",
+  "name": "Biocorredor MR: Relevamiento Comunitario",
+  "description": "Plataforma comunitaria para documentar biodiversidad, ambientes y cambios territoriales en el Biocorredor de Ministro Rivadavia.",
   "requestFramePermissions": [
     "geolocation"
   ],

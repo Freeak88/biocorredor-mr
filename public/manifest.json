@@ -1,12 +1,12 @@
 {
-  "name": "Funga Map — Atlas Micológico",
-  "short_name": "Funga Map",
+  "name": "Biocorredor MR — Relevamiento Comunitario",
+  "short_name": "Biocorredor MR",
   "start_url": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#F9F7F2",
   "theme_color": "#2D4032",
-  "description": "Mapeo colaborativo de hongos silvestres con reconocimiento por IA. Atlas micológico offline-first.",
+  "description": "Relevamiento comunitario de biodiversidad y territorio, preparado para trabajo de campo offline.",
   "categories": ["nature", "education"],
   "orientation": "any",
   "scope": "/",
@@ -25,14 +25,14 @@
     {
       "name": "Nuevo avistamiento",
       "short_name": "Avistamiento",
-      "description": "Registrar un nuevo hallazgo micológico",
+      "description": "Registrar una nueva observación de campo",
       "url": "/?action=new-sighting",
       "icons": [{ "src": "/icons/shortcut-sighting.svg", "sizes": "96x96" }]
     },
     {
       "name": "Mapa",
       "short_name": "Mapa",
-      "description": "Ver el mapa del Atlas",
+      "description": "Ver el mapa y los sectores",
       "url": "/?view=map",
       "icons": [{ "src": "/icons/shortcut-map.svg", "sizes": "96x96" }]
     }
@@ -43,14 +43,14 @@
       "sizes": "1280x720",
       "type": "image/svg+xml",
       "form_factor": "wide",
-      "label": "Mapa del Atlas con hallazgos"
+      "label": "Mapa del Biocorredor con registros"
     },
     {
       "src": "/screenshots/screenshot-narrow.svg",
       "sizes": "390x844",
       "type": "image/svg+xml",
       "form_factor": "narrow",
-      "label": "Vista móvil del Atlas"
+      "label": "Vista móvil del Biocorredor"
     }
   ],
   "share_target": {

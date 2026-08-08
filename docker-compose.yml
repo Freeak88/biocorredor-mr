@@ -4,32 +4,16 @@ services:
       context: .
       args:
         VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
-    container_name: fungimap-web
+    container_name: biocorredor-mr-web
     restart: unless-stopped
     expose:
       - "80"
     networks:
       - proxy-net
 
-  prerender:
-    build: ./prerender
-    container_name: fungimap-prerender
-    restart: unless-stopped
-    environment:
-      - PB_URL=http://fungimap-pb:8090
-      - APP_URL=https://map.funga.com.ar
-      - MONEYSITE_URL=https://funga.com.ar
-      - PORT=3000
-    expose:
-      - "3000"
-    networks:
-      - proxy-net
-    depends_on:
-      - pb
-
   pb:
     build: ./pocketbase
-    container_name: fungimap-pb
+    container_name: biocorredor-mr-pb
     restart: unless-stopped
     volumes:
       - pb-data:/pb/pb_data
@@ -45,7 +29,7 @@ services:
 volumes:
   pb-data:
     external: true
-    name: fungimon_pb-data
+    name: biocorredor-mr-pb-data
 
 networks:
   proxy-net:

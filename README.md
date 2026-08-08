@@ -1,6 +1,6 @@
-# FungiMap
+# Biocorredor MR
 
-PWA para registrar, mapear y enriquecer avistamientos de hongos. El frontend usa React, TypeScript, Vite, Tailwind y Leaflet; el backend principal es PocketBase con migraciones y hooks locales.
+PWA para registrar, mapear y enriquecer relevamientos comunitarios de biodiversidad y territorio en Ministro Rivadavia. El frontend usa React, TypeScript, Vite, Tailwind y Leaflet; el backend principal es PocketBase con migraciones y hooks locales.
 
 ## Requisitos
 
@@ -38,13 +38,15 @@ La pila de produccion local usa:
 
 - `web`: build Vite servido por Nginx.
 - `pb`: PocketBase en `:8090`, con `pb_migrations` y `pb_hooks`.
-- Traefik externo esperado en la red `proxy-net`.
+- Proxy inverso externo esperado en la red `proxy-net`.
 
 ```bash
 docker compose up --build
 ```
 
 Las rutas `/api/*` y `/_/*` deben llegar a PocketBase; el resto sirve la SPA.
+
+Los contenedores y el volumen de esta composición utilizan exclusivamente el prefijo `biocorredor-mr`. El servicio `prerender` heredado no forma parte del despliegue del MVP.
 
 ## Comandos
 

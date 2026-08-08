@@ -44,7 +44,7 @@ export default function LoginScreen({ onLogin, onEmailLogin, onRegister }: Login
             <div className="w-24 h-24 border-2 border-dashed border-atlas-ink rounded-full animate-[spin_10s_linear_infinite] flex items-center justify-center" />
             <img
               src="/isotipo-funga.svg"
-              alt="Funga"
+              alt="Biocorredor MR"
               className="w-10 h-10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             />
           </div>

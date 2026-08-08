@@ -66,7 +66,7 @@ export function useSightingForm(
     }
   }, []);
 
-  const DRAFT_KEY = user ? `fungimap_draft_${user.uid}` : 'fungimap_draft_guest';
+  const DRAFT_KEY = user ? `biocorredor_mr_draft_${user.uid}` : 'biocorredor_mr_draft_guest';
 
   interface DraftData {
     images: string[];
