@@ -48,13 +48,13 @@ export default function Header({
   const [showMore, setShowMore] = React.useState(false);
   const isObserver = user?.role === 'observador';
   return (
-    <header className="bg-atlas-paper text-atlas-ink p-3 flex justify-between items-center border-b border-atlas-ink z-50 relative shrink-0">
+    <header className="bg-atlas-paper text-atlas-ink flex flex-wrap items-center justify-between gap-2 border-b border-atlas-ink p-3 sm:flex-nowrap">
       <div className="flex items-center gap-3">
         <Sprout className="w-6 h-6 text-atlas-ink" />
         <h1 className="text-xl italic font-serif tracking-tight">Biocorredor MR <span className="text-[10px] opacity-50">· campo</span></h1>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:gap-6">
             {user && (
               <>
                 {!isObserver && <LeaderboardPanel />}
@@ -68,17 +68,20 @@ export default function Header({
               </>
             )}
         {user ? (
-          <div className="flex items-center gap-4 font-sans font-black uppercase tracking-widest text-[9px]">
-            <span className="inline-block max-w-[112px] truncate border-b border-atlas-ink/20 text-[9px] sm:max-w-none">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 font-sans font-black uppercase tracking-widest text-[9px] sm:gap-4">
+            <span className="inline-block max-w-[150px] truncate border-b border-atlas-ink/20 text-[9px] sm:max-w-none">
               {user.displayName || user.email?.split('@')[0]}
             </span>
             <SyncStatusIndicator status={syncStatus} />
-            <div className="flex items-center gap-4 border-l border-atlas-ink/10 pl-4">
-              {canFieldRecord && <button onClick={onOpenFieldSurvey} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-atlas-earth hover:underline" title="Abrir relevamiento de campo">
-                <ClipboardPenLine className="h-4 w-4" /> <span className="hidden sm:inline">Relevar</span>
+            <div className="flex basis-full items-center justify-between gap-1 border-t border-atlas-ink/10 pt-1 sm:basis-auto sm:justify-end sm:gap-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+              {isObserver && <button onClick={onOpenFieldSurvey} disabled={!canFieldRecord} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-atlas-earth hover:underline disabled:cursor-not-allowed disabled:opacity-45" title={canFieldRecord ? 'Abrir relevamiento de campo' : 'Iniciá una jornada para registrar'}>
+                <ClipboardPenLine className="h-4 w-4" /> <span>Registrar</span>
+              </button>}
+              {isObserver && <button onClick={onOpenRecords} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-atlas-ink hover:underline" title="Abrir mis registros">
+                <BookOpen className="h-4 w-4" /> <span>Mis registros</span>
               </button>}
               <button onClick={onOpenJourney} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-atlas-ink hover:underline" title="Abrir jornada de campo">
-                <Route className="h-4 w-4" /> <span className="hidden sm:inline">Jornada</span>
+                <Route className="h-4 w-4" /> <span>Jornada</span>
               </button>
               {canCoordinate && !isObserver && <button onClick={onOpenCoordinator} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-atlas-ink hover:underline" title="Abrir control de relevamientos">
                 <LayoutDashboard className="h-4 w-4" /> <span className="hidden sm:inline">Control</span>
@@ -92,7 +95,6 @@ export default function Header({
               {isObserver && <div className="relative">
                 <button onClick={() => setShowMore((value) => !value)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-atlas-ink" title="Más opciones" aria-expanded={showMore}><MoreHorizontal className="h-5 w-5" /></button>
                 {showMore && <div className="absolute right-0 top-12 z-[3000] w-48 border-2 border-atlas-ink bg-atlas-paper p-2 shadow-atlas">
-                  <button onClick={() => { onOpenRecords(); setShowMore(false); }} className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-[10px] font-black uppercase tracking-wider hover:bg-atlas-stone"><BookOpen className="h-4 w-4" /> Mis registros</button>
                   <button onClick={() => { onOpenMap(); setShowMore(false); }} className="flex min-h-11 w-full items-center px-3 text-left text-[10px] font-black uppercase tracking-wider hover:bg-atlas-stone">Mapa</button>
                   <button onClick={() => { setShowChat(true); setShowMore(false); }} className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-[10px] font-black uppercase tracking-wider hover:bg-atlas-stone">Chat</button>
                   <button onClick={handleLogout} className="flex min-h-11 w-full items-center px-3 text-left text-[10px] font-black uppercase tracking-wider hover:bg-atlas-stone">Salir</button>

@@ -43,12 +43,13 @@ export function useSyncStatus(enabled = true) {
 
 export function syncStatusLabel(status: CanonicalSyncStatus): string {
   switch (status.state) {
-    case 'ONLINE_SYNCED': return 'Sincronizado';
-    case 'ONLINE_PENDING': return `Pendiente de sincronización${status.pending_count ? ` · ${status.pending_count}` : ''}`;
-    case 'OFFLINE': return 'Sin conexión';
-    case 'BACKEND_UNAVAILABLE': return 'Servidor no disponible';
+    case 'ONLINE_SYNCED': return '✓ Todo enviado al sistema central';
+    case 'ONLINE_PENDING': return `○ En línea · ${status.pending_count} ${status.pending_count === 1 ? 'registro' : 'registros'} por enviar`;
+    case 'OFFLINE': return '○ Sin conexión · Guardando en este teléfono';
+    case 'BACKEND_UNAVAILABLE': return '! Servidor no disponible · Tus datos siguen guardados';
     case 'ERROR': return 'Requiere atención';
-    default: return 'Aún no sincronizado';
+    default: return status.network_available && status.backend_reachable !== false
+      ? '✓ En línea · Sin envíos pendientes'
+      : '○ Sin conexión · Guardando en este teléfono';
   }
 }
-
