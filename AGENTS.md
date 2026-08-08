@@ -1,17 +1,17 @@
-# Fungimap — AGENTS.md
+# Biocorredor MR — AGENTS.md
 
-App/mapa colaborativo de hongos silvestres. Futuro `map.funga.com.ar`.
-
-> **Nota:** Antes se llamaba `Fungimom`. La carpeta del repo conservó ese nombre internamente.
+Plataforma comunitaria para biodiversidad, ambientes y cambios territoriales.
 
 ## Estado
 
-App con código (Firebase + PocketBase + Vite + Vitest + Playwright). Mapa colaborativo geoposicionado.
+MVP con PocketBase como backend activo, Vite, Vitest, Playwright, PWA y mapa
+territorial geoposicionado. Firebase permanece como legado y no debe usarse en
+código nuevo.
 
 ## Stack
 
 - Frontend: Vite + TypeScript.
-- Backend: Firebase (functions, firestore.rules, storage.rules, hosting) + PocketBase como alternativa local.
+- Backend: PocketBase con migraciones, hooks y sincronización idempotente.
 - Tests: Playwright (e2e) + Vitest.
 - Containerización: Docker + nginx.
 
