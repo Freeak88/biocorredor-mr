@@ -258,4 +258,20 @@ routerAdd("POST", "/api/custom/identify", (e) => {
   }
 }, $apis.requireAuth());
 
+// Remote sync marker: every later edit of a P0 synchronized record is observable
+// without relying on the client's local clock or PocketBase system fields.
+const SYNCABLE_COLLECTIONS = ["survey_events", "occurrences", "territorial_changes", "media_evidence"];
+onRecordCreateRequest((e) => {
+  if (SYNCABLE_COLLECTIONS.includes(e.collection.name) && e.requestInfo().body.sync_key) {
+    e.requestInfo().body.remote_updated_at = new Date().toISOString();
+  }
+  return e.next();
+});
+onRecordUpdateRequest((e) => {
+  if (SYNCABLE_COLLECTIONS.includes(e.collection.name) && e.record.get("sync_key")) {
+    e.record.set("remote_updated_at", new Date().toISOString());
+  }
+  return e.next();
+});
+
 $app.logger().info("FungiMap Gemini Proxy hooks loaded successfully");
