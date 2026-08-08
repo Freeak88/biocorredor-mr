@@ -241,6 +241,13 @@ La auditoría previa distinguió el fallback independiente del campo principal. 
 La migración `1790000017_media_evidence_lifecycle.js` agrega `parent_type`, `parent_local_id`, `local_id`, `server_id`, `original_sha256`, `retry_count` y `last_sync_error`. La prueba `e2e/offline-media-persistence.spec.ts` valida occurrence, territorial change, paper original, roles de hábitat/diagnóstico, cinco Blob, reinicio, previews y hashes 5/5. Audio, video y documento permanecen fuera de P0.
 
 
+## Bloque D: sincronización remota e idempotencia
+
+Se agregó `1790000019_remote_sync_idempotency.js` con campos de identidad/estado para `survey_events`, `occurrences`, `territorial_changes` y `media_evidence`, más índices únicos parciales sobre `sync_key`. La cola y el modelo de reintento están implementados en `src/lib/remoteSync.ts`; `docs/SYNC_MODEL.md` documenta dependencias, conflictos, media y recuperación.
+
+La prueba real `e2e/remote-sync-idempotency.spec.ts` usa Docker PocketBase 0.37.3, IndexedDB, archivos reales y backend real. Verifica 1/3/2/6, triple sincronización, interrupción/reanudación, colisión, conflicto y 6/6 hashes. No se implementó Bloque E.
+
+
 ## Corrección Gate D.0: contrato de unidad de esfuerzo
 
 Se agregó `1790000018_fix_sampling_effort_unit_catalog.js`, que amplía el catálogo de `survey_events.sampling_effort_unit`, normaliza únicamente `kilometres` a `kilometers` y `square_metres` a `square_meters`, preserva `observer_minutes` y `point_minutes`, y agrega `sampling_effort_notes`. El contrato frontend está en `src/lib/sampling.ts` y se verifica con `src/__tests__/lib/sampling.test.ts`. La prueba desde PocketBase limpio valida las ocho unidades y rechaza valores arbitrarios.

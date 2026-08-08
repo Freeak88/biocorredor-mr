@@ -103,4 +103,10 @@ La prueba `e2e/offline-media-persistence.spec.ts` verifica cinco fotografías co
 
 ## Corrección Gate D.0: contrato de unidad de esfuerzo
 
-Se corrigió de forma aditiva el catálogo de unidades de esfuerzo. La aplicación, el fallback y PocketBase comparten ahora `minutes`, `observer_minutes`, `meters`, `kilometers`, `square_meters`, `points`, `point_minutes` y `other`. Los aliases históricos inequívocos se normalizan sin convertir magnitudes distintas. `sampling_effort_notes` permite documentar unidades extraordinarias. La reconstrucción limpia de PocketBase, las ocho escrituras reales y el rechazo de `banana` quedaron verificadas; el Bloque D de sincronización remota no se inició.
+Se corrigió de forma aditiva el catálogo de unidades de esfuerzo. La aplicación, el fallback y PocketBase comparten ahora `minutes`, `observer_minutes`, `meters`, `kilometers`, `square_meters`, `points`, `point_minutes` y `other`. Los aliases históricos inequívocos se normalizan sin convertir magnitudes distintas. `sampling_effort_notes` permite documentar unidades extraordinarias. La reconstrucción limpia de PocketBase, las ocho escrituras reales y el rechazo de `banana` quedaron verificadas como precondición de D.0.
+
+## Bloque D: sincronización remota e idempotencia
+
+Estado: **IMPLEMENTADO Y PROBADO** sobre PocketBase 0.37.3 limpio. La migración `1790000019_remote_sync_idempotency.js` agrega identidad local/remota, estados, reintentos, snapshots de conflicto e índices únicos parciales de `sync_key`. `src/lib/remoteSync.ts` mantiene cola y entidades en IndexedDB, resuelve dependencias padre/hijo, conserva Blob y ejecuta upload idempotente.
+
+La E2E `e2e/remote-sync-idempotency.spec.ts` verificó el dataset normal 1/3/2/6, tres sincronizaciones sin duplicados, colisión de `sync_key`, corte real de requests durante media, recuperación posterior, `paper_id`, `morphospecies_code`, relaciones y conflicto con preservación local/remota. Se recuperaron 6/6 hashes byte a byte. El artefacto es `artifacts/block-d/remote-sync-acceptance.json`. El Bloque E no se inició.

@@ -1,0 +1,186 @@
+{
+  "normal_counts": {
+    "survey_events": 1,
+    "occurrences": 3,
+    "territorial_changes": 2,
+    "media_evidence": 6
+  },
+  "recovery_counts": {
+    "survey_events": 2,
+    "occurrences": 6,
+    "territorial_changes": 4,
+    "media_evidence": 12
+  },
+  "records": {
+    "survey_events": [
+      {
+        "local_id": "event-A",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:survey_event:event-A",
+        "server_id": "lthzu3oyndcezo6"
+      },
+      {
+        "local_id": "event-B",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:survey_event:event-B",
+        "server_id": "fvylrj1yr5fxn26"
+      }
+    ],
+    "occurrences": [
+      {
+        "local_id": "occ-A-1",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:occurrence:occ-A-1",
+        "server_id": "2hlxp3bjbd3tmqy"
+      },
+      {
+        "local_id": "occ-A-2",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:occurrence:occ-A-2",
+        "server_id": "kih5nzdz2tgbrz6"
+      },
+      {
+        "local_id": "occ-A-3",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:occurrence:occ-A-3",
+        "server_id": "e5sod9msv5w6bt7"
+      },
+      {
+        "local_id": "occ-B-1",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:occurrence:occ-B-1",
+        "server_id": "ckxrrkp3md886qh"
+      },
+      {
+        "local_id": "occ-B-2",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:occurrence:occ-B-2",
+        "server_id": "tc3mhuuouz6hfju"
+      },
+      {
+        "local_id": "occ-B-3",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:occurrence:occ-B-3",
+        "server_id": "w4sndqi2e8xa89h"
+      }
+    ],
+    "territorial_changes": [
+      {
+        "local_id": "change-A-1",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:territorial_change:change-A-1",
+        "server_id": "fhwyhhjdu00jpwh"
+      },
+      {
+        "local_id": "change-A-2",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:territorial_change:change-A-2",
+        "server_id": "m0wnh143x09pxeq"
+      },
+      {
+        "local_id": "change-B-1",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:territorial_change:change-B-1",
+        "server_id": "gcfyq2e6cdemcu3"
+      },
+      {
+        "local_id": "change-B-2",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:territorial_change:change-B-2",
+        "server_id": "82cpc7beln0q2qu"
+      }
+    ],
+    "media_evidence": [
+      {
+        "local_id": "media-A-1",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-A-1",
+        "server_id": "c6nxe4xkucxq977"
+      },
+      {
+        "local_id": "media-A-2",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-A-2",
+        "server_id": "vro2o33v2mdiyzk"
+      },
+      {
+        "local_id": "media-A-3",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-A-3",
+        "server_id": "di1uxxu9lkvn0p5"
+      },
+      {
+        "local_id": "media-A-4",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-A-4",
+        "server_id": "1e36pgzzo8u281e"
+      },
+      {
+        "local_id": "media-A-5",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-A-5",
+        "server_id": "q5bl3ey7lfx3nhg"
+      },
+      {
+        "local_id": "media-A-6",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-A-6",
+        "server_id": "2e704tpzflnatt3"
+      },
+      {
+        "local_id": "media-B-1",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-B-1",
+        "server_id": "n848g89tvnvn558"
+      },
+      {
+        "local_id": "media-B-2",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-B-2",
+        "server_id": "5k6fcb7l6tzg4cg"
+      },
+      {
+        "local_id": "media-B-3",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-B-3",
+        "server_id": "mj5pwsino9erqmf"
+      },
+      {
+        "local_id": "media-B-4",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-B-4",
+        "server_id": "vf9netrr5ch482j"
+      },
+      {
+        "local_id": "media-B-5",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-B-5",
+        "server_id": "kds56ll3hzhwt1g"
+      },
+      {
+        "local_id": "media-B-6",
+        "sync_key": "MRPHONE-ad-8223-c46a9cf64cb8:media_evidence:media-B-6",
+        "server_id": "jkxncoz42v9jto3"
+      }
+    ]
+  },
+  "media_hashes": [
+    {
+      "media_id": "media-A-1",
+      "local_sha256": "f18e364204d86aaa9809e6d18fb29995f68593e44dfb574acad91d72e57aa8de",
+      "remote_sha256": "f18e364204d86aaa9809e6d18fb29995f68593e44dfb574acad91d72e57aa8de",
+      "match": true
+    },
+    {
+      "media_id": "media-A-2",
+      "local_sha256": "99f80315658aef89dcbbb568b0c5572a62e336131991de7cb68cde2d4e4f64e3",
+      "remote_sha256": "99f80315658aef89dcbbb568b0c5572a62e336131991de7cb68cde2d4e4f64e3",
+      "match": true
+    },
+    {
+      "media_id": "media-A-3",
+      "local_sha256": "ff5ace814d666fe474bad33ea819e4c731f265bd38beb2a37dd6257f4c1c333a",
+      "remote_sha256": "ff5ace814d666fe474bad33ea819e4c731f265bd38beb2a37dd6257f4c1c333a",
+      "match": true
+    },
+    {
+      "media_id": "media-A-4",
+      "local_sha256": "f53b75bf604a487d94173bb047417a79571742acc5cda37cae367aaf2ab0cc95",
+      "remote_sha256": "f53b75bf604a487d94173bb047417a79571742acc5cda37cae367aaf2ab0cc95",
+      "match": true
+    },
+    {
+      "media_id": "media-A-5",
+      "local_sha256": "a6be6ef0ce0f74fc9781ba5c27fc1c6c393519f28b4aad78738e2c599cb39234",
+      "remote_sha256": "a6be6ef0ce0f74fc9781ba5c27fc1c6c393519f28b4aad78738e2c599cb39234",
+      "match": true
+    },
+    {
+      "media_id": "media-A-6",
+      "local_sha256": "9ae215769adecd967c7b006ec44cab0027b6715d1a9b0cf427a23d91913e8e4f",
+      "remote_sha256": "9ae215769adecd967c7b006ec44cab0027b6715d1a9b0cf427a23d91913e8e4f",
+      "match": true
+    }
+  ],
+  "conflict": {
+    "detected": true,
+    "local_preserved": true
+  }
+}

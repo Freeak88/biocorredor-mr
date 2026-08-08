@@ -113,11 +113,26 @@
       "sampling_effort_notes_persisted": true
     }
   },
+  "block_d_remote_sync_idempotency": {
+    "status": "IMPLEMENTADO_Y_PROBADO",
+    "migration": "pocketbase/pb_migrations/1790000019_remote_sync_idempotency.js",
+    "module": "src/lib/remoteSync.ts",
+    "e2e": "e2e/remote-sync-idempotency.spec.ts",
+    "normal_counts": {"survey_events": 1, "occurrences": 3, "territorial_changes": 2, "media_evidence": 6},
+    "recovery_counts": {"survey_events": 2, "occurrences": 6, "territorial_changes": 4, "media_evidence": 12},
+    "triple_sync_without_duplicates": true,
+    "collision_resolved": true,
+    "conflict_detected_and_preserved": true,
+    "media_hashes": "6/6 MATCH",
+    "local_blob_deleted": false,
+    "block_e_not_started": true
+  },
   "test_execution": {
     "npm run lint": {"exit_code": 0, "result": "typecheck passed"},
     "npm run test:run -- --pool=forks --poolOptions.forks.singleFork=true": {"exit_code": 0, "files": 8, "tests": 67, "passed": 67, "failed": 0},
     "npm run build": {"exit_code": 0, "result": "production build passed", "warning": "Generated an empty chunk: vendor"},
     "npm run e2e": {"result": "BLOCKED", "reason": "la ejecución no completó en el entorno; no se cuenta como prueba aprobada"},
+    "npx playwright test e2e/remote-sync-idempotency.spec.ts --project=chromium": {"exit_code": 0, "result": "1 E2E passed against clean PocketBase Docker; artifact generated"},
     "docker compose -f docker-compose.local.yml config --quiet": {"exit_code": 0, "result": "configuration valid"},
     "migration_from_empty": {"result": "NOT_EXECUTED", "reason": "no se inició una base PocketBase efímera durante la fase sin modificaciones"},
     "offline_four_records": {"result": "NOT_EXECUTED", "reason": "requiere navegador/PocketBase y no debe inferirse desde código"},
