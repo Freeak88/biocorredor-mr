@@ -8,6 +8,14 @@ type ParcelProperties = {
   superficie_m2?: number | string;
   tipo?: string;
   fuente?: string;
+  operational_name?: string;
+  area_name?: string;
+  source_value?: string;
+  normalized_value?: string;
+  source_document?: string;
+  source_pages?: number[];
+  reference_status?: string;
+  source_note?: string;
 };
 
 type ParcelFeature = Feature<Polygon | MultiPolygon, ParcelProperties>;
@@ -39,7 +47,7 @@ function sectorFor(lat: number, lng: number): ParcelSector {
 async function loadSector(sector: ParcelSector): Promise<ParcelCollection> {
   const cached = parcelCache.get(sector);
   if (cached) return cached;
-  const response = await fetch(`/data/geoarba/ministro-rivadavia-parcels-${sector}.geojson`);
+  const response = await fetch('/data/geoarba/ministro-rivadavia-parcels-curated-noreste.geojson');
   if (!response.ok) throw new Error(`No se pudo cargar el sector territorial (${response.status}).`);
   const collection = await response.json() as ParcelCollection;
   parcelCache.set(sector, collection);

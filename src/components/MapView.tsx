@@ -77,7 +77,7 @@ function TerritorialParcelsOverlay({ visible }: { visible: boolean }) {
   useEffect(() => {
     if (!visible || zoom < 14 || loadedSector === sector) return;
     setData(null);
-    fetch(`/data/geoarba/ministro-rivadavia-parcels-${sector}.geojson`)
+    fetch('/data/geoarba/ministro-rivadavia-parcels-curated-noreste.geojson')
       .then(response => response.ok ? response.json() : Promise.reject(new Error('Parcelario no disponible')))
       .then(value => { setData(value as ParcelFeatureCollection); setLoadedSector(sector); })
       .catch(() => { setData(null); setLoadedSector(null); });
@@ -88,14 +88,16 @@ function TerritorialParcelsOverlay({ visible }: { visible: boolean }) {
   return (
     <GeoJSON
       data={data as never}
-      style={() => ({ color: '#7d5f42', weight: 0.6, opacity: 0.72, fillColor: '#caa77c', fillOpacity: 0.08 })}
+      style={() => ({ color: '#1f4d36', weight: 0.9, opacity: 0.92, fillColor: '#5f9f78', fillOpacity: 0.16 })}
       onEachFeature={(feature, layer) => {
         const properties = (feature.properties || {}) as Record<string, unknown>;
         layer.bindPopup(`
           <div class="font-sans text-[11px] leading-relaxed">
-            <strong>Parcela GeoARBA</strong><br/>
+            <strong>${properties.operational_name || 'Parcela GeoARBA'}</strong><br/>
+            ${properties.area_name ? `Área: ${properties.area_name}<br/>` : ''}
             Nomenclatura: ${properties.nomenclatura || 'no disponible'}<br/>
             Partida: ${properties.partida || 'no disponible'}<br/>
+            Referencia: ${properties.reference_status === 'referencia_comunitaria' ? 'propuesta comunitaria' : 'pendiente'}<br/>
             Superficie: ${properties.superficie_m2 || 'no disponible'} m²
           </div>
         `);
