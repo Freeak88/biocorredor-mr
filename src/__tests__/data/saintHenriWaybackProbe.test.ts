@@ -12,6 +12,7 @@ type WaybackConfigItem = {
 
 type MetadataResponse = {
   features?: Array<{ attributes?: Record<string, unknown> }>;
+  error?: unknown;
 };
 
 const CONFIG_URL = 'https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json';
@@ -47,7 +48,7 @@ function tileUrl(item: WaybackConfigItem, releaseNum: string, z: number, y: numb
     .replace('{x}', String(x));
 }
 
-async function metadata(item: WaybackConfigItem, releaseNum: string) {
+async function metadata(item: WaybackConfigItem) {
   const base = item.metadataLayerUrl;
   if (!base) return null;
   const layerId = 23 - ZOOM;
@@ -56,9 +57,11 @@ async function metadata(item: WaybackConfigItem, releaseNum: string) {
     x: POINT.longitude,
     y: POINT.latitude,
   });
+  // Exact field names from @esri/wayback-core src/metadata/config.ts.
   const params = new URLSearchParams({
-    f: 'json', where: '1=1',
-    outFields: 'SRC_DATE2,SRC_DATE,SRC_PROV,SRC_PROVIDER,SRC_NAME,SRC_ACC,SRC_RES',
+    f: 'json',
+    where: '1=1',
+    outFields: 'SRC_DATE2,NICE_DESC,SRC_DESC,SAMP_RES,SRC_ACC',
     geometry,
     returnGeometry: 'false',
     geometryType: 'esriGeometryPoint',
@@ -67,6 +70,7 @@ async function metadata(item: WaybackConfigItem, releaseNum: string) {
   const r = await fetch(`${base}/${layerId}/query?${params.toString()}`);
   if (!r.ok) return { httpStatus: r.status };
   const j = await r.json() as MetadataResponse;
+  if (j.error) return { error: j.error };
   return j.features?.[0]?.attributes ?? null;
 }
 
@@ -103,7 +107,7 @@ describe('Saint Henri Wayback evidence probe', () => {
         firstReleaseDate: first.date,
         bytes: first.bytes,
         layerIdentifier: first.item.layerIdentifier ?? null,
-        metadata: await metadata(first.item, first.releaseNum),
+        metadata: await metadata(first.item),
       });
     }
 
