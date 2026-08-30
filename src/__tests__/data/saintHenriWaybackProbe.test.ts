@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 type WaybackConfigItem = {
@@ -18,6 +20,7 @@ type MetadataResponse = {
 const CONFIG_URL = 'https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json';
 const POINT = { longitude: -58.34472222, latitude: -34.8625 };
 const ZOOM = 17;
+const OUTPUT_DIR = path.resolve(process.cwd(), 'tmp/saint-henri-wayback');
 
 function xyz(lon: number, lat: number, z: number) {
   const n = 2 ** z;
@@ -76,6 +79,9 @@ async function metadata(item: WaybackConfigItem) {
 
 describe('Saint Henri Wayback evidence probe', () => {
   it('finds historical imagery changes at the aerodrome reference point', async () => {
+    fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+
     const r = await fetch(CONFIG_URL);
     expect(r.ok).toBe(true);
     const config = await r.json() as Record<string, WaybackConfigItem>;
@@ -86,7 +92,7 @@ describe('Saint Henri Wayback evidence probe', () => {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const tile = xyz(POINT.longitude, POINT.latitude, ZOOM);
-    const seen = new Map<string, { releaseNum: string; date: string; item: WaybackConfigItem; bytes: number }>();
+    const seen = new Map<string, { releaseNum: string; date: string; item: WaybackConfigItem; bytes: number; file: string }>();
     const timeline: Array<{ releaseNum: string; releaseDate: string; hash: string; bytes: number }> = [];
 
     for (const rel of releases) {
@@ -96,7 +102,11 @@ describe('Saint Henri Wayback evidence probe', () => {
       const buf = Buffer.from(await tr.arrayBuffer());
       const hash = createHash('sha256').update(buf).digest('hex');
       timeline.push({ releaseNum: rel.releaseNum, releaseDate: rel.date, hash, bytes: buf.length });
-      if (!seen.has(hash)) seen.set(hash, { releaseNum: rel.releaseNum, date: rel.date, item: rel.item, bytes: buf.length });
+      if (!seen.has(hash)) {
+        const file = `${rel.date}_${rel.releaseNum}_z${ZOOM}_${tile.x}_${tile.y}.jpg`;
+        fs.writeFileSync(path.join(OUTPUT_DIR, file), buf);
+        seen.set(hash, { releaseNum: rel.releaseNum, date: rel.date, item: rel.item, bytes: buf.length, file });
+      }
     }
 
     const unique = [];
@@ -106,13 +116,13 @@ describe('Saint Henri Wayback evidence probe', () => {
         firstReleaseNum: first.releaseNum,
         firstReleaseDate: first.date,
         bytes: first.bytes,
+        file: first.file,
         layerIdentifier: first.item.layerIdentifier ?? null,
         metadata: await metadata(first.item),
       });
     }
 
-    console.log('SAINT_HENRI_WAYBACK_PROBE_BEGIN');
-    console.log(JSON.stringify({
+    const report = {
       point: POINT,
       zoom: ZOOM,
       tile,
@@ -122,7 +132,11 @@ describe('Saint Henri Wayback evidence probe', () => {
       unique,
       releaseTimeline: timeline,
       caution: 'Wayback release date is not imagery acquisition date. Metadata is authoritative for acquisition date when present. A single tile is a change detector, not the development boundary.',
-    }, null, 2));
+    };
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'manifest.json'), JSON.stringify(report, null, 2));
+
+    console.log('SAINT_HENRI_WAYBACK_PROBE_BEGIN');
+    console.log(JSON.stringify(report, null, 2));
     console.log('SAINT_HENRI_WAYBACK_PROBE_END');
 
     expect(releases.length).toBeGreaterThan(0);
