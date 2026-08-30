@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Auditoría Territorial · Biocorredor MR</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202018;background:#f4f0e7}*{box-sizing:border-box}body{margin:0;height:100vh;overflow:hidden}.layout{height:100%;display:grid;grid-template-columns:minmax(330px,410px) 1fr}.panel{overflow:auto;padding:18px;border-right:1px solid #2b2a24;background:#f7f2e8}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#79634b}.title{font-family:Georgia,serif;font-size:26px;line-height:1.05;margin:6px 0}.lead{font-size:12px;line-height:1.5;color:#5e5a50}.card{border:1px solid #39372f;background:#fffdf8;padding:12px;margin-top:12px;box-shadow:3px 3px 0 rgba(48,45,36,.12)}.card h2{font-size:12px;margin:0 0 9px;text-transform:uppercase;letter-spacing:.08em}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field label{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}.field input,.field select{width:100%;padding:8px;border:1px solid #aaa28f;background:#fff;font:inherit;font-size:12px}.kpis{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.kpi{padding:8px;background:#ece5d6}.kpi b{display:block;font-size:17px}.kpi span{font-size:9px;text-transform:uppercase}.status{margin-top:8px;padding:9px;font-size:11px;font-weight:800}.ok{background:#e1eedf}.warn{background:#f4e9b8}.bad{background:#f1d0c8}.neutral{background:#e3e0d8}.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:9px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px}.projects{display:grid;gap:7px}.project{border-left:4px solid #a59172;background:#f4efe4;padding:8px}.project strong{font-size:11px}.project p{font-size:9px;margin:3px 0 0;color:#666054}.parcel{font-size:11px;line-height:1.45}.buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-top:8px}.buttons button{border:1px solid #3f3b32;background:#fff;padding:7px;font-size:9px;font-weight:800;cursor:pointer}.buttons button:hover{background:#ece5d6}#map{height:100%;width:100%}.mapnote{position:absolute;z-index:1000;right:12px;top:12px;max-width:300px;background:rgba(255,253,248,.94);border:1px solid #39372f;padding:9px;font-size:10px;box-shadow:2px 2px 0 rgba(0,0,0,.12)}@media(max-width:800px){body{overflow:auto}.layout{display:block;height:auto}.panel{border-right:0;border-bottom:1px solid #333}.mapwrap{height:70vh;position:relative}}.mapwrap{position:relative}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="panel">
+    <div class="eyebrow">Biocorredor MR · herramienta de verificación</div>
+    <h1 class="title">Auditoría territorial</h1>
+    <p class="lead">Cruza parcelas GeoARBA con evidencia y escenarios de cupo. Un semáforo indica el <b>estado de verificación</b>, no la legalidad de una parcela.</p>
+
+    <section class="card">
+      <h2>Cálculo del cupo</h2>
+      <div class="grid">
+        <div class="field"><label>Área rural bruta (ha)</label><input id="gross" type="number" min="0" step="0.01" placeholder="Completar con dato oficial"></div>
+        <div class="field"><label>Exclusiones (ha)</label><input id="excluded" type="number" min="0" step="0.01" value="0"></div>
+        <div class="field"><label>Proyectos computables (ha)</label><input id="used" type="number" min="0" step="0.01" value="0"></div>
+        <div class="field"><label>5% adicional</label><select id="extra"><option value="unknown">No documentado</option><option value="no">No activado</option><option value="yes">Activado con acto</option></select></div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><b id="base">—</b><span>base computable</span></div>
+        <div class="kpi"><b id="cap10">—</b><span>cupo ordinario 10%</span></div>
+        <div class="kpi"><b id="remaining">—</b><span>saldo ordinario</span></div>
+        <div class="kpi"><b id="cap15">—</b><span>máximo autorizado</span></div>
+      </div>
+      <div id="quotaStatus" class="status neutral">Ingresá la superficie rural oficial para calcular.</div>
+    </section>
+
+    <section class="card">
+      <h2>Parcela seleccionada</h2>
+      <div id="parcel" class="parcel">Hacé clic sobre una parcela GeoARBA a zoom 14 o superior.</div>
+      <div class="buttons" id="parcelButtons" hidden>
+        <button data-status="documented">✓ Documentada</button>
+        <button data-status="partial">◐ Parcial</button>
+        <button data-status="priority">! Prioridad</button>
+        <button data-status="unknown">○ Sin clasificar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Semáforo de verificación</h2>
+      <div class="legend"><span><i class="dot" style="background:#3d8b52"></i>documentada</span><span><i class="dot" style="background:#d59b2a"></i>parcial</span><span><i class="dot" style="background:#ba4b3d"></i>prioridad</span><span><i class="dot" style="background:#8b867c"></i>sin clasificar</span></div>
+    </section>
+
+    <section class="card">
+      <h2>Casos semilla</h2>
+      <div class="projects" id="projects"></div>
+    </section>
+  </aside>
+  <main class="mapwrap">
+    <div id="map"></div>
+    <div class="mapnote"><b>GeoARBA:</b> la capa muestra geometría y atributos catastrales disponibles en el proyecto. La titularidad no se infiere. El recorte por sectores es operativo y no reemplaza un límite normativo oficial.</div>
+  </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const projects=[
+  ['Saint Henri Aero & Country Club','55 ha · 349 lotes publicitados · expediente y tratamiento del cupo pendientes'],
+  ['Altos de Espora','45 ha publicitadas · límite y zonificación a verificar'],
+  ['Barrio Parque América','lotes 324–552 m² publicitados · zonificación a verificar'],
+  ['Estancias del Sur','lotes 302–320 m² publicitados · zonificación a verificar'],
+  ['La Ramona','50 lotes de 300 m² publicitados · zonificación a verificar'],
+  ['Barrio Don Vicente','14 lotes de 360 m² publicitados · zonificación a verificar'],
+  ['Condominio Av. 25 de Mayo','14 lotes de 300 m² publicitados · zonificación a verificar'],
+  ['Portal del Sol I','lotes desde ~680 m² publicitados · zonificación a verificar']
+];
+document.getElementById('projects').innerHTML=projects.map(([n,d])=>`<div class="project"><strong>${n}</strong><p>${d}</p></div>`).join('');
+
+const num=id=>Number(document.getElementById(id).value||0);
+function fmt(v){return Number.isFinite(v)?v.toLocaleString('es-AR',{maximumFractionDigits:2})+' ha':'—'}
+function calc(){
+  const gross=num('gross'), excluded=num('excluded'), used=num('used'), extra=document.getElementById('extra').value;
+  const out=document.getElementById('quotaStatus');
+  if(!gross||excluded>gross){['base','cap10','remaining','cap15'].forEach(id=>document.getElementById(id).textContent='—');out.className='status neutral';out.textContent='Ingresá una superficie rural válida y las exclusiones documentadas.';return}
+  const base=gross-excluded, cap10=base*.10, cap5=base*.05, ordinaryRemaining=cap10-used;
+  const auth=extra==='yes'?cap10+cap5:extra==='no'?cap10:null;
+  document.getElementById('base').textContent=fmt(base);document.getElementById('cap10').textContent=fmt(cap10);document.getElementById('remaining').textContent=fmt(ordinaryRemaining);document.getElementById('cap15').textContent=auth==null?'pendiente':fmt(auth);
+  if(used<=cap10){out.className='status ok';out.textContent=`Escenario dentro del cupo ordinario: ${(used/cap10*100).toFixed(1)}% utilizado.`}
+  else if(extra==='unknown'){out.className='status warn';out.textContent='El 10% se supera en este escenario. Hace falta el acto que acredite si se activó el 5% adicional.'}
+  else if(extra==='yes'&&used<=auth){out.className='status warn';out.textContent='El escenario usa el tramo adicional. Conservar el acto administrativo que documenta su activación.'}
+  else{out.className='status bad';out.textContent='El escenario supera el máximo actualmente indicado. Revisar base, exclusiones, proyectos computables y actos administrativos.'}
+}
+['gross','excluded','used','extra'].forEach(id=>document.getElementById(id).addEventListener('input',calc));calc();
+
+const map=L.map('map',{preferCanvas:true}).setView([-34.85,-58.3667],14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(map);
+const statusStore=JSON.parse(localStorage.getItem('biocorredor-territorial-parcel-status')||'{}');
+let selected=null, layer=null, loadedSector=null;
+const colors={documented:'#3d8b52',partial:'#d59b2a',priority:'#ba4b3d',unknown:'#8b867c'};
+function keyOf(p){return String(p.nomenclatura||p.partida||'').trim()}
+function styleFeature(f){const key=keyOf(f.properties||{}),s=statusStore[key]||'unknown';return{color:colors[s],weight:s==='unknown'?.65:2,opacity:.85,fillColor:colors[s],fillOpacity:s==='unknown'?.04:.12}}
+function sector(){const c=map.getCenter(),west=c.lng<-58.37,north=c.lat>=-34.88;return (north?'noroeste':'suroeste').replace('oeste',west?'oeste':'este')}
+function renderSelected(feature){const p=feature.properties||{},key=keyOf(p),s=statusStore[key]||'unknown';selected={feature,key};document.getElementById('parcel').innerHTML=`<b>${p.nomenclatura||'Nomenclatura no disponible'}</b><br>Partida: ${p.partida||'—'}<br>Superficie: ${p.superficie_m2?Number(p.superficie_m2).toLocaleString('es-AR')+' m²':'—'}<br>Estado: <b>${s}</b>`;document.getElementById('parcelButtons').hidden=false}
+async function loadSector(){if(map.getZoom()<14){if(layer){map.removeLayer(layer);layer=null}return}const s=sector();if(s===loadedSector&&layer)return;loadedSector=s;if(layer){map.removeLayer(layer);layer=null}try{const r=await fetch(`/data/geoarba/ministro-rivadavia-parcels-${s}.geojson`);if(!r.ok)throw new Error('parcelario no disponible');const data=await r.json();layer=L.geoJSON(data,{style:styleFeature,onEachFeature:(f,l)=>l.on('click',()=>renderSelected(f))}).addTo(map)}catch(e){console.warn(e)}}
+map.on('moveend zoomend',loadSector);loadSector();
+document.getElementById('parcelButtons').addEventListener('click',e=>{const b=e.target.closest('button[data-status]');if(!b||!selected)return;statusStore[selected.key]=b.dataset.status;if(b.dataset.status==='unknown')delete statusStore[selected.key];localStorage.setItem('biocorredor-territorial-parcel-status',JSON.stringify(statusStore));renderSelected(selected.feature);if(layer)layer.setStyle(styleFeature)});
+</script>
+</body>
+</html>
