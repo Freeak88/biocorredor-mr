@@ -9,13 +9,39 @@ type Feature = {
 };
 type FC = { type: 'FeatureCollection'; features: Feature[] };
 
+const GEO_DIR = path.resolve(process.cwd(), 'public/data/geoarba');
+const QUADRANTS = [
+  'ministro-rivadavia-parcels-noroeste.geojson',
+  'ministro-rivadavia-parcels-noreste.geojson',
+  'ministro-rivadavia-parcels-suroeste.geojson',
+  'ministro-rivadavia-parcels-sureste.geojson',
+];
+
+function featureKey(feature: Feature, fallback: string) {
+  const p = feature.properties ?? {};
+  const partida = String(p.partida ?? '');
+  const nomenclatura = String(p.nomenclatura ?? '');
+  return `${partida}|${nomenclatura}` !== '|' ? `${partida}|${nomenclatura}` : fallback;
+}
+
+function loadMosaic(): FC {
+  const byKey = new Map<string, Feature>();
+  for (const file of QUADRANTS) {
+    const data = JSON.parse(fs.readFileSync(path.join(GEO_DIR, file), 'utf8')) as FC;
+    data.features.forEach((feature, index) => byKey.set(featureKey(feature, `${file}:${index}`), feature));
+  }
+  return { type: 'FeatureCollection', features: [...byKey.values()] };
+}
+
 function flattenCoords(geometry: Feature['geometry']): number[][] {
   if (geometry.type === 'Polygon') return geometry.coordinates.flat();
   return geometry.coordinates.flat(2);
 }
 
-function parcelNumber(feature: Feature): number | null {
+function circIVParcelNumber(feature: Feature): number | null {
   const nomenclatura = String(feature.properties?.nomenclatura ?? '');
+  // 003 = Almirante Brown; 04 = Circunscripción IV in the GeoARBA nomenclature used here.
+  if (!nomenclatura.startsWith('00304')) return null;
   const match = nomenclatura.match(/(\d{3})000$/);
   return match ? Number(match[1]) : null;
 }
@@ -32,13 +58,9 @@ function geometrySummary(feature: Feature) {
 }
 
 describe('Ordenanza 11.819 Annex I ground-control GeoARBA probe', () => {
-  it('reports candidate current cadastral anchors for image-to-cadastre registration without assuming historical labels survived subdivision', () => {
-    const geoPath = path.resolve(process.cwd(), 'public/data/geoarba/ministro-rivadavia-parcels.geojson');
-    const data = JSON.parse(fs.readFileSync(geoPath, 'utf8')) as FC;
+  it('reports Circ. IV candidate controls across the complete four-quadrant GeoARBA mosaic', () => {
+    const data = loadMosaic();
 
-    // Broad diagnostic set. Annex I is historical (2020), while GeoARBA is a 2026 snapshot;
-    // a missing exact parcel number can therefore indicate subdivision or nomenclature change.
-    // Only matches that remain unique in the current snapshot can serve as direct ground controls.
     const targetParcels = [
       667, 668, 680, 681, 685, 690, 693, 697, 700,
       727, 743, 746, 747, 748, 750,
@@ -47,7 +69,7 @@ describe('Ordenanza 11.819 Annex I ground-control GeoARBA probe', () => {
     ];
 
     const result = targetParcels.map((target) => {
-      const matches = data.features.filter((f) => parcelNumber(f) === target);
+      const matches = data.features.filter((f) => circIVParcelNumber(f) === target);
       return {
         parcelNumber: target,
         matchCount: matches.length,
@@ -59,15 +81,21 @@ describe('Ordenanza 11.819 Annex I ground-control GeoARBA probe', () => {
     });
     const uniqueCurrentAnchors = result.filter((r) => r.matchCount === 1);
 
-    console.log('ANNEX_11819_GROUND_CONTROL_PROBE_BEGIN');
-    console.log(JSON.stringify({
-      source: 'GeoARBA parcel layer 110101, Almirante Brown; local project snapshot',
+    const report = {
+      source: 'GeoARBA parcel layer 110101, Almirante Brown; four local quadrant snapshots mosaicked',
+      mosaicFeatureCount: data.features.length,
       targetParcels,
       uniqueCurrentAnchorCount: uniqueCurrentAnchors.length,
       uniqueCurrentAnchors,
       allResults: result,
       caution: 'Annex I labels are from 2020 and GeoARBA is a later cadastral snapshot. Missing exact parcel numbers must not be treated as missing land: they may have been subdivided or renumbered. Pixel coordinates still require visual review of the official annex before fitting any transform.',
-    }, null, 2));
+    };
+    const outDir = path.resolve(process.cwd(), 'tmp/territorial-audit');
+    fs.mkdirSync(outDir, { recursive: true });
+    fs.writeFileSync(path.join(outDir, 'annex11819-ground-controls.json'), JSON.stringify(report, null, 2));
+
+    console.log('ANNEX_11819_GROUND_CONTROL_PROBE_BEGIN');
+    console.log(JSON.stringify(report, null, 2));
     console.log('ANNEX_11819_GROUND_CONTROL_PROBE_END');
 
     expect(data.features.length).toBeGreaterThan(0);
