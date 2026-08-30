@@ -34,6 +34,12 @@ function geometrySummary(feature: Feature) {
   };
 }
 
+function parcelNumber(feature: Feature): number | null {
+  const nomenclatura = String(feature.properties?.nomenclatura ?? '');
+  const match = nomenclatura.match(/(\d{3})000$/);
+  return match ? Number(match[1]) : null;
+}
+
 /**
  * Evidence probe for Saint Henri / Aeroclub Longchamps - La Caída.
  *
@@ -84,12 +90,23 @@ describe('Saint Henri cadastral evidence probe', () => {
 
     const result = [...byFeature.entries()]
       .map(([feature, labels]) => ({
+        parcelNumber: parcelNumber(feature),
         sampleHits: labels.length,
         samples: labels,
         properties: feature.properties ?? {},
         geometry: geometrySummary(feature),
       }))
       .sort((a, b) => b.sampleHits - a.sampleHits);
+
+    const nearbyParcelInventory = data.features
+      .map((feature) => ({ parcelNumber: parcelNumber(feature), feature }))
+      .filter((item) => item.parcelNumber !== null && item.parcelNumber >= 768 && item.parcelNumber <= 793)
+      .map(({ parcelNumber: number, feature }) => ({
+        parcelNumber: number,
+        properties: feature.properties ?? {},
+        geometry: geometrySummary(feature),
+      }))
+      .sort((a, b) => (a.parcelNumber ?? 0) - (b.parcelNumber ?? 0));
 
     const totalCandidateAreaM2 = result.reduce((sum, item) => {
       const area = Number(item.properties.superficie_m2 ?? 0);
@@ -104,6 +121,7 @@ describe('Saint Henri cadastral evidence probe', () => {
       distinctCandidateAreaM2: totalCandidateAreaM2,
       distinctCandidateAreaHa: totalCandidateAreaM2 / 10000,
       results: result,
+      nearbyParcelInventory,
     }, null, 2));
     console.log('SAINT_HENRI_PARCEL_PROBE_END');
 
