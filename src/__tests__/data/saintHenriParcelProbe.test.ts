@@ -15,6 +15,25 @@ type FeatureCollection = {
   features: Feature[];
 };
 
+function flattenCoords(geometry: Feature['geometry']): number[][] {
+  if (geometry.type === 'Polygon') return geometry.coordinates.flat();
+  return geometry.coordinates.flat(2);
+}
+
+function geometrySummary(feature: Feature) {
+  const coords = flattenCoords(feature.geometry);
+  const xs = coords.map((c) => c[0]);
+  const ys = coords.map((c) => c[1]);
+  const bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  return {
+    bbox,
+    approxCenter: [
+      (bbox[0] + bbox[2]) / 2,
+      (bbox[1] + bbox[3]) / 2,
+    ],
+  };
+}
+
 /**
  * Evidence probe for Saint Henri / Aeroclub Longchamps - La Caída.
  *
@@ -33,11 +52,14 @@ describe('Saint Henri cadastral evidence probe', () => {
 
     // Official transport open-data reference: LONGCHAMPS/LA CAÍDA
     // LLC: 34°51'45"S 58°20'41"W = -34.8625, -58.34472222.
-    // Extra points sample the approximately E/W runway and its immediate sides;
-    // they are probes only and do not define the development boundary.
+    // Parapente Buenos Aires publishes its field at the same San Zeballos 1320
+    // address at -34.859431,-58.350495. Extra points sample the approximately
+    // E/W runway and its immediate sides; they are probes only and do not
+    // define the development boundary.
     const samples: Array<[number, number, string]> = [
       [-58.34472222, -34.8625, 'ANAC/Transporte aerodrome reference'],
       [-58.3445, -34.8609, 'OSM/Mapcarta aerodrome centroid'],
+      [-58.350495, -34.859431, 'San Zeballos 1320 / flight-field published point'],
       [-58.3488, -34.8631, 'runway west probe'],
       [-58.3474, -34.8629, 'runway west-centre probe'],
       [-58.3460, -34.8627, 'runway centre-west probe'],
@@ -65,14 +87,22 @@ describe('Saint Henri cadastral evidence probe', () => {
         sampleHits: labels.length,
         samples: labels,
         properties: feature.properties ?? {},
+        geometry: geometrySummary(feature),
       }))
       .sort((a, b) => b.sampleHits - a.sampleHits);
+
+    const totalCandidateAreaM2 = result.reduce((sum, item) => {
+      const area = Number(item.properties.superficie_m2 ?? 0);
+      return sum + (Number.isFinite(area) ? area : 0);
+    }, 0);
 
     console.log('SAINT_HENRI_PARCEL_PROBE_BEGIN');
     console.log(JSON.stringify({
       source: 'GeoARBA parcel layer 110101, Almirante Brown; local project snapshot',
       referencePoint: { lon: -58.34472222, lat: -34.8625 },
       resultCount: result.length,
+      distinctCandidateAreaM2: totalCandidateAreaM2,
+      distinctCandidateAreaHa: totalCandidateAreaM2 / 10000,
       results: result,
     }, null, 2));
     console.log('SAINT_HENRI_PARCEL_PROBE_END');
