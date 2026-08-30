@@ -31,5 +31,14 @@ jobs:
       - name: Unit tests
         run: npm test -- --run
 
+      - name: Archive Saint Henri Wayback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: saint-henri-wayback-evidence
+          path: tmp/saint-henri-wayback/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Production build
         run: npm run build
