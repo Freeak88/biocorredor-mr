@@ -23,9 +23,10 @@ function bboxSummary(feature: Feature) {
 }
 
 describe('GeoARBA compact parcel export for Annex I registration', () => {
-  it('exports cadastral metadata and geometry anchors as a compact audit artifact', () => {
+  it('exports cadastral metadata, official area field and geometry snapshot as audit artifacts', () => {
     const geoPath = path.resolve(process.cwd(), 'public/data/geoarba/ministro-rivadavia-parcels.geojson');
-    const data = JSON.parse(fs.readFileSync(geoPath, 'utf8')) as FC;
+    const rawGeo = fs.readFileSync(geoPath, 'utf8');
+    const data = JSON.parse(rawGeo) as FC;
     const rows = data.features.map((feature, index) => {
       const props = feature.properties ?? {};
       return {
@@ -34,7 +35,7 @@ describe('GeoARBA compact parcel export for Annex I registration', () => {
         partida: props.partida ?? null,
         parcela: props.parcela ?? null,
         tipo: props.tipo ?? null,
-        superficie: props.superficie ?? null,
+        superficie_m2: props.superficie_m2 ?? props.superficie ?? null,
         plano: props.plano ?? null,
         ...bboxSummary(feature),
       };
@@ -45,8 +46,10 @@ describe('GeoARBA compact parcel export for Annex I registration', () => {
       source: 'GeoARBA layer 110101, local project snapshot',
       featureCount: rows.length,
       rows,
-      caution: 'bboxCenter is a registration/navigation anchor, not a legal centroid or mensura coordinate.',
+      caution: 'bboxCenter is a registration/navigation anchor, not a legal centroid or mensura coordinate. superficie_m2 is copied from the source feature metadata when present.',
     }));
+    fs.writeFileSync(path.join(outDir, 'ministro-rivadavia-parcels.geojson'), rawGeo);
     expect(rows.length).toBeGreaterThan(0);
+    expect(rows.some((row) => typeof row.superficie_m2 === 'number')).toBe(true);
   });
 });
