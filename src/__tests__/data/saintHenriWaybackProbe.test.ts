@@ -22,6 +22,16 @@ const POINT = { longitude: -58.34472222, latitude: -34.8625 };
 const ZOOM = 17;
 const OUTPUT_DIR = path.resolve(process.cwd(), 'tmp/saint-henri-wayback');
 
+// Envelope of the seven GeoARBA parcels intersected by the cadastral probe.
+// It is intentionally broader than the advertised project and is only the
+// evidence-review window; it is not asserted as the Saint Henri boundary.
+const REVIEW_BBOX = {
+  west: -58.35175014904665,
+  south: -34.86726285879402,
+  east: -58.33785334947946,
+  north: -34.85767411476677,
+};
+
 function xyz(lon: number, lat: number, z: number) {
   const n = 2 ** z;
   const x = Math.floor(((lon + 180) / 360) * n);
@@ -77,8 +87,41 @@ async function metadata(item: WaybackConfigItem) {
   return j.features?.[0]?.attributes ?? null;
 }
 
+function reviewGrid() {
+  const nw = xyz(REVIEW_BBOX.west, REVIEW_BBOX.north, ZOOM);
+  const se = xyz(REVIEW_BBOX.east, REVIEW_BBOX.south, ZOOM);
+  const cells: Array<{ x: number; y: number }> = [];
+  for (let y = nw.y; y <= se.y; y += 1) {
+    for (let x = nw.x; x <= se.x; x += 1) cells.push({ x, y });
+  }
+  return { minX: nw.x, minY: nw.y, maxX: se.x, maxY: se.y, cells };
+}
+
+async function archiveGrid(
+  first: { releaseNum: string; date: string; item: WaybackConfigItem },
+  grid: ReturnType<typeof reviewGrid>,
+) {
+  const dir = path.join(OUTPUT_DIR, 'grid', `${first.date}_${first.releaseNum}`);
+  fs.mkdirSync(dir, { recursive: true });
+  const results = await Promise.all(grid.cells.map(async ({ x, y }) => {
+    const tr = await fetch(tileUrl(first.item, first.releaseNum, ZOOM, y, x));
+    if (!tr.ok) return { x, y, ok: false, status: tr.status };
+    const buf = Buffer.from(await tr.arrayBuffer());
+    const file = `${x}_${y}.jpg`;
+    fs.writeFileSync(path.join(dir, file), buf);
+    return { x, y, ok: true, bytes: buf.length, file };
+  }));
+  return {
+    releaseNum: first.releaseNum,
+    releaseDate: first.date,
+    directory: path.relative(OUTPUT_DIR, dir),
+    fetched: results.filter((r) => r.ok).length,
+    failed: results.filter((r) => !r.ok).length,
+  };
+}
+
 describe('Saint Henri Wayback evidence probe', () => {
-  it('finds historical imagery changes at the aerodrome reference point', async () => {
+  it('finds and archives historical imagery changes over the candidate parcel envelope', async () => {
     fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
@@ -96,8 +139,7 @@ describe('Saint Henri Wayback evidence probe', () => {
     const timeline: Array<{ releaseNum: string; releaseDate: string; hash: string; bytes: number }> = [];
 
     for (const rel of releases) {
-      const u = tileUrl(rel.item, rel.releaseNum, tile.z, tile.y, tile.x);
-      const tr = await fetch(u);
+      const tr = await fetch(tileUrl(rel.item, rel.releaseNum, tile.z, tile.y, tile.x));
       if (!tr.ok) continue;
       const buf = Buffer.from(await tr.arrayBuffer());
       const hash = createHash('sha256').update(buf).digest('hex');
@@ -109,7 +151,9 @@ describe('Saint Henri Wayback evidence probe', () => {
       }
     }
 
+    const grid = reviewGrid();
     const unique = [];
+    const gridArchives = [];
     for (const [hash, first] of seen.entries()) {
       unique.push({
         hash,
@@ -120,18 +164,27 @@ describe('Saint Henri Wayback evidence probe', () => {
         layerIdentifier: first.item.layerIdentifier ?? null,
         metadata: await metadata(first.item),
       });
+      gridArchives.push(await archiveGrid(first, grid));
     }
 
     const report = {
       point: POINT,
       zoom: ZOOM,
       tile,
+      reviewBbox: REVIEW_BBOX,
+      reviewGrid: {
+        minX: grid.minX, minY: grid.minY, maxX: grid.maxX, maxY: grid.maxY,
+        columns: grid.maxX - grid.minX + 1,
+        rows: grid.maxY - grid.minY + 1,
+        tilesPerImage: grid.cells.length,
+      },
       releasesChecked: releases.length,
       tilesFetched: timeline.length,
       distinctTileImages: unique.length,
       unique,
+      gridArchives,
       releaseTimeline: timeline,
-      caution: 'Wayback release date is not imagery acquisition date. Metadata is authoritative for acquisition date when present. A single tile is a change detector, not the development boundary.',
+      caution: 'Wayback release date is not imagery acquisition date. Metadata is authoritative for acquisition date when present. The review bbox is an evidence window derived from candidate parcels, not the development boundary.',
     };
     fs.writeFileSync(path.join(OUTPUT_DIR, 'manifest.json'), JSON.stringify(report, null, 2));
 
@@ -141,5 +194,6 @@ describe('Saint Henri Wayback evidence probe', () => {
 
     expect(releases.length).toBeGreaterThan(0);
     expect(timeline.length).toBeGreaterThan(0);
-  }, 60_000);
+    expect(grid.cells.length).toBeGreaterThan(1);
+  }, 180_000);
 });
