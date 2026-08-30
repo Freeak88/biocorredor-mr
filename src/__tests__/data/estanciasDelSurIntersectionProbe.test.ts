@@ -21,9 +21,32 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.nchc.org.tw/api/interpreter',
 ];
 const TMP_DIR = path.resolve(process.cwd(), 'tmp/territorial-audit');
+const GEO_DIR = path.resolve(process.cwd(), 'public/data/geoarba');
+const QUADRANTS = [
+  'ministro-rivadavia-parcels-noroeste.geojson',
+  'ministro-rivadavia-parcels-noreste.geojson',
+  'ministro-rivadavia-parcels-suroeste.geojson',
+  'ministro-rivadavia-parcels-sureste.geojson',
+];
 const CENTER: XY = [-58.35, -34.86];
 const METERS_PER_DEG_LAT = 111_320;
 const METERS_PER_DEG_LON = METERS_PER_DEG_LAT * Math.cos(CENTER[1] * Math.PI / 180);
+
+function featureKey(feature: Feature, fallback: string) {
+  const p = feature.properties ?? {};
+  const partida = String(p.partida ?? '');
+  const nomenclatura = String(p.nomenclatura ?? '');
+  return `${partida}|${nomenclatura}` !== '|' ? `${partida}|${nomenclatura}` : fallback;
+}
+
+function loadMosaic(): FC {
+  const byKey = new Map<string, Feature>();
+  for (const file of QUADRANTS) {
+    const data = JSON.parse(fs.readFileSync(path.join(GEO_DIR, file), 'utf8')) as FC;
+    data.features.forEach((feature, index) => byKey.set(featureKey(feature, `${file}:${index}`), feature));
+  }
+  return { type: 'FeatureCollection', features: [...byKey.values()] };
+}
 
 function normalizeName(value = '') {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -166,7 +189,7 @@ function nearbyParcels(data: FC, p: XY, radiusM = 500) {
     }))
     .filter((row) => row.distanceM <= radiusM)
     .sort((a, b) => a.distanceM - b.distanceM)
-    .slice(0, 100);
+    .slice(0, 200);
 }
 
 async function overpassWays() {
@@ -195,10 +218,9 @@ async function overpassWays() {
 }
 
 describe('Estancias del Sur street-corridor -> GeoARBA probe', () => {
-  it('resolves exact intersections when present and otherwise records the closest named-linework approach as a bounded navigation anchor', async () => {
+  it('resolves exact intersections when present and otherwise records the closest named-linework approach against the full local cadastre mosaic', async () => {
     fs.mkdirSync(TMP_DIR, { recursive: true });
-    const geoPath = path.resolve(process.cwd(), 'public/data/geoarba/ministro-rivadavia-parcels.geojson');
-    const data = JSON.parse(fs.readFileSync(geoPath, 'utf8')) as FC;
+    const data = loadMosaic();
     const overpass = await overpassWays();
     const ways = overpass.ways;
 
@@ -227,7 +249,8 @@ describe('Estancias del Sur street-corridor -> GeoARBA probe', () => {
     });
 
     const report = {
-      source: 'OpenStreetMap linework via Overpass + local GeoARBA snapshot',
+      source: 'OpenStreetMap linework via Overpass + four-quadrant local GeoARBA mosaic',
+      mosaicFeatureCount: data.features.length,
       independentCommercialClue: {
         description: 'A separate public listing by Torchia Cicutti describes a 55 m x 293.13 m, 16,122 m² parcel at Av. Chivilcoy y Calderón. This is a search clue, not proof that the parcel is Estancias del Sur.',
         targetAreaM2: 16122,
