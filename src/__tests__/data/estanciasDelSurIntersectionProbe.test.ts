@@ -22,9 +22,19 @@ const OVERPASS_ENDPOINTS = [
 ];
 const TMP_DIR = path.resolve(process.cwd(), 'tmp/territorial-audit');
 const CENTER: XY = [-58.35, -34.86];
+const METERS_PER_DEG_LAT = 111_320;
+const METERS_PER_DEG_LON = METERS_PER_DEG_LAT * Math.cos(CENTER[1] * Math.PI / 180);
 
 function normalizeName(value = '') {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function toLocal(p: XY): XY {
+  return [(p[0] - CENTER[0]) * METERS_PER_DEG_LON, (p[1] - CENTER[1]) * METERS_PER_DEG_LAT];
+}
+
+function fromLocal(p: XY): XY {
+  return [CENTER[0] + p[0] / METERS_PER_DEG_LON, CENTER[1] + p[1] / METERS_PER_DEG_LAT];
 }
 
 function segmentIntersection(a: XY, b: XY, c: XY, d: XY): XY | null {
@@ -40,6 +50,40 @@ function segmentIntersection(a: XY, b: XY, c: XY, d: XY): XY | null {
 
 function distance2(a: XY, b: XY) {
   return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+}
+
+function distanceMeters(a: XY, b: XY) {
+  const la = toLocal(a);
+  const lb = toLocal(b);
+  return Math.sqrt(distance2(la, lb));
+}
+
+function closestPointOnSegment(p: XY, a: XY, b: XY): XY {
+  const ab: XY = [b[0] - a[0], b[1] - a[1]];
+  const ap: XY = [p[0] - a[0], p[1] - a[1]];
+  const denom = ab[0] * ab[0] + ab[1] * ab[1];
+  if (denom === 0) return a;
+  const t = Math.max(0, Math.min(1, (ap[0] * ab[0] + ap[1] * ab[1]) / denom));
+  return [a[0] + t * ab[0], a[1] + t * ab[1]];
+}
+
+function closestBetweenSegments(a: XY, b: XY, c: XY, d: XY) {
+  const ai = toLocal(a), bi = toLocal(b), ci = toLocal(c), di = toLocal(d);
+  const candidates: Array<{ pa: XY; pb: XY }> = [
+    { pa: ai, pb: closestPointOnSegment(ai, ci, di) },
+    { pa: bi, pb: closestPointOnSegment(bi, ci, di) },
+    { pa: closestPointOnSegment(ci, ai, bi), pb: ci },
+    { pa: closestPointOnSegment(di, ai, bi), pb: di },
+  ];
+  const best = candidates.sort((x, y) => distance2(x.pa, x.pb) - distance2(y.pa, y.pb))[0];
+  const pa = fromLocal(best.pa);
+  const pb = fromLocal(best.pb);
+  return {
+    aPoint: pa,
+    bPoint: pb,
+    midpoint: [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2] as XY,
+    distanceM: distanceMeters(pa, pb),
+  };
 }
 
 function intersections(aWays: OsmWay[], bWays: OsmWay[]) {
@@ -63,11 +107,66 @@ function intersections(aWays: OsmWay[], bWays: OsmWay[]) {
   return out;
 }
 
+function closestApproaches(aWays: OsmWay[], bWays: OsmWay[]) {
+  const out: Array<{
+    midpoint: XY;
+    aPoint: XY;
+    bPoint: XY;
+    distanceM: number;
+    aWay: number;
+    bWay: number;
+    aName?: string;
+    bName?: string;
+  }> = [];
+  for (const aw of aWays) {
+    const ag = aw.geometry ?? [];
+    for (const bw of bWays) {
+      const bg = bw.geometry ?? [];
+      for (let i = 0; i + 1 < ag.length; i += 1) {
+        const a1: XY = [ag[i].lon, ag[i].lat];
+        const a2: XY = [ag[i + 1].lon, ag[i + 1].lat];
+        for (let j = 0; j + 1 < bg.length; j += 1) {
+          const b1: XY = [bg[j].lon, bg[j].lat];
+          const b2: XY = [bg[j + 1].lon, bg[j + 1].lat];
+          const close = closestBetweenSegments(a1, a2, b1, b2);
+          out.push({ ...close, aWay: aw.id, bWay: bw.id, aName: aw.tags?.name, bName: bw.tags?.name });
+        }
+      }
+    }
+  }
+  return out.sort((a, b) => a.distanceM - b.distanceM || distance2(a.midpoint, CENTER) - distance2(b.midpoint, CENTER));
+}
+
 function parcelHits(data: FC, lon: number, lat: number) {
   const p = point([lon, lat]);
   return data.features
     .filter((f) => f.geometry && booleanPointInPolygon(p, f as never))
     .map((f) => f.properties ?? {});
+}
+
+function flattenCoords(geometry: Feature['geometry']): number[][] {
+  if (geometry.type === 'Polygon') return geometry.coordinates.flat();
+  return geometry.coordinates.flat(2);
+}
+
+function bboxCenter(feature: Feature): XY {
+  const coords = flattenCoords(feature.geometry);
+  const xs = coords.map((c) => c[0]);
+  const ys = coords.map((c) => c[1]);
+  return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+}
+
+function nearbyParcels(data: FC, p: XY, radiusM = 500) {
+  return data.features
+    .map((feature) => ({ feature, center: bboxCenter(feature) }))
+    .map(({ feature, center }) => ({
+      distanceM: distanceMeters(center, p),
+      properties: feature.properties ?? {},
+      bboxCenter: center,
+    }))
+    .filter((row) => row.distanceM <= radiusM)
+    .sort((a, b) => a.distanceM - b.distanceM)
+    .slice(0, 100);
 }
 
 async function overpassWays() {
@@ -95,8 +194,8 @@ async function overpassWays() {
   return { ways: [] as OsmWay[], endpoint: null, attempts };
 }
 
-describe('Estancias del Sur exact street-intersection -> GeoARBA probe', () => {
-  it('tries deterministic OSM street linework and records GeoARBA intersections without making network availability a legal-data assertion', async () => {
+describe('Estancias del Sur street-corridor -> GeoARBA probe', () => {
+  it('resolves exact intersections when present and otherwise records the closest named-linework approach as a bounded navigation anchor', async () => {
     fs.mkdirSync(TMP_DIR, { recursive: true });
     const geoPath = path.resolve(process.cwd(), 'public/data/geoarba/ministro-rivadavia-parcels.geojson');
     const data = JSON.parse(fs.readFileSync(geoPath, 'utf8')) as FC;
@@ -109,22 +208,46 @@ describe('Estancias del Sur exact street-intersection -> GeoARBA probe', () => {
       return n.includes('calderon') && (n.includes('brigadier') || n.includes('manuel'));
     });
 
-    const all = intersections(chivilcoy, calderon)
+    const exact = intersections(chivilcoy, calderon)
       .sort((a, b) => distance2(a.point, CENTER) - distance2(b.point, CENTER));
-    const candidates = all.map((hit) => ({
+    const exactCandidates = exact.map((hit) => ({
       ...hit,
       geoArbaHits: parcelHits(data, hit.point[0], hit.point[1]),
     }));
 
+    const closest = closestApproaches(chivilcoy, calderon).slice(0, 10).map((hit) => ({
+      ...hit,
+      geoArbaHitsAtMidpoint: parcelHits(data, hit.midpoint[0], hit.midpoint[1]),
+    }));
+    const bestAnchor = exactCandidates[0]?.point ?? closest[0]?.midpoint ?? null;
+    const near = bestAnchor ? nearbyParcels(data, bestAnchor, 600) : [];
+    const areaMatch16122 = near.filter((row) => {
+      const value = Number(row.properties.superficie_m2 ?? row.properties.superficie ?? NaN);
+      return Number.isFinite(value) && Math.abs(value - 16122) <= 5000;
+    });
+
     const report = {
       source: 'OpenStreetMap linework via Overpass + local GeoARBA snapshot',
+      independentCommercialClue: {
+        description: 'A separate public listing by Torchia Cicutti describes a 55 m x 293.13 m, 16,122 m² parcel at Av. Chivilcoy y Calderón. This is a search clue, not proof that the parcel is Estancias del Sur.',
+        targetAreaM2: 16122,
+      },
       overpassEndpoint: overpass.endpoint,
       overpassAttempts: overpass.attempts,
       queryCenter: { lon: CENTER[0], lat: CENTER[1] },
       streetWayCounts: { chivilcoy: chivilcoy.length, calderon: calderon.length },
-      candidates,
-      evidenceStatus: candidates.length ? 'intersection_found' : 'network_or_osm_linework_unresolved',
-      caution: 'The exact street intersection is only a navigation anchor. A containing parcel at the corner does not by itself establish the Estancias del Sur polygon, ownership, approval, zoning or legality.',
+      exactCandidates,
+      closestApproaches: closest,
+      bestAnchor: bestAnchor ? { lon: bestAnchor[0], lat: bestAnchor[1] } : null,
+      nearbyParcelCount: near.length,
+      nearbyParcels: near,
+      areaMatch16122,
+      evidenceStatus: exactCandidates.length
+        ? 'intersection_found'
+        : closest[0] && closest[0].distanceM <= 100
+          ? 'closest_linework_anchor_under_100m'
+          : 'network_or_osm_linework_unresolved',
+      caution: 'The street/corridor anchor and the 16,122 m² listing are navigation/search evidence only. Neither establishes the Estancias del Sur polygon, ownership, approval, zoning or legality.',
     };
 
     fs.writeFileSync(path.join(TMP_DIR, 'estancias-del-sur-intersection.json'), JSON.stringify(report, null, 2));
@@ -132,8 +255,6 @@ describe('Estancias del Sur exact street-intersection -> GeoARBA probe', () => {
     console.log(JSON.stringify(report, null, 2));
     console.log('ESTANCIAS_DEL_SUR_INTERSECTION_PROBE_END');
 
-    // Only local deterministic data is asserted. External Overpass availability is evidence acquisition,
-    // not a condition that should turn CI red.
     expect(data.features.length).toBeGreaterThan(0);
   }, 120_000);
 });
