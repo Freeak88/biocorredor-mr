@@ -16,7 +16,7 @@
       --shadow:4px 4px 0 rgba(37,37,31,.10);
     }
     *{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--paper);color:var(--ink);overflow:hidden}
-    button,input{font:inherit}a{color:inherit}.app{height:100%;display:grid;grid-template-columns:minmax(360px,460px) 1fr}
+    button,input,select{font:inherit}a{color:inherit}.app{height:100%;display:grid;grid-template-columns:minmax(360px,460px) 1fr}
     .sidebar{overflow:auto;background:var(--panel);border-right:1px solid var(--ink);padding:16px 16px 28px;scrollbar-gutter:stable}
     .eyebrow{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#75654f}.title{font:700 30px/1.02 Georgia,serif;margin:5px 0 8px}.lead{font-size:12px;line-height:1.5;color:var(--muted);margin:0}
     .top-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.action{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--ink);background:white;font-size:10px;font-weight:850;text-decoration:none;cursor:pointer;box-shadow:2px 2px 0 rgba(37,37,31,.07)}.action.primary{background:var(--ink);color:white}
@@ -31,7 +31,9 @@
     .timeline{display:grid;gap:8px}.event{border-left:4px solid #79766c;padding:2px 0 5px 10px}.event time{font-size:9px;font-weight:900}.event strong{font-size:10px;display:block}.event p{font-size:9px;line-height:1.4;color:var(--muted);margin:3px 0}.event .keys{font-size:8px;font-weight:800;color:#605b50}
     .request-list{counter-reset:req;display:grid;gap:7px}.request{counter-increment:req;display:grid;grid-template-columns:24px 1fr;gap:7px;font-size:9.5px;line-height:1.4}.request:before{content:counter(req);display:grid;place-items:center;width:22px;height:22px;background:var(--ink);color:#fff;font-size:9px;font-weight:900;border-radius:50%}
     .lead-list{display:grid;gap:6px}.lead-row{font-size:9px;border-bottom:1px solid #ddd7ca;padding-bottom:6px}.lead-row strong{font-size:10px}.lead-row span{display:block;color:var(--muted);margin-top:2px}
-    .map-wrap{position:relative;height:100%}#map{width:100%;height:100%;background:#e9e5da}.map-ui{position:absolute;z-index:900;top:12px;right:12px;display:grid;gap:7px;max-width:300px}.map-box{background:rgba(255,253,248,.96);border:1px solid var(--ink);padding:9px;box-shadow:2px 2px 0 rgba(0,0,0,.12);font-size:9px;line-height:1.4}.layer-toggle{display:flex;align-items:center;gap:7px}.layer-toggle input{accent-color:var(--ink)}.basemap-group{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.basemap-group .layer-toggle{padding:5px 6px;border:1px solid #d0c9bc;background:#fff}
+    .map-wrap{position:relative;height:100%}#map{width:100%;height:100%;background:#e9e5da}.map-ui{position:absolute;z-index:900;top:12px;right:12px;display:grid;gap:7px;max-width:320px}.map-box{background:rgba(255,253,248,.96);border:1px solid var(--ink);padding:9px;box-shadow:2px 2px 0 rgba(0,0,0,.12);font-size:9px;line-height:1.4}.layer-toggle{display:flex;align-items:center;gap:7px}.layer-toggle input{accent-color:var(--ink)}
+    .basemap-group{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.basemap-group .layer-toggle{padding:5px 6px;border:1px solid #d0c9bc;background:#fff;justify-content:center}
+    .history-controls{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.history-controls select{width:100%;padding:6px;border:1px solid #bdb6a9;background:#fff;color:var(--ink);font-size:9px}.history-status{grid-column:1/-1;font-size:8px;line-height:1.35;color:var(--muted)}.history-badge{display:inline-block;padding:2px 5px;border:1px solid #c7c1b5;background:#f4efe4;font-weight:850}
     .legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}.legend span{font-size:8px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:-1px}
     .map-label{background:#fffdf8;border:1px solid #26251f!important;border-radius:2px!important;box-shadow:2px 2px 0 rgba(0,0,0,.12)!important;color:#211f1a;font-size:9px;font-weight:900;padding:2px 5px}.leaflet-tooltip-top:before{border-top-color:#26251f}
     .footer-note{font-size:8px;color:#757064;margin-top:9px}.loading{padding:12px;background:#ece7dc;font-size:10px}.error{padding:9px;background:var(--red-soft);font-size:9px;color:#762f27}
@@ -113,9 +115,25 @@
       <div class="map-box">
         <strong>Mapa base</strong>
         <div class="basemap-group" role="radiogroup" aria-label="Mapa base">
-          <label class="layer-toggle"><input type="radio" name="basemap" value="street" checked /> Mapa</label>
-          <label class="layer-toggle"><input type="radio" name="basemap" value="satellite" /> Satélite</label>
+          <label class="layer-toggle"><input type="radio" name="basemap" value="satellite" checked /> Satélite</label>
+          <label class="layer-toggle"><input type="radio" name="basemap" value="hybrid" /> Híbrido</label>
+          <label class="layer-toggle"><input type="radio" name="basemap" value="street" /> Mapa</label>
         </div>
+
+        <strong>Imágenes históricas</strong>
+        <div class="history-controls">
+          <select id="historyYear" aria-label="Año de imagen satelital">
+            <option value="current">Actual</option>
+            <option value="2026">2026</option>
+            <option value="2024">2024</option>
+            <option value="2022">2022</option>
+            <option value="2020">2020</option>
+            <option value="2018">2018</option>
+          </select>
+          <span class="history-badge" id="historyBadge">Actual</span>
+          <div class="history-status" id="historyStatus">World Imagery actual. En histórico, el año indica la versión publicada por Esri; la captura local puede ser anterior.</div>
+        </div>
+
         <strong>Capas</strong>
         <label class="layer-toggle"><input id="toggleParcels" type="checkbox" /> Parcelas GeoARBA al acercar (capa pesada)</label>
         <label class="layer-toggle"><input id="toggleLabels" type="checkbox" checked /> Códigos de auditoría</label>
@@ -133,28 +151,121 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 const DATA_URL='/data/auditoria/hallazgos-publicos.json';
+const WAYBACK_CONFIG_URL='https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json';
 const SH_PARTIDAS=new Set(['003000600','003075732','003075734','003075735','003018114','003000684','003075728','003075729']);
 let auditData=null;
 let selectedCaseId=null;
 let parcelLayer=null;
 let loadedSector=null;
 let labelsEnabled=true;
+let currentBasemap='satellite';
+let activeImageryLayer=null;
+let waybackCatalogPromise=null;
 const caseLayers=new Map();
 
 const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([-34.854,-58.337],14);
 const streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'});
-const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri · Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community'});
-streetLayer.addTo(map);
+const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri · Sources: Esri, Vantor/Maxar, Earthstar Geographics, and the GIS User Community'});
+const referenceLayer=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Reference © Esri and contributors',pane:'overlayPane'});
+activeImageryLayer=satelliteLayer;
+satelliteLayer.addTo(map);
 const casesGroup=L.featureGroup().addTo(map);
 
+function removeBaseLayers(){
+  if(map.hasLayer(streetLayer))map.removeLayer(streetLayer);
+  if(activeImageryLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
+  if(map.hasLayer(referenceLayer))map.removeLayer(referenceLayer);
+}
+function applyBasemap(){
+  removeBaseLayers();
+  if(currentBasemap==='street'){
+    streetLayer.addTo(map);
+  }else{
+    if(activeImageryLayer&&!map.hasLayer(activeImageryLayer))activeImageryLayer.addTo(map);
+    if(currentBasemap==='hybrid'&&!map.hasLayer(referenceLayer))referenceLayer.addTo(map);
+  }
+  if(casesGroup.bringToFront)casesGroup.bringToFront();
+  if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
+}
 document.querySelectorAll('input[name="basemap"]').forEach(input=>input.addEventListener('change',e=>{
   if(!e.target.checked)return;
-  const useSatellite=e.target.value==='satellite';
-  const next=useSatellite?satelliteLayer:streetLayer;
-  const prev=useSatellite?streetLayer:satelliteLayer;
-  if(map.hasLayer(prev))map.removeLayer(prev);
-  if(!map.hasLayer(next))next.addTo(map);
+  currentBasemap=e.target.value;
+  applyBasemap();
 }));
+
+function waybackDate(item){
+  if(item.releaseDateLabel)return item.releaseDateLabel;
+  const title=item.itemTitle||item.title||'';
+  return title.match(/Wayback\s+(\d{4}-\d{2}-\d{2})/i)?.[1]||null;
+}
+function waybackTileUrl(item){
+  const source=item.itemURL||item.layerURL||item.url;
+  if(!source)return null;
+  return source
+    .replace('{level}','{z}')
+    .replace('{row}','{y}')
+    .replace('{col}','{x}')
+    .replace('{TileMatrix}','{z}')
+    .replace('{TileRow}','{y}')
+    .replace('{TileCol}','{x}')
+    .replace('{TileMatrixSet}','default028mm');
+}
+async function getWaybackCatalog(){
+  if(!waybackCatalogPromise){
+    waybackCatalogPromise=fetch(WAYBACK_CONFIG_URL)
+      .then(r=>{if(!r.ok)throw new Error(`Wayback config: HTTP ${r.status}`);return r.json()})
+      .then(data=>Object.values(data).map(item=>({...item,__date:waybackDate(item)})).filter(item=>item.__date&&waybackTileUrl(item)));
+  }
+  return waybackCatalogPromise;
+}
+function selectReleaseForYear(catalog,year){
+  const matches=catalog
+    .filter(item=>Number(item.__date.slice(0,4))===year)
+    .sort((a,b)=>a.__date.localeCompare(b.__date));
+  return matches.at(-1)||null;
+}
+function setHistoryStatus(label,text,isError=false){
+  document.getElementById('historyBadge').textContent=label;
+  const status=document.getElementById('historyStatus');
+  status.textContent=text;
+  status.style.color=isError?'#762f27':'';
+}
+async function selectHistory(value){
+  if(value==='current'){
+    activeImageryLayer=satelliteLayer;
+    setHistoryStatus('Actual','World Imagery actual. En histórico, el año indica la versión publicada por Esri; la captura local puede ser anterior.');
+    applyBasemap();
+    return;
+  }
+  const year=Number(value);
+  setHistoryStatus(String(year),`Buscando la última versión Wayback publicada durante ${year}…`);
+  try{
+    const catalog=await getWaybackCatalog();
+    const release=selectReleaseForYear(catalog,year);
+    if(!release)throw new Error(`No hay versión Wayback publicada en ${year}.`);
+    const url=waybackTileUrl(release);
+    const next=L.tileLayer(url,{
+      maxZoom:19,
+      attribution:`World Imagery Wayback © Esri · versión ${release.__date}`
+    });
+    if(activeImageryLayer&&activeImageryLayer!==satelliteLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
+    activeImageryLayer=next;
+    if(currentBasemap==='street'){
+      currentBasemap='satellite';
+      const radio=document.querySelector('input[name="basemap"][value="satellite"]');
+      if(radio)radio.checked=true;
+    }
+    setHistoryStatus(String(year),`Esri World Imagery Wayback · versión publicada ${release.__date}. La fecha de publicación no equivale necesariamente a la fecha de captura de la imagen en este punto.`);
+    applyBasemap();
+  }catch(err){
+    console.warn(err);
+    activeImageryLayer=satelliteLayer;
+    document.getElementById('historyYear').value='current';
+    setHistoryStatus('Actual',`No se pudo cargar Wayback para ${year}. Se mantiene World Imagery actual.`,true);
+    applyBasemap();
+  }
+}
+document.getElementById('historyYear').addEventListener('change',e=>selectHistory(e.target.value));
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function range(v,d=0){return `${Number(v.min).toLocaleString('es-AR',{maximumFractionDigits:d})}-${Number(v.max).toLocaleString('es-AR',{maximumFractionDigits:d})} ha`}
@@ -246,7 +357,7 @@ async function loadParcels(){
   loadedSector=s;if(parcelLayer){map.removeLayer(parcelLayer);parcelLayer=null}
   try{
     const r=await fetch(`/data/geoarba/ministro-rivadavia-parcels-${s}.geojson`);if(!r.ok)throw new Error(`GeoARBA ${s}: ${r.status}`);
-    const geo=await r.json();parcelLayer=L.geoJSON(geo,{style:parcelStyle,onEachFeature:(f,l)=>l.bindPopup(parcelPopup(f))}).addTo(map);parcelLayer.bringToBack();
+    const geo=await r.json();parcelLayer=L.geoJSON(geo,{style:parcelStyle,onEachFeature:(f,l)=>l.bindPopup(parcelPopup(f))}).addTo(map);parcelLayer.bringToFront();
   }catch(err){console.warn(err);document.getElementById('toggleParcels').checked=false;alert('No se pudo cargar la capa GeoARBA de este sector.');}
 }
 document.getElementById('toggleParcels').addEventListener('change',loadParcels);
