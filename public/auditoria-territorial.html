@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="description" content="Mapa interactivo de la auditoría territorial del Parque Rural de Ministro Rivadavia: zonificación, cupos, desarrollos, parcelas y evidencia histórica." />
+  <title>Auditoría Territorial · Parque Rural Ministro Rivadavia</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    :root{
+      color-scheme:light;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --paper:#f4f0e7;--panel:#faf7ef;--ink:#1f211d;--muted:#68685f;--line:#b9b4a8;
+      --green:#315f49;--green-soft:#dde9df;--amber:#9a6a1f;--amber-soft:#f3e7c7;
+      --red:#98483b;--red-soft:#eed8d3;--violet:#6f5a8a;--brown:#9b6a45;--gray:#73736d;
+      --shadow:4px 4px 0 rgba(37,37,31,.10);
+    }
+    *{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--paper);color:var(--ink);overflow:hidden}
+    button,input{font:inherit}a{color:inherit}.app{height:100%;display:grid;grid-template-columns:minmax(360px,460px) 1fr}
+    .sidebar{overflow:auto;background:var(--panel);border-right:1px solid var(--ink);padding:16px 16px 28px;scrollbar-gutter:stable}
+    .eyebrow{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#75654f}.title{font:700 30px/1.02 Georgia,serif;margin:5px 0 8px}.lead{font-size:12px;line-height:1.5;color:var(--muted);margin:0}
+    .top-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.action{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--ink);background:white;font-size:10px;font-weight:850;text-decoration:none;cursor:pointer;box-shadow:2px 2px 0 rgba(37,37,31,.07)}.action.primary{background:var(--ink);color:white}
+    .card{border:1px solid var(--ink);background:#fffdf8;padding:12px;margin-top:12px;box-shadow:var(--shadow)}.card h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin:0 0 9px}.card h3{font-size:12px;margin:10px 0 6px}.small{font-size:10px;line-height:1.45;color:var(--muted)}
+    .verdict{padding:11px;border-left:5px solid var(--green);background:var(--green-soft)}.verdict b{display:block;font:700 16px/1.15 Georgia,serif}.verdict span{font-size:10px;line-height:1.4;display:block;margin-top:5px}
+    .kpis{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.kpi{padding:9px;background:#efeadf;border:1px solid #d5cfc1}.kpi b{display:block;font-size:16px}.kpi span{display:block;font-size:8.5px;line-height:1.3;text-transform:uppercase;letter-spacing:.05em;color:#666257;margin-top:2px}.kpi.full{grid-column:1/-1;background:#f6f1e6}
+    .certainty{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.certainty div{padding:7px;border:1px solid #c7c1b5;font-size:8.5px;line-height:1.25}.certainty strong{display:block;font-size:9px;margin-bottom:2px}.certainty .a{background:var(--green-soft)}.certainty .b{background:var(--amber-soft)}.certainty .c{background:#e7e5df}
+    .section-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:12px}.tab{border:1px solid var(--line);background:#fff;padding:7px 3px;font-size:8px;font-weight:900;text-transform:uppercase;cursor:pointer}.tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}.tab-panel{display:none}.tab-panel.active{display:block}
+    .case-list{display:grid;gap:7px}.case{padding:9px;border:1px solid #c7c1b5;background:#fff;cursor:pointer}.case:hover,.case.active{border-color:var(--ink);box-shadow:2px 2px 0 rgba(0,0,0,.10)}.case-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.case-code{font-weight:900;font-size:10px;border:1px solid var(--ink);padding:2px 5px;background:#f5f0e5}.case strong{font-size:11px}.case p{font-size:9px;line-height:1.35;margin:4px 0 0;color:var(--muted)}
+    .badge{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;padding:3px 5px;border-radius:10px;white-space:nowrap}.badge.high{background:var(--green-soft);color:#244a36}.badge.medium{background:var(--amber-soft);color:#765116}.badge.pending{background:#e7e5df;color:#55534d}.badge.priority{background:var(--red-soft);color:#7b342b}
+    .detail{font-size:10px;line-height:1.45}.detail .hero{border-left:5px solid var(--violet);padding:8px 9px;background:#f0eaf4;margin-bottom:8px}.detail .hero strong{font-size:13px}.detail ul{margin:5px 0 0;padding-left:18px}.detail li{margin:3px 0}.row{display:grid;grid-template-columns:110px 1fr;gap:6px;padding:4px 0;border-bottom:1px dotted #cbc6bb}.row b{font-size:8.5px;text-transform:uppercase;letter-spacing:.05em}.source-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}.source-tag{font-size:8px;border:1px solid #c8c1b5;padding:3px 5px;background:#f5f1e8}
+    .timeline{display:grid;gap:8px}.event{border-left:4px solid #79766c;padding:2px 0 5px 10px}.event time{font-size:9px;font-weight:900}.event strong{font-size:10px;display:block}.event p{font-size:9px;line-height:1.4;color:var(--muted);margin:3px 0}.event .keys{font-size:8px;font-weight:800;color:#605b50}
+    .request-list{counter-reset:req;display:grid;gap:7px}.request{counter-increment:req;display:grid;grid-template-columns:24px 1fr;gap:7px;font-size:9.5px;line-height:1.4}.request:before{content:counter(req);display:grid;place-items:center;width:22px;height:22px;background:var(--ink);color:#fff;font-size:9px;font-weight:900;border-radius:50%}
+    .lead-list{display:grid;gap:6px}.lead-row{font-size:9px;border-bottom:1px solid #ddd7ca;padding-bottom:6px}.lead-row strong{font-size:10px}.lead-row span{display:block;color:var(--muted);margin-top:2px}
+    .map-wrap{position:relative;height:100%}#map{width:100%;height:100%;background:#e9e5da}.map-ui{position:absolute;z-index:900;top:12px;right:12px;display:grid;gap:7px;max-width:300px}.map-box{background:rgba(255,253,248,.96);border:1px solid var(--ink);padding:9px;box-shadow:2px 2px 0 rgba(0,0,0,.12);font-size:9px;line-height:1.4}.layer-toggle{display:flex;align-items:center;gap:7px}.layer-toggle input{accent-color:var(--ink)}
+    .legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}.legend span{font-size:8px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:-1px}
+    .map-label{background:#fffdf8;border:1px solid #26251f!important;border-radius:2px!important;box-shadow:2px 2px 0 rgba(0,0,0,.12)!important;color:#211f1a;font-size:9px;font-weight:900;padding:2px 5px}.leaflet-tooltip-top:before{border-top-color:#26251f}
+    .footer-note{font-size:8px;color:#757064;margin-top:9px}.loading{padding:12px;background:#ece7dc;font-size:10px}.error{padding:9px;background:var(--red-soft);font-size:9px;color:#762f27}
+    @media(max-width:900px){body{overflow:auto}.app{display:block;height:auto}.sidebar{border-right:0;border-bottom:1px solid var(--ink);max-height:none}.map-wrap{height:72vh}.map-ui{left:10px;right:10px;top:10px;max-width:none}.section-tabs{position:sticky;top:0;z-index:20;background:var(--panel);padding:5px 0}.title{font-size:26px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="eyebrow">Biocorredor MR · reconstrucción pública</div>
+    <h1 class="title">Auditoría territorial</h1>
+    <p class="lead">Un mapa para reconstruir qué permitía la norma, qué cambió físicamente y qué documentación debería existir. Cada dato tiene un nivel de certeza explícito.</p>
+    <div class="top-actions">
+      <a class="action primary" href="/documentos/solicitud-informacion-territorial-municipio-2026-09.pdf" target="_blank" rel="noreferrer">Descargar pedido al Municipio</a>
+      <button class="action" id="fitAll">Ver todos los casos</button>
+    </div>
+
+    <section class="card">
+      <h2>Estado preliminar del cupo</h2>
+      <div class="verdict"><b id="verdictLabel">Cargando…</b><span id="verdictText"></span></div>
+      <div class="kpis">
+        <div class="kpi"><b id="proxyProductive">—</b><span>proxy geoespacial Productiva</span></div>
+        <div class="kpi"><b id="proxy10">—</b><span>referencia 10% sobre proxy</span></div>
+        <div class="kpi"><b id="proxy15">—</b><span>15% hipotético si hubo acto</span></div>
+        <div class="kpi"><b id="exceptionHa">—</b><span>screening en zonas de excepción</span></div>
+        <div class="kpi full"><b>Denominador oficial: pendiente</b><span>Debe surgir del decreto reglamentario/listado de exclusiones y de la memoria administrativa del cupo. La Zona Productiva es un proxy espacial, no el denominador jurídico definitivo.</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Cómo leer el mapa</h2>
+      <div class="certainty">
+        <div class="a"><strong>Alta certeza</strong>anclas, superficies o categorías con respaldo fuerte.</div>
+        <div class="b"><strong>Estimación robusta</strong>reconstrucción geoespacial todavía revisable.</div>
+        <div class="c"><strong>Pendiente oficial</strong>expediente, acto, cálculo o polígono legal faltante.</div>
+      </div>
+      <p class="footer-note">No usamos “no existe” cuando un documento no aparece: usamos “no localizado públicamente”.</p>
+    </section>
+
+    <nav class="section-tabs" aria-label="Secciones">
+      <button class="tab active" data-tab="cases">Casos</button>
+      <button class="tab" data-tab="timeline">Normas</button>
+      <button class="tab" data-tab="requests">Pedir</button>
+      <button class="tab" data-tab="leads">Pendientes</button>
+    </nav>
+
+    <section class="tab-panel active" id="tab-cases">
+      <div class="card">
+        <h2>Casos y focos identificados</h2>
+        <div id="caseList" class="case-list"><div class="loading">Cargando casos…</div></div>
+      </div>
+      <div class="card">
+        <h2>Ficha del caso</h2>
+        <div id="caseDetail" class="detail small">Seleccioná un caso en la lista o un punto en el mapa.</div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-timeline">
+      <div class="card"><h2>Reconstrucción normativa 2018-2026</h2><div id="timeline" class="timeline"></div></div>
+    </section>
+
+    <section class="tab-panel" id="tab-requests">
+      <div class="card">
+        <h2>Información que debe pedirse oficialmente</h2>
+        <p class="small">La auditoría puede reconstruir territorio y cronología, pero sólo el Estado puede cerrar la contabilidad administrativa del cupo y exhibir los instrumentos aprobatorios.</p>
+        <div id="requestList" class="request-list"></div>
+        <div class="top-actions"><a class="action primary" href="/documentos/solicitud-informacion-territorial-municipio-2026-09.pdf" target="_blank" rel="noreferrer">PDF listo para presentar</a></div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-leads">
+      <div class="card"><h2>Otros desarrollos ya detectados</h2><div id="leadList" class="lead-list"></div></div>
+    </section>
+  </aside>
+
+  <main class="map-wrap">
+    <div id="map"></div>
+    <div class="map-ui">
+      <div class="map-box">
+        <strong>Capas</strong>
+        <label class="layer-toggle"><input id="toggleParcels" type="checkbox" /> Parcelas GeoARBA al acercar (capa pesada)</label>
+        <label class="layer-toggle"><input id="toggleLabels" type="checkbox" checked /> Códigos de auditoría</label>
+        <div class="legend">
+          <span><i class="dot" style="background:#6f5a8a"></i>caso reconstruido</span>
+          <span><i class="dot" style="background:#b44c3d"></i>prioridad</span>
+          <span><i class="dot" style="background:#9b6a45"></i>Recuperación</span>
+          <span><i class="dot" style="background:#73736d"></i>Uso Específico</span>
+        </div>
+      </div>
+      <div class="map-box"><strong>Importante</strong><br />Los círculos R/U son puntos de screening, no límites de desarrollos. EDS es un área de búsqueda. Las parcelas de SH se resaltan sólo cuando se activa GeoARBA.</div>
+    </div>
+  </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const DATA_URL='/data/auditoria/hallazgos-publicos.json';
+const SH_PARTIDAS=new Set(['003000600','003075732','003075734','003075735','003018114','003000684','003075728','003075729']);
+let auditData=null;
+let selectedCaseId=null;
+let parcelLayer=null;
+let loadedSector=null;
+let labelsEnabled=true;
+const caseLayers=new Map();
+
+const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([-34.854,-58.337],14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);
+const casesGroup=L.featureGroup().addTo(map);
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function range(v,d=0){return `${Number(v.min).toLocaleString('es-AR',{maximumFractionDigits:d})}-${Number(v.max).toLocaleString('es-AR',{maximumFractionDigits:d})} ha`}
+function badgeFor(c){
+  if(c.confidence?.includes('high')) return '<span class="badge high">alta</span>';
+  if(c.confidence?.includes('medium')) return '<span class="badge medium">media</span>';
+  if(c.status?.includes('priority')) return '<span class="badge priority">prioridad</span>';
+  return '<span class="badge pending">pendiente</span>';
+}
+function tab(name){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`tab-${name}`));
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+
+function caseCard(c){
+  const subtitle=c.kind==='exception_screening'?`${c.zone} · ${c.currentUrbanClusterAreaHa.toLocaleString('es-AR')} ha de screening`:c.statusLabel;
+  return `<article class="case" data-case="${esc(c.id)}"><div class="case-head"><div><span class="case-code">${esc(c.code)}</span> <strong>${esc(c.name)}</strong></div>${badgeFor(c)}</div><p>${esc(subtitle||'')}</p></article>`;
+}
+function detailHTML(c){
+  const nums=[];
+  if(c.candidateEnvelopeHa) nums.push(`<div class="row"><b>Envolvente</b><span>${c.candidateEnvelopeHa.toLocaleString('es-AR',{maximumFractionDigits:2})} ha</span></div>`);
+  if(c.advertised?.grossHa) nums.push(`<div class="row"><b>Publicitado</b><span>~${c.advertised.grossHa} ha${c.advertised.lots?` · ${c.advertised.lots} lotes`:''}</span></div>`);
+  if(c.currentUrbanClusterAreaHa) nums.push(`<div class="row"><b>Screening</b><span>${c.currentUrbanClusterAreaHa.toLocaleString('es-AR')} ha · ${c.currentUrbanFeatureCount} geometrías actuales</span></div>`);
+  if(c.annex11819) nums.push(`<div class="row"><b>Anexo 11.819</b><span>${c.annex11819.specificUseHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha Uso Específico · ${c.annex11819.recoveryHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha Recuperación</span></div>`);
+  if(c.partidas?.length) nums.push(`<div class="row"><b>Partidas</b><span>${c.partidas.map(esc).join(', ')}</span></div>`);
+  return `<div class="hero"><span class="case-code">${esc(c.code)}</span> <strong>${esc(c.name)}</strong><div class="small">${esc(c.confidenceLabel)}</div></div>
+    ${nums.join('')}
+    <h3>Qué encontramos</h3><p>${esc(c.finding)}</p>
+    <h3>Cómo lo interpretamos</h3><p>${esc(c.interpretation)}</p>
+    <h3>Qué falta cerrar</h3><ul>${(c.pending||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+    <div class="source-tags">${(c.sourceLabels||[]).map(x=>`<span class="source-tag">${esc(x)}</span>`).join('')}</div>`;
+}
+function selectCase(id,fly=true){
+  const c=auditData?.cases.find(x=>x.id===id);if(!c)return;
+  selectedCaseId=id;tab('cases');
+  document.querySelectorAll('.case').forEach(el=>el.classList.toggle('active',el.dataset.case===id));
+  document.getElementById('caseDetail').innerHTML=detailHTML(c);
+  if(fly) map.flyTo([c.lat,c.lng],c.zoom||15,{duration:.7});
+  const layer=caseLayers.get(id); if(layer?.openPopup) layer.openPopup();
+}
+function caseLayer(c){
+  const color=c.mapStyle?.color||'#6b665d';
+  let layer;
+  if(c.kind==='search_area'){
+    layer=L.circle([c.lat,c.lng],{radius:c.radiusM||700,color,weight:2,dashArray:'8 6',fillColor:color,fillOpacity:.07});
+  }else{
+    layer=L.circleMarker([c.lat,c.lng],{radius:c.mapStyle?.radius||9,color:'#27251f',weight:1.3,fillColor:color,fillOpacity:.9});
+  }
+  const popup=`<strong>${esc(c.code)} · ${esc(c.name)}</strong><br><span style="font-size:11px">${esc(c.statusLabel||c.confidenceLabel)}</span>`;
+  layer.bindPopup(popup);layer.on('click',()=>selectCase(c.id,false));
+  if(labelsEnabled) layer.bindTooltip(c.code,{permanent:true,direction:'top',offset:[0,-8],className:'map-label'});
+  layer.addTo(casesGroup);caseLayers.set(c.id,layer);
+}
+function renderData(data){
+  auditData=data;
+  document.getElementById('verdictLabel').textContent=data.quota.assessmentLabel;
+  document.getElementById('verdictText').textContent=data.quota.assessmentDetail;
+  document.getElementById('proxyProductive').textContent=range(data.quota.productiveProxyHa,0);
+  document.getElementById('proxy10').textContent=range(data.quota.ordinary10ProxyHa,1);
+  document.getElementById('proxy15').textContent=range(data.quota.hypothetical15ProxyHa,1);
+  document.getElementById('exceptionHa').textContent=`${data.quota.exceptionScreeningHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha`;
+  document.getElementById('caseList').innerHTML=data.cases.map(caseCard).join('');
+  document.querySelectorAll('.case').forEach(el=>el.addEventListener('click',()=>selectCase(el.dataset.case)));
+  document.getElementById('timeline').innerHTML=data.normativeTimeline.map(e=>`<article class="event"><time>${esc(e.date)}</time><strong>${esc(e.title)}</strong><p>${esc(e.summary)}</p><div class="keys">${e.keys.map(esc).join(' · ')}</div><p><b>Pendiente:</b> ${esc(e.pending)}</p></article>`).join('');
+  document.getElementById('requestList').innerHTML=data.officialRequests.map(r=>`<div class="request">${esc(r)}</div>`).join('');
+  document.getElementById('leadList').innerHTML=data.otherLeads.map(l=>`<div class="lead-row"><strong>${esc(l.name)}</strong> · ${esc(l.address)}<span>${esc(l.advertised)} · ${esc(l.status)}</span></div>`).join('');
+  data.cases.forEach(caseLayer);
+  fitAll();selectCase('saint-henri',false);
+}
+function fitAll(){if(casesGroup.getLayers().length)map.fitBounds(casesGroup.getBounds().pad(.12),{maxZoom:15})}
+document.getElementById('fitAll').addEventListener('click',fitAll);
+
+function sector(){const c=map.getCenter(),west=c.lng<-58.37,north=c.lat>=-34.88;return (north?'noroeste':'suroeste').replace('oeste',west?'oeste':'este')}
+function parcelStyle(feature){
+  const p=feature.properties||{};const isSH=SH_PARTIDAS.has(String(p.partida||''));
+  if(isSH){
+    const num=Number(String(p.nomenclatura||'').match(/(\d{3})000$/)?.[1]||0);
+    const fill=num>=776&&num<=777?'#9b6a45':'#6f5a8a';
+    return{color:'#2f2a25',weight:2,opacity:1,fillColor:fill,fillOpacity:.26};
+  }
+  return{color:'#77736b',weight:.55,opacity:.7,fillColor:'#9c978c',fillOpacity:.025};
+}
+function parcelPopup(feature){const p=feature.properties||{};const sh=SH_PARTIDAS.has(String(p.partida||''));return `<strong>${esc(p.nomenclatura||'Parcela')}</strong><br>Partida: ${esc(p.partida||'—')}<br>Tipo actual: ${esc(p.tipo||'—')}<br>Superficie: ${p.superficie_m2?Number(p.superficie_m2).toLocaleString('es-AR')+' m²':'—'}${sh?'<br><b>Incluida en la envolvente candidata SH.</b>':''}`}
+async function loadParcels(){
+  const enabled=document.getElementById('toggleParcels').checked;
+  if(!enabled||map.getZoom()<14){if(parcelLayer){map.removeLayer(parcelLayer);parcelLayer=null}loadedSector=null;return}
+  const s=sector(); if(s===loadedSector&&parcelLayer)return;
+  loadedSector=s;if(parcelLayer){map.removeLayer(parcelLayer);parcelLayer=null}
+  try{
+    const r=await fetch(`/data/geoarba/ministro-rivadavia-parcels-${s}.geojson`);if(!r.ok)throw new Error(`GeoARBA ${s}: ${r.status}`);
+    const geo=await r.json();parcelLayer=L.geoJSON(geo,{style:parcelStyle,onEachFeature:(f,l)=>l.bindPopup(parcelPopup(f))}).addTo(map);parcelLayer.bringToBack();
+  }catch(err){console.warn(err);document.getElementById('toggleParcels').checked=false;alert('No se pudo cargar la capa GeoARBA de este sector.');}
+}
+document.getElementById('toggleParcels').addEventListener('change',loadParcels);
+map.on('moveend zoomend',loadParcels);
+document.getElementById('toggleLabels').addEventListener('change',e=>{labelsEnabled=e.target.checked;caseLayers.forEach((layer,id)=>{const c=auditData.cases.find(x=>x.id===id);layer.unbindTooltip();if(labelsEnabled)layer.bindTooltip(c.code,{permanent:true,direction:'top',offset:[0,-8],className:'map-label'}).openTooltip();});});
+
+fetch(DATA_URL).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()}).then(renderData).catch(err=>{
+  console.error(err);document.getElementById('caseList').innerHTML='<div class="error">No se pudo cargar el dataset público de auditoría.</div>';document.getElementById('verdictLabel').textContent='Datos no disponibles';
+});
+</script>
+</body>
+</html>
