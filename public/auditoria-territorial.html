@@ -31,7 +31,7 @@
     .timeline{display:grid;gap:8px}.event{border-left:4px solid #79766c;padding:2px 0 5px 10px}.event time{font-size:9px;font-weight:900}.event strong{font-size:10px;display:block}.event p{font-size:9px;line-height:1.4;color:var(--muted);margin:3px 0}.event .keys{font-size:8px;font-weight:800;color:#605b50}
     .request-list{counter-reset:req;display:grid;gap:7px}.request{counter-increment:req;display:grid;grid-template-columns:24px 1fr;gap:7px;font-size:9.5px;line-height:1.4}.request:before{content:counter(req);display:grid;place-items:center;width:22px;height:22px;background:var(--ink);color:#fff;font-size:9px;font-weight:900;border-radius:50%}
     .lead-list{display:grid;gap:6px}.lead-row{font-size:9px;border-bottom:1px solid #ddd7ca;padding-bottom:6px}.lead-row strong{font-size:10px}.lead-row span{display:block;color:var(--muted);margin-top:2px}
-    .map-wrap{position:relative;height:100%}#map{width:100%;height:100%;background:#e9e5da}.map-ui{position:absolute;z-index:900;top:12px;right:12px;display:grid;gap:7px;max-width:300px}.map-box{background:rgba(255,253,248,.96);border:1px solid var(--ink);padding:9px;box-shadow:2px 2px 0 rgba(0,0,0,.12);font-size:9px;line-height:1.4}.layer-toggle{display:flex;align-items:center;gap:7px}.layer-toggle input{accent-color:var(--ink)}
+    .map-wrap{position:relative;height:100%}#map{width:100%;height:100%;background:#e9e5da}.map-ui{position:absolute;z-index:900;top:12px;right:12px;display:grid;gap:7px;max-width:300px}.map-box{background:rgba(255,253,248,.96);border:1px solid var(--ink);padding:9px;box-shadow:2px 2px 0 rgba(0,0,0,.12);font-size:9px;line-height:1.4}.layer-toggle{display:flex;align-items:center;gap:7px}.layer-toggle input{accent-color:var(--ink)}.basemap-group{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.basemap-group .layer-toggle{padding:5px 6px;border:1px solid #d0c9bc;background:#fff}
     .legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}.legend span{font-size:8px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:-1px}
     .map-label{background:#fffdf8;border:1px solid #26251f!important;border-radius:2px!important;box-shadow:2px 2px 0 rgba(0,0,0,.12)!important;color:#211f1a;font-size:9px;font-weight:900;padding:2px 5px}.leaflet-tooltip-top:before{border-top-color:#26251f}
     .footer-note{font-size:8px;color:#757064;margin-top:9px}.loading{padding:12px;background:#ece7dc;font-size:10px}.error{padding:9px;background:var(--red-soft);font-size:9px;color:#762f27}
@@ -111,6 +111,11 @@
     <div id="map"></div>
     <div class="map-ui">
       <div class="map-box">
+        <strong>Mapa base</strong>
+        <div class="basemap-group" role="radiogroup" aria-label="Mapa base">
+          <label class="layer-toggle"><input type="radio" name="basemap" value="street" checked /> Mapa</label>
+          <label class="layer-toggle"><input type="radio" name="basemap" value="satellite" /> Satélite</label>
+        </div>
         <strong>Capas</strong>
         <label class="layer-toggle"><input id="toggleParcels" type="checkbox" /> Parcelas GeoARBA al acercar (capa pesada)</label>
         <label class="layer-toggle"><input id="toggleLabels" type="checkbox" checked /> Códigos de auditoría</label>
@@ -137,8 +142,19 @@ let labelsEnabled=true;
 const caseLayers=new Map();
 
 const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([-34.854,-58.337],14);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);
+const streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'});
+const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri · Sources: Esri, Maxar, Earthstar Geographics, and the GIS User Community'});
+streetLayer.addTo(map);
 const casesGroup=L.featureGroup().addTo(map);
+
+document.querySelectorAll('input[name="basemap"]').forEach(input=>input.addEventListener('change',e=>{
+  if(!e.target.checked)return;
+  const useSatellite=e.target.value==='satellite';
+  const next=useSatellite?satelliteLayer:streetLayer;
+  const prev=useSatellite?streetLayer:satelliteLayer;
+  if(map.hasLayer(prev))map.removeLayer(prev);
+  if(!map.hasLayer(next))next.addTo(map);
+}));
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function range(v,d=0){return `${Number(v.min).toLocaleString('es-AR',{maximumFractionDigits:d})}-${Number(v.max).toLocaleString('es-AR',{maximumFractionDigits:d})} ha`}
