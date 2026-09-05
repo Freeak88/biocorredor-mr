@@ -135,16 +135,20 @@
         </div>
 
         <strong>Capas</strong>
+        <label class="layer-toggle"><input id="toggleZoning" type="checkbox" checked /> Zonificación Ord. 11.819/20 (provisional)</label>
+        <div id="zoningStatus" class="history-status">Anexo I · pág. 9 · georreferenciación provisional (~13 m promedio / ~22 m máx. en controles). No sustituye mensura ni cartografía oficial georreferenciada.</div>
         <label class="layer-toggle"><input id="toggleParcels" type="checkbox" /> Parcelas GeoARBA al acercar (capa pesada)</label>
         <label class="layer-toggle"><input id="toggleLabels" type="checkbox" checked /> Códigos de auditoría</label>
         <div class="legend">
+          <span><i class="dot" style="background:#789766"></i>Productiva</span>
+          <span><i class="dot" style="background:#9b6a45"></i>Recuperación</span>
+          <span><i class="dot" style="background:#d4777e"></i>Equipamiento</span>
+          <span><i class="dot" style="background:#73736d"></i>Uso Específico</span>
           <span><i class="dot" style="background:#6f5a8a"></i>caso reconstruido</span>
           <span><i class="dot" style="background:#b44c3d"></i>prioridad</span>
-          <span><i class="dot" style="background:#9b6a45"></i>Recuperación</span>
-          <span><i class="dot" style="background:#73736d"></i>Uso Específico</span>
         </div>
       </div>
-      <div class="map-box"><strong>Importante</strong><br />Los círculos R/U son puntos de screening, no límites de desarrollos. EDS es un área de búsqueda. Las parcelas de SH se resaltan sólo cuando se activa GeoARBA.</div>
+      <div class="map-box"><strong>Importante</strong><br />La zonificación reproduce de forma provisional el Anexo I de la Ordenanza 11.819/20 para lectura territorial. Los círculos R/U son puntos de screening, no límites de desarrollos. EDS es un área de búsqueda. Las parcelas de SH se resaltan sólo cuando se activa GeoARBA.</div>
     </div>
   </main>
 </div>
@@ -152,10 +156,17 @@
 <script>
 const DATA_URL='/data/auditoria/hallazgos-publicos.json';
 const WAYBACK_CONFIG_URL='https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json';
+const ZONING_URLS=[
+  '/data/auditoria/zonificacion-11819-productiva.geojson',
+  '/data/auditoria/zonificacion-11819-recuperacion.geojson',
+  '/data/auditoria/zonificacion-11819-equipamiento.geojson',
+  '/data/auditoria/zonificacion-11819-uso-especifico.geojson'
+];
 const SH_PARTIDAS=new Set(['003000600','003075732','003075734','003075735','003018114','003000684','003075728','003075729']);
 let auditData=null;
 let selectedCaseId=null;
 let parcelLayer=null;
+let zoningLayer=null;
 let loadedSector=null;
 let labelsEnabled=true;
 let currentBasemap='satellite';
@@ -164,6 +175,8 @@ let waybackCatalogPromise=null;
 const caseLayers=new Map();
 
 const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([-34.854,-58.337],14);
+map.createPane('zoningPane');
+map.getPane('zoningPane').style.zIndex='360';
 const streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'});
 const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri · Sources: Esri, Vantor/Maxar, Earthstar Geographics, and the GIS User Community'});
 const referenceLayer=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Reference © Esri and contributors',pane:'overlayPane'});
@@ -363,6 +376,40 @@ async function loadParcels(){
 document.getElementById('toggleParcels').addEventListener('change',loadParcels);
 map.on('moveend zoomend',loadParcels);
 document.getElementById('toggleLabels').addEventListener('change',e=>{labelsEnabled=e.target.checked;caseLayers.forEach((layer,id)=>{const c=auditData.cases.find(x=>x.id===id);layer.unbindTooltip();if(labelsEnabled)layer.bindTooltip(c.code,{permanent:true,direction:'top',offset:[0,-8],className:'map-label'}).openTooltip();});});
+
+function zoningStyle(feature){
+  const c=feature.properties?.color||'#77736d';
+  return{pane:'zoningPane',color:c,weight:1.2,opacity:.92,fillColor:c,fillOpacity:.22};
+}
+function zoningPopup(feature){
+  const p=feature.properties||{};
+  return `<strong>${esc(p.label||'Zonificación 11.819/20')}</strong><br><span style="font-size:11px">Ordenanza 11.819/20 · Anexo I · pág. 9<br>Georreferenciación provisional para auditoría (~13 m promedio / ~22 m máx. en controles). No sustituye cartografía oficial georreferenciada ni mensura.</span>`;
+}
+async function loadZoning(){
+  const status=document.getElementById('zoningStatus');
+  try{
+    const datasets=await Promise.all(ZONING_URLS.map(async url=>{
+      const r=await fetch(url);if(!r.ok)throw new Error(`${url}: HTTP ${r.status}`);return r.json();
+    }));
+    const features=datasets.flatMap(d=>d.features||[]);
+    zoningLayer=L.geoJSON({type:'FeatureCollection',features},{pane:'zoningPane',style:zoningStyle,onEachFeature:(f,l)=>l.bindPopup(zoningPopup(f))});
+    if(document.getElementById('toggleZoning').checked)zoningLayer.addTo(map);
+    if(status)status.textContent=`Anexo I · pág. 9 · ${features.length} categorías cargadas · georreferenciación provisional (~13 m promedio / ~22 m máx. en controles). No sustituye mensura ni cartografía oficial georreferenciada.`;
+    if(casesGroup.bringToFront)casesGroup.bringToFront();
+    if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
+  }catch(err){
+    console.warn(err);
+    document.getElementById('toggleZoning').checked=false;
+    if(status){status.textContent='No se pudo cargar la zonificación provisional de la Ordenanza 11.819/20.';status.style.color='#762f27';}
+  }
+}
+document.getElementById('toggleZoning').addEventListener('change',e=>{
+  if(!zoningLayer)return;
+  if(e.target.checked)zoningLayer.addTo(map);else map.removeLayer(zoningLayer);
+  if(casesGroup.bringToFront)casesGroup.bringToFront();
+  if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
+});
+loadZoning();
 
 fetch(DATA_URL).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()}).then(renderData).catch(err=>{
   console.error(err);document.getElementById('caseList').innerHTML='<div class="error">No se pudo cargar el dataset público de auditoría.</div>';document.getElementById('verdictLabel').textContent='Datos no disponibles';
