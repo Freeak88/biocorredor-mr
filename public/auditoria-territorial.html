@@ -57,8 +57,10 @@
       <div class="kpis">
         <div class="kpi"><b id="proxyProductive">—</b><span>proxy geoespacial Productiva</span></div>
         <div class="kpi"><b id="proxy10">—</b><span>referencia 10% sobre proxy</span></div>
+        <div class="kpi"><b id="productiveUrbanHa">—</b><span>GeoARBA Urbano dentro de Productiva</span></div>
+        <div class="kpi"><b id="gap10">—</b><span>margen hasta el 10% espacial</span></div>
         <div class="kpi"><b id="proxy15">—</b><span>15% hipotético si hubo acto</span></div>
-        <div class="kpi"><b id="exceptionHa">—</b><span>screening en zonas de excepción</span></div>
+        <div class="kpi"><b id="exceptionHa">—</b><span>GeoARBA Urbano en zonas no Productivas</span></div>
         <div class="kpi full"><b>Denominador oficial: pendiente</b><span>Debe surgir del decreto reglamentario/listado de exclusiones y de la memoria administrativa del cupo. La Zona Productiva es un proxy espacial, no el denominador jurídico definitivo.</span></div>
       </div>
     </section>
@@ -134,9 +136,12 @@
           <div class="history-status" id="historyStatus">World Imagery actual. En histórico, el año indica la versión publicada por Esri; la captura local puede ser anterior.</div>
         </div>
 
-        <strong>Capas</strong>
-        <label class="layer-toggle"><input id="toggleZoning" type="checkbox" checked /> Zonificación Ord. 11.819/20 (provisional)</label>
-        <div id="zoningStatus" class="history-status">Anexo I · pág. 9 · georreferenciación provisional (~13 m promedio / ~22 m máx. en controles). No sustituye mensura ni cartografía oficial georreferenciada.</div>
+        <strong>Capas · Zonificación Ord. 11.819/20</strong>
+        <label class="layer-toggle"><input id="toggleZoneProductiva" type="checkbox" checked /> <i class="dot" style="background:#789766"></i> Zona Productiva</label>
+        <label class="layer-toggle"><input id="toggleZoneRecuperacion" type="checkbox" checked /> <i class="dot" style="background:#9b6a45"></i> Zona de Recuperación</label>
+        <label class="layer-toggle"><input id="toggleZoneEquipamiento" type="checkbox" checked /> <i class="dot" style="background:#d4777e"></i> Equipamiento</label>
+        <label class="layer-toggle"><input id="toggleZoneUsoEspecifico" type="checkbox" checked /> <i class="dot" style="background:#73736d"></i> Uso Específico</label>
+        <div id="zoningStatus" class="history-status">Anexo I · vectorización parcelaria precisa · cargando…</div>
         <label class="layer-toggle"><input id="toggleParcels" type="checkbox" /> Parcelas GeoARBA al acercar (capa pesada)</label>
         <label class="layer-toggle"><input id="toggleLabels" type="checkbox" checked /> Códigos de auditoría</label>
         <div class="legend">
@@ -148,25 +153,25 @@
           <span><i class="dot" style="background:#b44c3d"></i>prioridad</span>
         </div>
       </div>
-      <div class="map-box"><strong>Importante</strong><br />La zonificación reproduce de forma provisional el Anexo I de la Ordenanza 11.819/20 para lectura territorial. Los círculos R/U son puntos de screening, no límites de desarrollos. EDS es un área de búsqueda. Las parcelas de SH se resaltan sólo cuando se activa GeoARBA.</div>
+      <div class="map-box"><strong>Importante</strong><br />Los círculos R/U son puntos de screening, no límites de desarrollos. EDS es un área de búsqueda. Las parcelas de SH se resaltan sólo cuando se activa GeoARBA.</div>
     </div>
   </main>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
-const DATA_URL='/data/auditoria/hallazgos-publicos.json';
+const DATA_URL='/data/auditoria/hallazgos-publicos.json.gz';
 const WAYBACK_CONFIG_URL='https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json';
-const ZONING_URLS=[
-  '/data/auditoria/zonificacion-11819-productiva.geojson',
-  '/data/auditoria/zonificacion-11819-recuperacion.geojson',
-  '/data/auditoria/zonificacion-11819-equipamiento.geojson',
-  '/data/auditoria/zonificacion-11819-uso-especifico.geojson'
+const ZONING_DEFS=[
+  {key:'productiva',toggle:'toggleZoneProductiva',url:'/data/auditoria/zonificacion-11819-productiva.geojson.gz'},
+  {key:'recuperacion',toggle:'toggleZoneRecuperacion',url:'/data/auditoria/zonificacion-11819-recuperacion.geojson.gz'},
+  {key:'equipamiento',toggle:'toggleZoneEquipamiento',url:'/data/auditoria/zonificacion-11819-equipamiento.geojson.gz'},
+  {key:'uso_especifico',toggle:'toggleZoneUsoEspecifico',url:'/data/auditoria/zonificacion-11819-uso-especifico.geojson'}
 ];
 const SH_PARTIDAS=new Set(['003000600','003075732','003075734','003075735','003018114','003000684','003075728','003075729']);
 let auditData=null;
 let selectedCaseId=null;
 let parcelLayer=null;
-let zoningLayer=null;
+const zoningLayers=new Map();
 let loadedSector=null;
 let labelsEnabled=true;
 let currentBasemap='satellite';
@@ -175,11 +180,14 @@ let waybackCatalogPromise=null;
 const caseLayers=new Map();
 
 const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([-34.854,-58.337],14);
+map.createPane('referencePane');
+map.getPane('referencePane').style.zIndex=300;
 map.createPane('zoningPane');
-map.getPane('zoningPane').style.zIndex='360';
+map.getPane('zoningPane').style.zIndex=360;
+map.getPane('referencePane').style.pointerEvents='none';
 const streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'});
 const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri · Sources: Esri, Vantor/Maxar, Earthstar Geographics, and the GIS User Community'});
-const referenceLayer=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Reference © Esri and contributors',pane:'overlayPane'});
+const referenceLayer=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Reference © Esri and contributors',pane:'referencePane'});
 activeImageryLayer=satelliteLayer;
 satelliteLayer.addTo(map);
 const casesGroup=L.featureGroup().addTo(map);
@@ -197,8 +205,6 @@ function applyBasemap(){
     if(activeImageryLayer&&!map.hasLayer(activeImageryLayer))activeImageryLayer.addTo(map);
     if(currentBasemap==='hybrid'&&!map.hasLayer(referenceLayer))referenceLayer.addTo(map);
   }
-  if(casesGroup.bringToFront)casesGroup.bringToFront();
-  if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
 }
 document.querySelectorAll('input[name="basemap"]').forEach(input=>input.addEventListener('change',e=>{
   if(!e.target.checked)return;
@@ -245,6 +251,7 @@ function setHistoryStatus(label,text,isError=false){
 }
 async function selectHistory(value){
   if(value==='current'){
+    if(activeImageryLayer&&activeImageryLayer!==satelliteLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
     activeImageryLayer=satelliteLayer;
     setHistoryStatus('Actual','World Imagery actual. En histórico, el año indica la versión publicada por Esri; la captura local puede ser anterior.');
     applyBasemap();
@@ -272,6 +279,7 @@ async function selectHistory(value){
     applyBasemap();
   }catch(err){
     console.warn(err);
+    if(activeImageryLayer&&activeImageryLayer!==satelliteLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
     activeImageryLayer=satelliteLayer;
     document.getElementById('historyYear').value='current';
     setHistoryStatus('Actual',`No se pudo cargar Wayback para ${year}. Se mantiene World Imagery actual.`,true);
@@ -339,6 +347,8 @@ function renderData(data){
   document.getElementById('verdictText').textContent=data.quota.assessmentDetail;
   document.getElementById('proxyProductive').textContent=range(data.quota.productiveProxyHa,0);
   document.getElementById('proxy10').textContent=range(data.quota.ordinary10ProxyHa,1);
+  document.getElementById('productiveUrbanHa').textContent=`${data.quota.productiveUrbanScreeningHa.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})} ha`;
+  document.getElementById('gap10').textContent=range(data.quota.gapToOrdinary10ProxyHa,1);
   document.getElementById('proxy15').textContent=range(data.quota.hypothetical15ProxyHa,1);
   document.getElementById('exceptionHa').textContent=`${data.quota.exceptionScreeningHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha`;
   document.getElementById('caseList').innerHTML=data.cases.map(caseCard).join('');
@@ -370,48 +380,68 @@ async function loadParcels(){
   loadedSector=s;if(parcelLayer){map.removeLayer(parcelLayer);parcelLayer=null}
   try{
     const r=await fetch(`/data/geoarba/ministro-rivadavia-parcels-${s}.geojson`);if(!r.ok)throw new Error(`GeoARBA ${s}: ${r.status}`);
-    const geo=await r.json();parcelLayer=L.geoJSON(geo,{style:parcelStyle,onEachFeature:(f,l)=>l.bindPopup(parcelPopup(f))}).addTo(map);parcelLayer.bringToFront();
+    const geo=await r.json();parcelLayer=L.geoJSON(geo,{style:parcelStyle,onEachFeature:(f,l)=>l.bindPopup(parcelPopup(f))}).addTo(map);parcelLayer.bringToBack();
   }catch(err){console.warn(err);document.getElementById('toggleParcels').checked=false;alert('No se pudo cargar la capa GeoARBA de este sector.');}
 }
 document.getElementById('toggleParcels').addEventListener('change',loadParcels);
 map.on('moveend zoomend',loadParcels);
 document.getElementById('toggleLabels').addEventListener('change',e=>{labelsEnabled=e.target.checked;caseLayers.forEach((layer,id)=>{const c=auditData.cases.find(x=>x.id===id);layer.unbindTooltip();if(labelsEnabled)layer.bindTooltip(c.code,{permanent:true,direction:'top',offset:[0,-8],className:'map-label'}).openTooltip();});});
 
+
 function zoningStyle(feature){
   const c=feature.properties?.color||'#77736d';
-  return{pane:'zoningPane',color:c,weight:1.2,opacity:.92,fillColor:c,fillOpacity:.22};
+  return{pane:'zoningPane',color:c,weight:.9,opacity:.9,fillColor:c,fillOpacity:.22};
 }
 function zoningPopup(feature){
   const p=feature.properties||{};
-  return `<strong>${esc(p.label||'Zonificación 11.819/20')}</strong><br><span style="font-size:11px">Ordenanza 11.819/20 · Anexo I · pág. 9<br>Georreferenciación provisional para auditoría (~13 m promedio / ~22 m máx. en controles). No sustituye cartografía oficial georreferenciada ni mensura.</span>`;
+  const area=Number.isFinite(Number(p.area_ha))?`${Number(p.area_ha).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:3})} ha`:'—';
+  const count=Number.isFinite(Number(p.parcel_count))?`${Number(p.parcel_count).toLocaleString('es-AR')} parcelas`:'—';
+  return `<strong>${esc(p.label||'Zonificación 11.819/20')}</strong><br><span style="font-size:11px">Ordenanza 11.819/20 · Anexo I · vectorización precisa<br>${count} · ${area}<br>La capa web es la unión de las parcelas GeoARBA asignadas, redondeada a 6 decimales (&lt;0,1 m de desplazamiento de borde). La clasificación parcelaria completa queda auditada en el índice de asignaciones; no sustituye mensura ni acto administrativo.</span>`;
 }
+async function fetchJsonResource(url){
+  const r=await fetch(url);
+  if(!r.ok)throw new Error(`${url}: HTTP ${r.status}`);
+  if(!url.endsWith('.gz'))return r.json();
+  if(typeof DecompressionStream==='undefined')throw new Error('Este navegador no soporta la descompresión gzip requerida por las capas precisas.');
+  if(!r.body)throw new Error(`${url}: respuesta sin cuerpo`);
+  const stream=r.body.pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(stream).text());
+}
+
 async function loadZoning(){
   const status=document.getElementById('zoningStatus');
   try{
-    const datasets=await Promise.all(ZONING_URLS.map(async url=>{
-      const r=await fetch(url);if(!r.ok)throw new Error(`${url}: HTTP ${r.status}`);return r.json();
-    }));
-    const features=datasets.flatMap(d=>d.features||[]);
-    zoningLayer=L.geoJSON({type:'FeatureCollection',features},{pane:'zoningPane',style:zoningStyle,onEachFeature:(f,l)=>l.bindPopup(zoningPopup(f))});
-    if(document.getElementById('toggleZoning').checked)zoningLayer.addTo(map);
-    if(status)status.textContent=`Anexo I · pág. 9 · ${features.length} categorías cargadas · georreferenciación provisional (~13 m promedio / ~22 m máx. en controles). No sustituye mensura ni cartografía oficial georreferenciada.`;
+    let parcelCount=0;
+    let classifiedAreaHa=0;
+    for(const def of ZONING_DEFS){
+      const data=await fetchJsonResource(def.url);
+      parcelCount+=Number(data.metadata?.parcelCount||data.features?.length||0);
+      classifiedAreaHa+=Number(data.metadata?.areaHa||0);
+      const layer=L.geoJSON(data,{pane:'zoningPane',style:zoningStyle,onEachFeature:(f,l)=>l.bindPopup(zoningPopup(f))});
+      zoningLayers.set(def.key,layer);
+      const toggle=document.getElementById(def.toggle);
+      if(toggle?.checked)layer.addTo(map);
+      toggle?.addEventListener('change',e=>{
+        if(e.target.checked)layer.addTo(map);else map.removeLayer(layer);
+        if(casesGroup.bringToFront)casesGroup.bringToFront();
+        if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
+      });
+    }
+    if(status)status.textContent=`Anexo I · ${parcelCount.toLocaleString('es-AR')} parcelas · ${classifiedAreaHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha clasificadas · residuo mediano de registro ≈1,34 m · 4,857 ha limítrofes quedan sin forzar.`;
     if(casesGroup.bringToFront)casesGroup.bringToFront();
     if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
   }catch(err){
     console.warn(err);
-    document.getElementById('toggleZoning').checked=false;
-    if(status){status.textContent='No se pudo cargar la zonificación provisional de la Ordenanza 11.819/20.';status.style.color='#762f27';}
+    for(const def of ZONING_DEFS){
+      const toggle=document.getElementById(def.toggle);
+      if(toggle)toggle.checked=false;
+    }
+    if(status){status.textContent='No se pudo cargar la vectorización de la Ordenanza 11.819/20.';status.style.color='#762f27';}
   }
 }
-document.getElementById('toggleZoning').addEventListener('change',e=>{
-  if(!zoningLayer)return;
-  if(e.target.checked)zoningLayer.addTo(map);else map.removeLayer(zoningLayer);
-  if(casesGroup.bringToFront)casesGroup.bringToFront();
-  if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
-});
 loadZoning();
 
-fetch(DATA_URL).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()}).then(renderData).catch(err=>{
+fetchJsonResource(DATA_URL).then(renderData).catch(err=>{
   console.error(err);document.getElementById('caseList').innerHTML='<div class="error">No se pudo cargar el dataset público de auditoría.</div>';document.getElementById('verdictLabel').textContent='Datos no disponibles';
 });
 </script>
