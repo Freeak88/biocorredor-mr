@@ -1,7 +1,7 @@
 services:
 
   web:
-    image: biocorredor-mr:23072e2f24293cc58f1219d4b58cfac16ea3c23f
+    image: biocorredor-mr:573f77455b1b3ca36a9c11c0d97dded5f844ba87
     container_name: biocorredor-mr-web
     restart: unless-stopped
     expose:
