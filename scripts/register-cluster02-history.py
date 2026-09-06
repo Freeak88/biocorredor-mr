@@ -6,6 +6,9 @@ RANSAC para estimar una transformación afín (traslación/rotación/escala) por
 y produce imágenes registradas y métricas QA. No usa footprints Overture como puntos
 de control: el registro depende solo de textura/estructuras persistentes de las imágenes.
 
+Solo procesa mosaicos fuente con nombre YYYY-MM-DD.jpg, evitando previews, láminas
+de validación y otros JPG auxiliares presentes en el mismo directorio.
+
 Ejemplo:
   python scripts/register-cluster02-history.py \
     --input-dir tmp/territorial-analysis/cluster-02-history \
@@ -18,10 +21,13 @@ import argparse
 import csv
 import json
 import math
+import re
 from pathlib import Path
 
 import cv2
 import numpy as np
+
+DATE_JPG = re.compile(r"^\d{4}-\d{2}-\d{2}\.jpg$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -122,7 +128,7 @@ def estimate_affine(moving: np.ndarray, reference: np.ndarray, args: argparse.Na
         "rotation_deg": rotation_deg,
         "scale": scale_est,
     }
-    return matrix, qa, src[inliers] / scale, dst[inliers] / scale
+    return matrix, qa
 
 
 def overlay(reference: np.ndarray, registered: np.ndarray) -> np.ndarray:
@@ -136,7 +142,7 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     ref_path = args.input_dir / args.reference
     reference = read_rgb(ref_path)
-    files = sorted(p for p in args.input_dir.glob("*.jpg") if p.is_file())
+    files = sorted(p for p in args.input_dir.iterdir() if p.is_file() and DATE_JPG.match(p.name))
     if ref_path not in files:
         raise SystemExit(f"No encontré referencia: {ref_path}")
 
@@ -152,7 +158,7 @@ def main() -> None:
                       "dy_px": 0.0, "rotation_deg": 0.0, "scale": 1.0}
                 registered = moving.copy()
             else:
-                matrix, qa, _, _ = estimate_affine(moving, reference, args)
+                matrix, qa = estimate_affine(moving, reference, args)
                 h, w = reference.shape[:2]
                 registered = cv2.warpAffine(
                     moving, matrix, (w, h), flags=cv2.INTER_CUBIC,
