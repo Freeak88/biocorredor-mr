@@ -1,51 +1,39 @@
 services:
+
   web:
-    build:
-      context: .
-      args:
-        VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY}
-    container_name: fungimap-web
+    image: biocorredor-mr:573f77455b1b3ca36a9c11c0d97dded5f844ba87
+    container_name: biocorredor-mr-web
     restart: unless-stopped
     expose:
       - "80"
     networks:
       - proxy-net
 
-  prerender:
-    build: ./prerender
-    container_name: fungimap-prerender
-    restart: unless-stopped
-    environment:
-      - PB_URL=http://fungimap-pb:8090
-      - APP_URL=https://map.funga.com.ar
-      - MONEYSITE_URL=https://funga.com.ar
-      - PORT=3000
-    expose:
-      - "3000"
-    networks:
-      - proxy-net
-    depends_on:
-      - pb
-
   pb:
-    build: ./pocketbase
-    container_name: fungimap-pb
+    image: biocorredor-mr-pb
+    container_name: biocorredor-mr-pb
     restart: unless-stopped
-    volumes:
-      - pb-data:/pb/pb_data
-      - ./pocketbase/pb_migrations:/pb/pb_migrations
-      - ./pocketbase/pb_hooks:/pb/pb_hooks
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-placeholder}
+    command:
+      - /pb/pocketbase
+      - serve
+      - --http=0.0.0.0:8090
+      - --hooksDir=/pb/pb_hooks
+      - --dev
     expose:
       - "8090"
+    volumes:
+      - biocorredor-mr-pb-data:/pb/pb_data
+      - ./pocketbase/pb_migrations:/pb/pb_migrations
+      - ./pocketbase/pb_hooks:/pb/pb_hooks
     networks:
-      - proxy-net
+      proxy-net:
+        aliases:
+          - pb
 
 volumes:
-  pb-data:
+  biocorredor-mr-pb-data:
     external: true
-    name: fungimon_pb-data
+    name: biocorredor-mr-pb-data
 
 networks:
   proxy-net:

@@ -1,0 +1,117 @@
+{
+  "status": "final-reconstruction",
+  "areaSummary": {
+    "productiva": {
+      "label": "Zona Productiva",
+      "parcelCount": 520,
+      "areaHa": 1303.584699
+    },
+    "recuperacion": {
+      "label": "Zona de Recuperación",
+      "parcelCount": 205,
+      "areaHa": 1201.263548
+    },
+    "equipamiento": {
+      "label": "Equipamiento",
+      "parcelCount": 8,
+      "areaHa": 45.869887
+    },
+    "uso_especifico": {
+      "label": "Uso Específico",
+      "parcelCount": 10,
+      "areaHa": 83.229336
+    }
+  },
+  "classifiedAreaHa": 2633.94747,
+  "unresolved": {
+    "parcelCount": 16,
+    "areaHa": 4.856971,
+    "nomenclaturas": [
+      "003040B00000000000000000000002000000006000",
+      "003040B00000000000000000000002000000007000",
+      "003040B00000000000000000000002010000006000",
+      "003040B00000000000000000000002010000007000",
+      "003040B00000000000000000000002010000008000",
+      "003040E00000000000000000000001860000001000",
+      "003040E00000000000000000200000000000006000",
+      "003040E00000000000000000200000000000007000",
+      "003040E00000000000000000200000000000008000",
+      "003040E00000000000000000200000000000013000",
+      "003040E00000000000000000500000000000002000",
+      "003040E00000000000000000500000000000003000",
+      "003040E00000000000000000500000000000004000",
+      "003040E00000000000000000500000000000005000",
+      "003040E00000000000000000500000000000006000",
+      "003040E00000000000000000500000000000007000"
+    ]
+  },
+  "quotaSpatialProxy": {
+    "productiveMinHa": 1303.585,
+    "productiveMaxHa": 1308.442,
+    "ordinary10MinHa": 130.358,
+    "ordinary10MaxHa": 130.844,
+    "hypothetical15MinHa": 195.538,
+    "hypothetical15MaxHa": 196.266,
+    "legalCaution": "Escenario espacial sobre Zona Productiva reconstruida. No es el denominador jurídico del cupo, que requiere la superficie bruta rural, exclusiones y contabilidad administrativa municipal.",
+    "productiveUrbanScreeningParcels": 184,
+    "productiveUrbanScreeningHa": 122.534554,
+    "productiveUrbanShareOf10PctMin": 93.649,
+    "productiveUrbanShareOf10PctMax": 93.998,
+    "gapToOrdinary10MinHa": 7.823446,
+    "gapToOrdinary10MaxHa": 8.309446,
+    "screeningAssessment": "below_10_near_threshold",
+    "screeningInterpretation": "Las parcelas GeoARBA actualmente clasificadas como Urbano dentro de Productiva suman 122,535 ha: quedan 7,823–8,309 ha por debajo del 10% del proxy. Este screening no prueba el numerador jurídico del cupo y debe contrastarse con cronología, actos aprobatorios e imputaciones municipales."
+  },
+  "georeference": {
+    "model": "affine lon/lat -> Annex I pixels",
+    "centerLon": -58.332154038019,
+    "centerLat": -34.85482557782,
+    "coefficients": [
+      797.206637985932,
+      25546.561850621405,
+      560.984672341542,
+      1172.653092874896,
+      433.107896086147,
+      -30914.092335391546
+    ],
+    "validationParcelCount": 25,
+    "meanParcelMedianResidualPx": 0.4871,
+    "medianParcelMedianResidualPx": 0.3749,
+    "approxMetersPerPixel": 3.5756,
+    "meanParcelMedianResidualM": 1.742,
+    "medianParcelMedianResidualM": 1.34
+  },
+  "manualReview": {
+    "usoEspecificoNomenclaturas": [
+      "003040000000000000000000000000000000666000",
+      "00304000000000000000000000000000000067000E",
+      "003040000000000000000000000000000000769000",
+      "003040000000000000000000000000000000770000",
+      "003040000000000000000000000000000000771000",
+      "003040000000000000000000000000000000772000",
+      "003040000000000000000000000000000000773000",
+      "003040000000000000000000000000000000774000",
+      "003040000000000000000000000000000000775000",
+      "00304000000000000000000000000000000082400A"
+    ],
+    "equipamientoNomenclaturas": [
+      "003040000000000000000000000000000000741000",
+      "00304000000000000000000000000000000074200B"
+    ]
+  },
+  "validation": {
+    "uniqueAssignments": true,
+    "allCircIV": true,
+    "noCrossZoneDuplicate": true
+  },
+  "exceptionScreening": {
+    "urbanParcelsInRecovery": 76,
+    "urbanAreaHaInRecovery": 82.985919,
+    "urbanParcelsInEquipment": 3,
+    "urbanAreaHaInEquipment": 15.225816,
+    "urbanParcelsInSpecificUse": 0,
+    "urbanAreaHaInSpecificUse": 0.0,
+    "totalUrbanAreaHa": 98.211735,
+    "note": "GeoARBA Urbano actual en zonas no Productivas; indicador de screening, no prueba de cambio posterior a 2020 ni de excepción formal."
+  }
+}

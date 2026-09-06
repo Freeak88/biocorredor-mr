@@ -1,0 +1,22 @@
+{
+  "caseId": "saint-henri-aero",
+  "status": "probable-spatial-envelope",
+  "caution": "Candidate parcels derived from GeoARBA intersections, spatial continuity and Ordinance 11.819/20 Annex I. This is not the approved development polygon and does not prove ownership or legality.",
+  "advertisedGrossHa": 55,
+  "candidateEnvelopeHa": 56.600442,
+  "ordinance11819": {
+    "useSpecificHa": 44.53474,
+    "recoveryHa": 12.065702,
+    "quotaHypothesis": "potentially_outside_ordinary_10_percent_subject_to_explicit_administrative_verification"
+  },
+  "parcels": [
+    {"parcel":770,"partida":"003000600","areaM2":102318.72,"zone11819":"uso_especifico"},
+    {"parcel":771,"partida":"003075732","areaM2":50635.92,"zone11819":"uso_especifico"},
+    {"parcel":772,"partida":"003075734","areaM2":120089.83,"zone11819":"uso_especifico"},
+    {"parcel":773,"partida":"003075735","areaM2":66014.19,"zone11819":"uso_especifico"},
+    {"parcel":774,"partida":"003018114","areaM2":50122.88,"zone11819":"uso_especifico"},
+    {"parcel":775,"partida":"003000684","areaM2":56165.86,"zone11819":"uso_especifico"},
+    {"parcel":776,"partida":"003075728","areaM2":55398.68,"zone11819":"recuperacion"},
+    {"parcel":777,"partida":"003075729","areaM2":65258.34,"zone11819":"recuperacion"}
+  ]
+}

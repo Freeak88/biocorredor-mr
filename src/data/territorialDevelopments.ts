@@ -1,0 +1,100 @@
+import type { TerritorialDevelopment } from '../lib/territorialAudit';
+
+/**
+ * Public leads for territorial verification.
+ *
+ * These records are not findings of illegality. Commercial claims are stored as
+ * advertised attributes and must be reconciled against cadastral, planning,
+ * environmental and administrative records before drawing conclusions.
+ */
+export const TERRITORIAL_DEVELOPMENTS: TerritorialDevelopment[] = [
+  {
+    id: 'saint-henri',
+    name: 'Saint Henri Aero & Country Club',
+    locality: 'Ministro Rivadavia',
+    address: 'Estanislao San Zeballos 1320 (public listings)',
+    advertisedGrossHa: 55,
+    advertisedLots: 349,
+    advertisedLotMinM2: 545,
+    advertisedLotMaxM2: 1175,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'priority_review',
+    notes: [
+      'Priority case because the advertised gross area is material to any territorial quota calculation.',
+      'Pending: exact cadastral polygon, zoning at approval date, approval act, environmental/hydraulic files and quota treatment.',
+      'Do not infer sold lots from built structures or marketing inventory.',
+    ],
+  },
+  {
+    id: 'altos-de-espora',
+    name: 'Altos de Espora',
+    locality: 'Ministro Rivadavia / Longchamps boundary to verify',
+    advertisedGrossHa: 45,
+    advertisedLotMinM2: 300,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'priority_review',
+    notes: ['Boundary and zoning must be resolved before including any surface in the rural quota.'],
+  },
+  {
+    id: 'parque-america',
+    name: 'Barrio Parque América',
+    locality: 'Ministro Rivadavia',
+    address: 'Brigadier Calderón 1101 (public website)',
+    advertisedLotMinM2: 324,
+    advertisedLotMaxM2: 552,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'priority_review',
+  },
+  {
+    id: 'estancias-del-sur',
+    name: 'Estancias del Sur',
+    locality: 'Ministro Rivadavia',
+    address: 'Chivilcoy y Brigadier Calderón (public listings)',
+    advertisedLotMinM2: 302,
+    advertisedLotMaxM2: 320,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'priority_review',
+  },
+  {
+    id: 'la-ramona',
+    name: 'La Ramona',
+    locality: 'Ministro Rivadavia',
+    address: 'Rivera 860 (public listings)',
+    advertisedLots: 50,
+    advertisedLotMinM2: 300,
+    advertisedLotMaxM2: 300,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'priority_review',
+  },
+  {
+    id: 'don-vicente',
+    name: 'Barrio Don Vicente',
+    locality: 'Ministro Rivadavia',
+    address: 'Brigadier Calderón 3422 (public listings)',
+    advertisedLots: 14,
+    advertisedLotMinM2: 360,
+    advertisedLotMaxM2: 360,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'partial',
+  },
+  {
+    id: '25-de-mayo-2100',
+    name: 'Condominio Av. 25 de Mayo',
+    locality: 'Ministro Rivadavia',
+    address: 'Av. 25 de Mayo 2100 (public listings)',
+    advertisedLots: 14,
+    advertisedLotMinM2: 300,
+    advertisedLotMaxM2: 300,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'priority_review',
+  },
+  {
+    id: 'portal-del-sol-i',
+    name: 'Portal del Sol I',
+    locality: 'Ministro Rivadavia',
+    address: 'Av. Chivilcoy 578 (public listings)',
+    advertisedLotMinM2: 680,
+    quotaTreatment: 'unknown',
+    verificationStatus: 'partial',
+  },
+];
