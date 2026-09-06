@@ -12,6 +12,10 @@ Quien suscribe solicita acceso y copia digital de la documentación administrati
 
 La solicitud se formula en ejercicio del derecho de acceso a documentos administrativos reconocido por la Ley provincial 12.475 y el principio de publicidad de los actos de gobierno. Se solicita, siempre que sea posible, entrega en formato digital abierto o PDF con texto buscable y, para información geográfica/tabular existente, en su formato digital original (SHP/GeoJSON/GPKG/CSV/XLSX u otro disponible), evitando la impresión de documentación ya digitalizada.
 
+Como antecedente técnico de esta solicitud, una reconstrucción independiente y provisional del Anexo I de la Ordenanza 11.819/20, cruzada con el mosaico catastral público disponible de GeoARBA, identifica aproximadamente 122,48 ha actualmente caracterizadas como urbanas dentro de la zona reconstruida como Productiva. Frente a una referencia exploratoria equivalente al 10% de dicha superficie productiva, estimada en aproximadamente 130,35 ha, el indicador representa alrededor del 94% de ese umbral proxy.
+
+Este ejercicio constituye exclusivamente una herramienta de screening territorial: no determina jurídicamente el cupo aplicable ni acredita por sí mismo aprobación, venta, subdivisión, urbanización o imputación administrativa de superficies. Precisamente por esa razón se solicita al Municipio la documentación oficial utilizada para establecer el denominador, sus exclusiones, los proyectos imputados y la evolución histórica del cupo.
+
 ### 1. Nómina completa de emprendimientos
 
 Remitir un listado de todos los expedientes de factibilidad, localización, aprobación, subdivisión, habilitación y/o autorización correspondientes a Clubes de Campo, Barrios Cerrados, Condominios, Conjuntos Inmobiliarios y demás emprendimientos residenciales colectivos localizados total o parcialmente en Ministro Rivadavia y, específicamente, en el Área Rural, Parque Rural y Zona Residencial Extraurbana.
@@ -32,7 +36,18 @@ En particular, informar y documentar:
 - saldo disponible del cupo luego de cada aprobación;
 - existencia o inexistencia de acto por el cual se hubiera promovido/habilitado un cupo adicional de hasta el 5%;
 - de existir, copia íntegra de dicho acto y del cálculo correspondiente;
-- superficie total actualmente computada y saldo vigente según el criterio municipal.
+- superficie total actualmente computada y saldo vigente según el criterio municipal;
+- padrón completo de parcelas utilizado para construir el denominador territorial;
+- nomenclatura catastral y partida de cada superficie excluida del cálculo;
+- estado y zonificación de cada parcela al momento de cada aprobación o imputación;
+- fecha exacta en que cada emprendimiento fue incorporado al cómputo;
+- superficie imputada a cada proyecto y criterio técnico/normativo utilizado;
+- planilla histórica acumulativa que permita reconstruir la evolución del cupo;
+- identificación de proyectos autorizados o factibilizados aunque no hayan sido ejecutados;
+- tratamiento otorgado a proyectos iniciados antes de 2020 con actuaciones o actos posteriores;
+- tratamiento dado a parcelas clasificadas como Uso Específico;
+- tratamiento dado a subdivisiones o desarrollos residenciales no encuadrados formalmente como Club de Campo;
+- cálculo comparativo aplicado antes y después de la entrada en vigencia de la Ordenanza 13.378.
 
 Si el Municipio entiende que la entrada en vigencia de la Ordenanza 13.378 modificó, sustituyó o dejó sin efecto ese mecanismo, se solicita identificar el artículo, informe jurídico y/o acto administrativo en que se sustenta esa interpretación y la fecha a partir de la cual se aplicó.
 
@@ -66,13 +81,36 @@ Se solicita especialmente:
 - intervención del HCD y compulsa de propuestas, si correspondiera;
 - cronología completa de actos administrativos desde el inicio del trámite.
 
-### 5. Información geográfica
+### 5. Caso Estancias del Sur
+
+Remitir copia digital íntegra de todo expediente, actuación o antecedente correspondiente al emprendimiento conocido, publicitado o comercializado como "Estancias del Sur", cualquiera sea la denominación administrativa bajo la cual tramite.
+
+Se solicita especialmente:
+
+- identificación de parcelas matrices, antecedentes y resultantes;
+- localización oficial del emprendimiento;
+- superficie total y superficie efectivamente afectada al proyecto;
+- zonificación vigente en cada etapa del trámite;
+- factibilidad urbanística y/o de localización;
+- planos de mensura, subdivisión, unificación o parcelamiento;
+- cantidad de unidades o lotes aprobados;
+- actos administrativos y actuaciones del HCD;
+- evaluaciones ambientales, hidráulicas y de infraestructura;
+- permisos de apertura de calles, servicios y obras;
+- fecha de inicio de las actuaciones;
+- tratamiento del emprendimiento dentro del cómputo territorial del 10% y/o eventual 5%;
+- superficie imputada al cupo o fundamento de su exclusión;
+- cronología completa del procedimiento administrativo.
+
+La referencia comercial se utiliza únicamente a efectos de facilitar la identificación del expediente; se solicita al Municipio informar la denominación administrativa oficial y las nomenclaturas catastrales asociadas.
+
+### 6. Información geográfica
 
 Solicitar, si existen en formato digital, las capas utilizadas oficialmente para aplicar las Ordenanzas 11.440, 11.819 y 13.378 en Ministro Rivadavia, incluyendo límites de Área Rural/Parque Rural, ZRE, zonas de producción, recuperación, preservación, equipamiento, usos específicos, clubes de campo, áreas inundables, cursos de agua y forestación a preservar.
 
 Para cada capa se solicita fecha/versión, sistema de referencia y organismo responsable.
 
-### 6. Forma de respuesta
+### 7. Forma de respuesta
 
 Se solicita una respuesta punto por punto. Cuando un documento no exista, se solicita indicarlo expresamente. Cuando exista pero obre en otra dependencia, se solicita identificar la dependencia y número de actuación correspondiente. Cuando una parte de un documento se encuentre alcanzada por una excepción legal, se solicita proporcionar el resto mediante disociación/testado de la información exceptuada, identificando la base normativa concreta de la restricción.
 
