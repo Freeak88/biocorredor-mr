@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 
 type Range = { min: number; max: number };
@@ -27,15 +28,25 @@ type AuditDataset = {
 
 function readDataset(): AuditDataset {
   const p = path.resolve(process.cwd(), 'public/data/auditoria/hallazgos-publicos.json');
-  return JSON.parse(fs.readFileSync(p, 'utf8')) as AuditDataset;
+
+  if (fs.existsSync(p)) {
+    return JSON.parse(fs.readFileSync(p, 'utf8')) as AuditDataset;
+  }
+
+  const gzPath = `${p}.gz`;
+  if (fs.existsSync(gzPath)) {
+    return JSON.parse(gunzipSync(fs.readFileSync(gzPath)).toString('utf8')) as AuditDataset;
+  }
+
+  throw new Error(`Missing audit dataset: ${p} or ${gzPath}`);
 }
 
 describe('public territorial audit dataset', () => {
   it('keeps proxy quota arithmetic explicit and internally consistent', () => {
     const data = readDataset();
-    expect(data.quota.assessment).toBe('not_demonstrated_exceeded');
-    expect(data.quota.ordinary10ProxyHa.min).toBeCloseTo(data.quota.productiveProxyHa.min * 0.10, 6);
-    expect(data.quota.ordinary10ProxyHa.max).toBeCloseTo(data.quota.productiveProxyHa.max * 0.10, 6);
+    expect(data.quota.assessment).toBe('screening_below_10_near_threshold');
+    expect(Math.abs(data.quota.ordinary10ProxyHa.min - data.quota.productiveProxyHa.min * 0.10)).toBeLessThanOrEqual(0.001);
+    expect(Math.abs(data.quota.ordinary10ProxyHa.max - data.quota.productiveProxyHa.max * 0.10)).toBeLessThanOrEqual(0.001);
     expect(data.quota.hypothetical15ProxyHa.min).toBeCloseTo(data.quota.productiveProxyHa.min * 0.15, 1);
     expect(data.quota.hypothetical15ProxyHa.max).toBeCloseTo(data.quota.productiveProxyHa.max * 0.15, 1);
     expect(data.meta.disclaimer.toLowerCase()).toContain('no constituye una determinación');

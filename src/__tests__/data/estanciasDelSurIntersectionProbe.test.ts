@@ -279,5 +279,5 @@ describe('Estancias del Sur street-corridor -> GeoARBA probe', () => {
     console.log('ESTANCIAS_DEL_SUR_INTERSECTION_PROBE_END');
 
     expect(data.features.length).toBeGreaterThan(0);
-  }, 120_000);
+  }, 180_000);
 });

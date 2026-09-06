@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point } from '@turf/helpers';
@@ -22,6 +23,19 @@ const QUADRANTS = [
   'ministro-rivadavia-parcels-suroeste.geojson',
   'ministro-rivadavia-parcels-sureste.geojson',
 ];
+
+function readJsonFile<T>(filePath: string): T {
+  if (fs.existsSync(filePath)) {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8')) as T;
+  }
+
+  const gzPath = `${filePath}.gz`;
+  if (fs.existsSync(gzPath)) {
+    return JSON.parse(gunzipSync(fs.readFileSync(gzPath)).toString('utf8')) as T;
+  }
+
+  throw new Error(`Missing JSON asset: ${filePath} or ${gzPath}`);
+}
 const ZONE_FILES: Record<Zone, string> = {
   productiva: 'zonificacion-11819-productiva.geojson',
   recuperacion: 'zonificacion-11819-recuperacion.geojson',
@@ -48,7 +62,7 @@ function loadMosaic(): Feature[] {
 function loadZones() {
   const zones = new Map<Zone, Feature[]>();
   (Object.entries(ZONE_FILES) as Array<[Zone, string]>).forEach(([zone, file]) => {
-    const data = JSON.parse(fs.readFileSync(path.join(AUDIT_DIR, file), 'utf8')) as FC;
+    const data = readJsonFile<FC>(path.join(AUDIT_DIR, file));
     zones.set(zone, data.features);
   });
   return zones;
@@ -169,9 +183,9 @@ describe('Ordenanza 11.819 parcel-zone audit and 10% screening', () => {
     const textualBaseBeforeResidentialExclusionsHa = (areaM2.productiva + areaM2.uso_especifico) / 10_000;
     const totalClassifiedHa = totalClassifiedM2 / 10_000;
 
-    const audit = JSON.parse(fs.readFileSync(path.join(AUDIT_DIR, 'hallazgos-publicos.json'), 'utf8')) as {
+    const audit = readJsonFile<{
       cases?: Array<{ id?: string; code?: string; name?: string; lat?: number; lng?: number; kind?: string; candidateEnvelopeHa?: number; advertised?: { grossHa?: number } }>;
-    };
+    }>(path.join(AUDIT_DIR, 'hallazgos-publicos.json'));
     const caseZones = (audit.cases ?? []).filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lng)).map((c) => ({
       id: c.id ?? null,
       code: c.code ?? null,
