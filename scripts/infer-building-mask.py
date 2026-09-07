@@ -2,14 +2,15 @@
 """Inferencia de superficie construida sobre mosaicos RGB VHR.
 
 Usa un ONNX de segmentación por ventanas solapadas para HOTOSM dinov3s-buildings.
-Soporta CPU y DirectML (Windows/AMD/Intel/NVIDIA) con fallback explícito.
+Soporta CPU y DirectML (Windows/AMD/Intel/NVIDIA).
 
 Mejoras:
 - blending ponderado entre tiles para reducir costuras;
 - progreso y timing por imagen;
 - múltiples umbrales derivados de una sola inferencia;
 - selección de execution provider y registro del provider efectivo;
-- configuración compatible con DirectML (sequential + mem pattern off).
+- configuración compatible con DirectML (sequential + mem pattern off);
+- evita aceptar silenciosamente un fallback DirectML -> CPU.
 
 La semántica de los 3 logits observados en el ONNX no se asume como verdad. Se
 mantiene provisionalmente la heurística: canal con mayor cobertura media = fondo,
@@ -41,8 +42,7 @@ def parse_args():
     p.add_argument("--only", nargs="*")
     p.add_argument("--progress-every", type=int, default=1)
     p.add_argument("--provider", choices=["auto", "cpu", "directml"], default="auto")
-    p.add_argument("--device-id", type=int, default=0,
-                   help="Adapter DirectML. Verificar GPU efectiva en Task Manager si hay varias.")
+    p.add_argument("--device-id", type=int, default=0)
     p.add_argument("--cpu-threads", type=int, default=0,
                    help="0 = ONNX Runtime decide; sólo aplica a CPU")
     return p.parse_args()
@@ -70,32 +70,56 @@ def blend_window(win: int) -> np.ndarray:
     return np.maximum(two, 0.05).astype(np.float32)
 
 
-def make_session(model: Path, provider: str, device_id: int, cpu_threads: int):
-    available = ort.get_available_providers()
+def cpu_session(model: Path, cpu_threads: int):
     so = ort.SessionOptions()
     so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-
-    if provider == "directml" or (provider == "auto" and "DmlExecutionProvider" in available):
-        if "DmlExecutionProvider" not in available:
-            raise RuntimeError(
-                "DirectML solicitado pero DmlExecutionProvider no está disponible. "
-                "En Windows instalar onnxruntime-directml y quitar onnxruntime CPU si entra en conflicto."
-            )
-        so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-        so.enable_mem_pattern = False
-        providers = [("DmlExecutionProvider", {"device_id": str(device_id)}), "CPUExecutionProvider"]
-        requested = "directml"
-    else:
-        so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-        if cpu_threads > 0:
-            so.intra_op_num_threads = cpu_threads
-        providers = ["CPUExecutionProvider"]
-        requested = "cpu"
-
+    so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+    if cpu_threads > 0:
+        so.intra_op_num_threads = cpu_threads
     t0 = time.perf_counter()
-    sess = ort.InferenceSession(str(model), sess_options=so, providers=providers)
+    sess = ort.InferenceSession(str(model), sess_options=so, providers=["CPUExecutionProvider"])
+    return sess, time.perf_counter() - t0
+
+
+def dml_session(model: Path, device_id: int):
+    so = ort.SessionOptions()
+    so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+    so.enable_mem_pattern = False
+    t0 = time.perf_counter()
+    sess = ort.InferenceSession(
+        str(model),
+        sess_options=so,
+        providers=[("DmlExecutionProvider", {"device_id": str(device_id)}), "CPUExecutionProvider"],
+    )
     init_seconds = time.perf_counter() - t0
-    return sess, requested, available, init_seconds
+    effective = sess.get_providers()
+    if "DmlExecutionProvider" not in effective:
+        raise RuntimeError(
+            f"DirectML no quedó activo; ONNX Runtime hizo fallback. effective_providers={effective}"
+        )
+    return sess, init_seconds
+
+
+def make_session(model: Path, provider: str, device_id: int, cpu_threads: int):
+    available = ort.get_available_providers()
+    if provider == "cpu":
+        sess, init = cpu_session(model, cpu_threads)
+        return sess, "cpu", available, init
+    if provider == "directml":
+        if "DmlExecutionProvider" not in available:
+            raise RuntimeError("DirectML solicitado pero DmlExecutionProvider no está disponible")
+        sess, init = dml_session(model, device_id)
+        return sess, "directml", available, init
+
+    if "DmlExecutionProvider" in available:
+        try:
+            sess, init = dml_session(model, device_id)
+            return sess, "directml", available, init
+        except Exception as exc:
+            print(f"WARNING: DirectML falló; se usará CPU. Motivo: {exc}", flush=True)
+    sess, init = cpu_session(model, cpu_threads)
+    return sess, "cpu", available, init
 
 
 def infer_image(sess, image_bgr, stride: int, progress_every: int):
@@ -130,17 +154,13 @@ def infer_image(sess, image_bgr, stride: int, progress_every: int):
             bw = tile_weight[:hh, :ww]
             sums[:, y:y+hh, x:x+ww] += probs[:, :hh, :ww] * bw[None]
             weight[y:y+hh, x:x+ww] += bw
-
             done += 1
             if progress_every > 0 and (done % progress_every == 0 or done == total):
                 elapsed = time.perf_counter() - started
                 rate = done / elapsed if elapsed > 0 else 0.0
                 remain = (total - done) / rate if rate > 0 else float("nan")
-                print(
-                    f"tiles {done}/{total} ({100*done/total:.1f}%) "
-                    f"last={tile_seconds:.2f}s elapsed={elapsed/60:.1f}m eta={remain/60:.1f}m",
-                    flush=True,
-                )
+                print(f"tiles {done}/{total} ({100*done/total:.1f}%) last={tile_seconds:.2f}s "
+                      f"elapsed={elapsed/60:.1f}m eta={remain/60:.1f}m", flush=True)
 
     sums /= np.maximum(weight[None], 1e-6)
     channel_mean = sums.mean(axis=(1, 2))
@@ -178,7 +198,6 @@ def main():
         wanted = set(a.only)
         files = [p for p in files if p.name in wanted or p.stem in wanted]
     reports = []
-
     thresholds = []
     for t in [a.threshold, *a.thresholds]:
         t = float(t)
@@ -191,25 +210,22 @@ def main():
             raise RuntimeError(f"No se pudo leer {p}")
         print(f"\n=== {p.name} ===", flush=True)
         prob, means, shares, bg, tile_count, elapsed = infer_image(sess, im, a.stride, a.progress_every)
-
         stem = p.stem
         cv2.imwrite(str(a.output_dir / f"{stem}-building-prob.png"),
                     np.clip(prob * 255, 0, 255).astype(np.uint8))
-
         threshold_fractions = {}
         for t in thresholds:
             tag = threshold_tag(t)
             frac = write_mask(a.output_dir / f"{stem}-building-mask-{tag}.png", prob, t)
             threshold_fractions[f"{t:.4f}"] = frac
-
         primary_fraction = write_mask(a.output_dir / f"{stem}-building-mask.png", prob, a.threshold)
-
         row = {
             "file": p.name,
             "requested_provider": requested_provider,
             "available_providers": available,
             "effective_providers": effective,
             "device_id": a.device_id if requested_provider == "directml" else None,
+            "cpu_threads": a.cpu_threads if requested_provider == "cpu" else None,
             "session_init_seconds": float(session_init_seconds),
             "background_channel": bg,
             "channel_mean_probability": [float(v) for v in means],
