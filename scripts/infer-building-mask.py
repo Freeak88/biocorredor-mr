@@ -2,17 +2,24 @@
 """Inferencia de superficie construida sobre mosaicos RGB VHR.
 
 Usa un ONNX de segmentación por ventanas solapadas. Está pensado para el modelo
-HOTOSM dinov3s-buildings (256 px, stride 192). Como el artefacto expone 3 logits
-sin metadatos de clases, identifica provisionalmente el canal de fondo como el
-canal con mayor cobertura media y define p(building)=1-p(background).
+HOTOSM dinov3s-buildings (256 px, stride 192).
 
-Genera probability PNG, mask PNG y un JSON QA por imagen. No vectoriza todavía.
+Mejoras respecto del piloto inicial:
+- blending ponderado entre tiles para reducir costuras;
+- progreso y timing por imagen;
+- múltiples umbrales derivados de una sola inferencia;
+- conserva una máscara primaria compatible con el flujo existente.
+
+La semántica de los 3 logits observados en el ONNX no se asume como verdad. Se
+mantiene provisionalmente la heurística: el canal con mayor cobertura media se
+interpreta como fondo y p(building)=1-p(background), hasta cerrar QA visual.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import re
+import time
 from pathlib import Path
 
 import cv2
@@ -27,9 +34,14 @@ def parse_args():
     p.add_argument("--model", type=Path, required=True)
     p.add_argument("--input-dir", type=Path, required=True)
     p.add_argument("--output-dir", type=Path, required=True)
-    p.add_argument("--threshold", type=float, default=0.4371)
+    p.add_argument("--threshold", type=float, default=0.4371,
+                   help="Umbral primario; también genera building-mask.png")
+    p.add_argument("--thresholds", type=float, nargs="*", default=[0.30, 0.4371, 0.60],
+                   help="Umbrales adicionales derivados de la misma probabilidad")
     p.add_argument("--stride", type=int, default=192)
     p.add_argument("--only", nargs="*")
+    p.add_argument("--progress-every", type=int, default=10,
+                   help="Informar progreso cada N ventanas")
     return p.parse_args()
 
 
@@ -48,15 +60,27 @@ def positions(length: int, window: int, stride: int):
     return out
 
 
-def infer_image(sess, image_bgr, stride: int):
+def blend_window(win: int) -> np.ndarray:
+    """Ventana suave con piso >0 para no dejar bordes globales sin peso."""
+    one = np.hanning(win).astype(np.float32)
+    two = np.outer(one, one)
+    two /= max(float(two.max()), 1e-6)
+    return np.maximum(two, 0.05).astype(np.float32)
+
+
+def infer_image(sess, image_bgr, stride: int, progress_every: int):
     rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
     h, w = rgb.shape[:2]
     win = 256
     ys, xs = positions(h, win, stride), positions(w, win, stride)
+    tile_weight = blend_window(win)
     sums = None
     weight = np.zeros((h, w), np.float32)
     input_name = sess.get_inputs()[0].name
     output_name = sess.get_outputs()[0].name
+    total = len(ys) * len(xs)
+    done = 0
+    started = time.perf_counter()
 
     for y in ys:
         for x in xs:
@@ -71,15 +95,39 @@ def infer_image(sess, image_bgr, stride: int):
             if sums is None:
                 sums = np.zeros((probs.shape[0], h, w), np.float32)
             hh, ww = min(win, h-y), min(win, w-x)
-            sums[:, y:y+hh, x:x+ww] += probs[:, :hh, :ww]
-            weight[y:y+hh, x:x+ww] += 1.0
+            bw = tile_weight[:hh, :ww]
+            sums[:, y:y+hh, x:x+ww] += probs[:, :hh, :ww] * bw[None]
+            weight[y:y+hh, x:x+ww] += bw
+
+            done += 1
+            if progress_every > 0 and (done % progress_every == 0 or done == total):
+                elapsed = time.perf_counter() - started
+                rate = done / elapsed if elapsed > 0 else 0.0
+                remain = (total - done) / rate if rate > 0 else float("nan")
+                print(
+                    f"tiles {done}/{total} ({100*done/total:.1f}%) "
+                    f"elapsed={elapsed/60:.1f}m eta={remain/60:.1f}m",
+                    flush=True,
+                )
 
     sums /= np.maximum(weight[None], 1e-6)
     channel_mean = sums.mean(axis=(1, 2))
-    argmax_share = np.array([(np.argmax(sums, axis=0) == i).mean() for i in range(sums.shape[0])])
+    argmax_map = np.argmax(sums, axis=0)
+    argmax_share = np.array([(argmax_map == i).mean() for i in range(sums.shape[0])])
     background = int(np.argmax(channel_mean))
     building_prob = 1.0 - sums[background]
-    return building_prob, channel_mean, argmax_share, background
+    elapsed = time.perf_counter() - started
+    return building_prob, channel_mean, argmax_share, background, total, elapsed
+
+
+def threshold_tag(value: float) -> str:
+    return f"t{int(round(value * 1000)):04d}"
+
+
+def write_mask(path: Path, prob: np.ndarray, threshold: float):
+    mask = prob >= threshold
+    cv2.imwrite(str(path), mask.astype(np.uint8) * 255)
+    return float(mask.mean())
 
 
 def main():
@@ -92,31 +140,63 @@ def main():
         files = [p for p in files if p.name in wanted or p.stem in wanted]
     reports = []
 
+    thresholds = []
+    for t in [a.threshold, *a.thresholds]:
+        t = float(t)
+        if not any(abs(t - old) < 1e-9 for old in thresholds):
+            thresholds.append(t)
+
     for p in files:
         im = cv2.imread(str(p), cv2.IMREAD_COLOR)
         if im is None:
             raise RuntimeError(f"No se pudo leer {p}")
-        prob, means, shares, bg = infer_image(sess, im, a.stride)
-        mask = prob >= a.threshold
+        print(f"\n=== {p.name} ===", flush=True)
+        prob, means, shares, bg, tile_count, elapsed = infer_image(
+            sess, im, a.stride, a.progress_every
+        )
+
         stem = p.stem
-        cv2.imwrite(str(a.output_dir / f"{stem}-building-prob.png"), np.clip(prob*255, 0, 255).astype(np.uint8))
-        cv2.imwrite(str(a.output_dir / f"{stem}-building-mask.png"), (mask.astype(np.uint8)*255))
+        cv2.imwrite(
+            str(a.output_dir / f"{stem}-building-prob.png"),
+            np.clip(prob * 255, 0, 255).astype(np.uint8),
+        )
+
+        threshold_fractions = {}
+        for t in thresholds:
+            tag = threshold_tag(t)
+            frac = write_mask(a.output_dir / f"{stem}-building-mask-{tag}.png", prob, t)
+            threshold_fractions[f"{t:.4f}"] = frac
+
+        primary_fraction = write_mask(
+            a.output_dir / f"{stem}-building-mask.png", prob, a.threshold
+        )
+
         row = {
             "file": p.name,
             "background_channel": bg,
             "channel_mean_probability": [float(v) for v in means],
             "channel_argmax_share": [float(v) for v in shares],
             "threshold": a.threshold,
-            "building_pixel_fraction": float(mask.mean()),
+            "threshold_pixel_fractions": threshold_fractions,
+            "building_pixel_fraction": primary_fraction,
             "probability_mean": float(prob.mean()),
             "probability_p95": float(np.percentile(prob, 95)),
+            "stride": a.stride,
+            "tile_count": tile_count,
+            "elapsed_seconds": float(elapsed),
+            "blend": "hann_floor_0.05",
         }
         reports.append(row)
-        print(json.dumps(row, ensure_ascii=False))
+        print(json.dumps(row, ensure_ascii=False), flush=True)
 
-    (a.output_dir / "inference-qa.json").write_text(json.dumps(reports, indent=2, ensure_ascii=False), encoding="utf-8")
+    (a.output_dir / "inference-qa.json").write_text(
+        json.dumps(reports, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"Salida: {a.output_dir}")
-    print("IMPORTANTE: background_channel es inferido provisionalmente; validar visualmente antes de cuantificar m².")
+    print(
+        "IMPORTANTE: background_channel sigue siendo inferido provisionalmente; "
+        "validar visualmente antes de cuantificar m²."
+    )
 
 
 if __name__ == "__main__":
