@@ -56,6 +56,35 @@ QA piloto 2023:
 - hay falsos positivos en suelo desnudo, vegetación/sombras y algunas texturas brillantes
 - la probabilidad muestra artefactos visibles de tiling; no cuantificar m² todavía
 
+### 2.4 Entorno de cómputo validado
+
+#### VPS
+- 8 vCPU AMD EPYC virtualizados, 23 GiB RAM.
+- benchmark ONNX CPU 1 thread: 66.42 s/tile.
+- proyección 255 tiles: ~282 min por mosaico.
+- 2 threads no mostró mejora inicial relevante.
+- decisión: no usar VPS para iteración ML pesada salvo necesidad operativa específica.
+
+#### Workstation Windows
+- Intel Core i7-12700, 12 cores / 20 hilos.
+- 32 GiB RAM.
+- AMD Radeon RX 6700 XT disponible, pero DirectML falló al inicializar y ONNX Runtime hizo fallback a CPU; no atribuir a GPU resultados del benchmark.
+- benchmark CPU local sobre tiles reales:
+
+| Threads | s/tile medio | proyección 255 tiles |
+|---:|---:|---:|
+| 4 | 0.249 | 1.06 min |
+| 8 | 0.168 | 0.71 min |
+| 12 | 0.147 | 0.62 min |
+| 16 | 0.139 | 0.59 min |
+| 20 | 0.136 | 0.58 min |
+
+Decisión operativa:
+- usar workstation para inferencia, vectorización, entrenamiento y procesamiento ML pesado;
+- usar `--provider cpu --cpu-threads 20` como baseline local actual;
+- DirectML queda como optimización opcional, no bloqueante;
+- VPS queda para integración, almacenamiento operativo, publicación y servicios.
+
 ## 3. Arquitectura objetivo
 
 ```text
@@ -74,6 +103,14 @@ VHR histórica
   -> alertas / ranking
   -> validación humana
   -> capa operativa en mapa
+```
+
+Arquitectura de ejecución:
+
+```text
+GitHub = fuente de verdad de código/documentación
+Workstation = cómputo ML pesado y generación de artefactos analíticos
+VPS = integración, publicación, servicios y almacenamiento operativo
 ```
 
 ## 4. Fases y criterios de salida
@@ -95,7 +132,7 @@ Criterios de aceptación:
 - overlay visual de al menos 5 estructuras persistentes por fecha.
 
 ### Fase B — Corregir inferencia y mosaico de probabilidad
-Estado: SIGUIENTE
+Estado: EN CURSO
 
 Tareas:
 1. añadir progreso visible por ventana.
@@ -105,6 +142,7 @@ Tareas:
 5. ejecutar QA rápido sobre recortes antes de mosaico completo.
 6. no asumir semántica de los 3 logits sin validación adicional.
 7. producir comparativa de umbrales 0.30 / 0.4371 / 0.60.
+8. ejecutar el baseline pesado en workstation, no VPS.
 
 Criterios de aceptación:
 - ausencia de cuadrícula dominante en probability map.
@@ -387,13 +425,33 @@ final=review
 ### Cambios de código / documentación
 Los realiza el asistente directamente en GitHub sobre `feature/validacion-territorial` cuando sea posible.
 
-### Ejecución sobre datos locales de VPS
-El usuario ejecuta los comandos entregados para:
-- `git pull`
-- procesamiento de mosaicos bajo `tmp/`
-- inferencias pesadas
-- inspección de recursos del VPS
-- archivos que sólo existen localmente
+### Ejecución pesada en workstation
+El usuario ejecuta los comandos entregados sobre su PC para:
+- inferencia ONNX pesada;
+- vectorización masiva;
+- extracción de features;
+- entrenamiento y benchmarks;
+- procesamiento de artefactos locales bajo `tmp/`.
+
+Baseline actual de inferencia local:
+```text
+--provider cpu --cpu-threads 20
+```
+
+### Ejecución en VPS
+La VPS se reserva para:
+- `git pull` e integración;
+- publicación y servicios;
+- almacenamiento operativo;
+- validaciones contra entorno de producción;
+- archivos que sólo existan allí.
+
+No usar VPS para iteración ML pesada si existe el equivalente local en workstation.
+
+### Sincronización de artefactos
+- no versionar mosaicos VHR, máscaras pesadas o modelos grandes en Git;
+- subir a VPS sólo resultados necesarios para integración: GeoJSON, CSV, QA JSON, máscaras seleccionadas y modelos versionados cuando corresponda;
+- mantener nombres y metadata reproducibles para poder reconstruir cada resultado.
 
 ### Despliegue
 Sólo cuando exista una versión explícitamente validada. No mezclar pipeline experimental bajo `tmp/` con producción.
@@ -401,9 +459,9 @@ Sólo cuando exista una versión explícitamente validada. No mezclar pipeline e
 ## 10. Orden inmediato de implementación
 
 ### Sprint técnico 1 — inferencia limpia 2023
-1. mejorar `infer-building-mask.py` con blending ponderado.
-2. añadir progreso y timing.
-3. añadir QA rápido por crop.
+1. mejorar `infer-building-mask.py` con blending ponderado. HECHO.
+2. añadir progreso y timing. HECHO.
+3. benchmark de hardware y elección de entorno. HECHO: workstation CPU, 20 threads.
 4. producir 3 umbrales sin repetir inferencia.
 5. generar overlay comparativo.
 6. validar visualmente.
@@ -457,6 +515,7 @@ Sólo después evaluar fine-tuning de segmentación o clasificador visual dedica
 - galpones/productivo pueden parecer "más construidos" que vivienda; no mezclar usos.
 - Overture puede fragmentar o representar sólo una parte de un complejo.
 - un único umbral global puede no ser óptimo para todas las fechas.
+- DirectML en la workstation actualmente falla al inicializar y cae a CPU; no usar métricas de fallback como si fueran GPU.
 
 ## 12. Fuentes metodológicas de referencia
 
