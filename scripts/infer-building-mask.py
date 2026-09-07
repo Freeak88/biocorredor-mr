@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """Inferencia de superficie construida sobre mosaicos RGB VHR.
 
-Usa un ONNX de segmentación por ventanas solapadas. Está pensado para el modelo
-HOTOSM dinov3s-buildings (256 px, stride 192).
+Usa un ONNX de segmentación por ventanas solapadas para HOTOSM dinov3s-buildings.
+Soporta CPU y DirectML (Windows/AMD/Intel/NVIDIA) con fallback explícito.
 
-Mejoras respecto del piloto inicial:
+Mejoras:
 - blending ponderado entre tiles para reducir costuras;
 - progreso y timing por imagen;
 - múltiples umbrales derivados de una sola inferencia;
-- conserva una máscara primaria compatible con el flujo existente.
+- selección de execution provider y registro del provider efectivo;
+- configuración compatible con DirectML (sequential + mem pattern off).
 
 La semántica de los 3 logits observados en el ONNX no se asume como verdad. Se
-mantiene provisionalmente la heurística: el canal con mayor cobertura media se
-interpreta como fondo y p(building)=1-p(background), hasta cerrar QA visual.
+mantiene provisionalmente la heurística: canal con mayor cobertura media = fondo,
+p(building)=1-p(background), hasta cerrar QA visual.
 """
 from __future__ import annotations
 
@@ -34,14 +35,16 @@ def parse_args():
     p.add_argument("--model", type=Path, required=True)
     p.add_argument("--input-dir", type=Path, required=True)
     p.add_argument("--output-dir", type=Path, required=True)
-    p.add_argument("--threshold", type=float, default=0.4371,
-                   help="Umbral primario; también genera building-mask.png")
-    p.add_argument("--thresholds", type=float, nargs="*", default=[0.30, 0.4371, 0.60],
-                   help="Umbrales adicionales derivados de la misma probabilidad")
+    p.add_argument("--threshold", type=float, default=0.4371)
+    p.add_argument("--thresholds", type=float, nargs="*", default=[0.30, 0.4371, 0.60])
     p.add_argument("--stride", type=int, default=192)
     p.add_argument("--only", nargs="*")
-    p.add_argument("--progress-every", type=int, default=10,
-                   help="Informar progreso cada N ventanas")
+    p.add_argument("--progress-every", type=int, default=1)
+    p.add_argument("--provider", choices=["auto", "cpu", "directml"], default="auto")
+    p.add_argument("--device-id", type=int, default=0,
+                   help="Adapter DirectML. Verificar GPU efectiva en Task Manager si hay varias.")
+    p.add_argument("--cpu-threads", type=int, default=0,
+                   help="0 = ONNX Runtime decide; sólo aplica a CPU")
     return p.parse_args()
 
 
@@ -61,11 +64,38 @@ def positions(length: int, window: int, stride: int):
 
 
 def blend_window(win: int) -> np.ndarray:
-    """Ventana suave con piso >0 para no dejar bordes globales sin peso."""
     one = np.hanning(win).astype(np.float32)
     two = np.outer(one, one)
     two /= max(float(two.max()), 1e-6)
     return np.maximum(two, 0.05).astype(np.float32)
+
+
+def make_session(model: Path, provider: str, device_id: int, cpu_threads: int):
+    available = ort.get_available_providers()
+    so = ort.SessionOptions()
+    so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+    if provider == "directml" or (provider == "auto" and "DmlExecutionProvider" in available):
+        if "DmlExecutionProvider" not in available:
+            raise RuntimeError(
+                "DirectML solicitado pero DmlExecutionProvider no está disponible. "
+                "En Windows instalar onnxruntime-directml y quitar onnxruntime CPU si entra en conflicto."
+            )
+        so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        so.enable_mem_pattern = False
+        providers = [("DmlExecutionProvider", {"device_id": str(device_id)}), "CPUExecutionProvider"]
+        requested = "directml"
+    else:
+        so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        if cpu_threads > 0:
+            so.intra_op_num_threads = cpu_threads
+        providers = ["CPUExecutionProvider"]
+        requested = "cpu"
+
+    t0 = time.perf_counter()
+    sess = ort.InferenceSession(str(model), sess_options=so, providers=providers)
+    init_seconds = time.perf_counter() - t0
+    return sess, requested, available, init_seconds
 
 
 def infer_image(sess, image_bgr, stride: int, progress_every: int):
@@ -90,7 +120,9 @@ def infer_image(sess, image_bgr, stride: int, progress_every: int):
                 pad[:chip.shape[0], :chip.shape[1]] = chip
                 chip = pad
             tensor = np.transpose(chip, (2, 0, 1))[None]
+            t0 = time.perf_counter()
             logits = sess.run([output_name], {input_name: tensor})[0][0]
+            tile_seconds = time.perf_counter() - t0
             probs = softmax(logits, axis=0).astype(np.float32)
             if sums is None:
                 sums = np.zeros((probs.shape[0], h, w), np.float32)
@@ -106,7 +138,7 @@ def infer_image(sess, image_bgr, stride: int, progress_every: int):
                 remain = (total - done) / rate if rate > 0 else float("nan")
                 print(
                     f"tiles {done}/{total} ({100*done/total:.1f}%) "
-                    f"elapsed={elapsed/60:.1f}m eta={remain/60:.1f}m",
+                    f"last={tile_seconds:.2f}s elapsed={elapsed/60:.1f}m eta={remain/60:.1f}m",
                     flush=True,
                 )
 
@@ -133,7 +165,14 @@ def write_mask(path: Path, prob: np.ndarray, threshold: float):
 def main():
     a = parse_args()
     a.output_dir.mkdir(parents=True, exist_ok=True)
-    sess = ort.InferenceSession(str(a.model), providers=["CPUExecutionProvider"])
+    sess, requested_provider, available, session_init_seconds = make_session(
+        a.model, a.provider, a.device_id, a.cpu_threads
+    )
+    effective = sess.get_providers()
+    print("available_providers=", available, flush=True)
+    print("effective_providers=", effective, flush=True)
+    print(f"session_init={session_init_seconds:.2f}s requested={requested_provider}", flush=True)
+
     files = sorted(p for p in a.input_dir.iterdir() if p.is_file() and DATE_JPG.match(p.name))
     if a.only:
         wanted = set(a.only)
@@ -151,15 +190,11 @@ def main():
         if im is None:
             raise RuntimeError(f"No se pudo leer {p}")
         print(f"\n=== {p.name} ===", flush=True)
-        prob, means, shares, bg, tile_count, elapsed = infer_image(
-            sess, im, a.stride, a.progress_every
-        )
+        prob, means, shares, bg, tile_count, elapsed = infer_image(sess, im, a.stride, a.progress_every)
 
         stem = p.stem
-        cv2.imwrite(
-            str(a.output_dir / f"{stem}-building-prob.png"),
-            np.clip(prob * 255, 0, 255).astype(np.uint8),
-        )
+        cv2.imwrite(str(a.output_dir / f"{stem}-building-prob.png"),
+                    np.clip(prob * 255, 0, 255).astype(np.uint8))
 
         threshold_fractions = {}
         for t in thresholds:
@@ -167,12 +202,15 @@ def main():
             frac = write_mask(a.output_dir / f"{stem}-building-mask-{tag}.png", prob, t)
             threshold_fractions[f"{t:.4f}"] = frac
 
-        primary_fraction = write_mask(
-            a.output_dir / f"{stem}-building-mask.png", prob, a.threshold
-        )
+        primary_fraction = write_mask(a.output_dir / f"{stem}-building-mask.png", prob, a.threshold)
 
         row = {
             "file": p.name,
+            "requested_provider": requested_provider,
+            "available_providers": available,
+            "effective_providers": effective,
+            "device_id": a.device_id if requested_provider == "directml" else None,
+            "session_init_seconds": float(session_init_seconds),
             "background_channel": bg,
             "channel_mean_probability": [float(v) for v in means],
             "channel_argmax_share": [float(v) for v in shares],
@@ -193,10 +231,7 @@ def main():
         json.dumps(reports, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(f"Salida: {a.output_dir}")
-    print(
-        "IMPORTANTE: background_channel sigue siendo inferido provisionalmente; "
-        "validar visualmente antes de cuantificar m²."
-    )
+    print("IMPORTANTE: background_channel sigue siendo provisional; validar visualmente antes de cuantificar m².")
 
 
 if __name__ == "__main__":
