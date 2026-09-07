@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Inferencia de superficie construida sobre mosaicos RGB VHR.
+"""Inferencia de edificios sobre mosaicos RGB VHR con el ONNX de HOTOSM.
 
-Usa un ONNX de segmentación por ventanas solapadas para HOTOSM dinov3s-buildings.
-Soporta CPU y DirectML (Windows/AMD/Intel/NVIDIA).
+Este script replica las partes relevantes del serving oficial de
+`hotosm/dinov3s-buildings` / `dinov3-hot`:
 
-Mejoras:
-- blending ponderado entre tiles para reducir costuras;
-- progreso y timing por imagen;
+- normalización RGB con HOT_MEAN / HOT_STD;
+- canal 0 = mask logit -> sigmoid = probabilidad de edificio;
+- canal 1 = boundary logit -> sigmoid;
+- canal 2 = distance logit -> tanh;
+- stitching de ventanas con kernel gaussiano;
 - múltiples umbrales derivados de una sola inferencia;
-- selección de execution provider y registro del provider efectivo;
-- configuración compatible con DirectML (sequential + mem pattern off);
-- evita aceptar silenciosamente un fallback DirectML -> CPU.
+- soporte CPU / DirectML con control de fallback;
+- progreso, timing y QA reproducible.
 
-La semántica de los 3 logits observados en el ONNX no se asume como verdad. Se
-mantiene provisionalmente la heurística: canal con mayor cobertura media = fondo,
-p(building)=1-p(background), hasta cerrar QA visual.
+Importante: una detección de edificio es evidencia de ocupación física observable,
+no determina uso, estado administrativo ni legalidad.
 """
 from __future__ import annotations
 
@@ -30,6 +30,16 @@ import onnxruntime as ort
 
 DATE_JPG = re.compile(r"^\d{4}-\d{2}-\d{2}\.jpg$")
 
+MODEL_INPUT_SIZE = 256
+HOT_MEAN = np.asarray(
+    [0.4296737853453577, 0.4001659668453235, 0.34333372802741474],
+    dtype=np.float32,
+).reshape(3, 1, 1)
+HOT_STD = np.asarray(
+    [0.2056069389373208, 0.16738555558380538, 0.1598986422586595],
+    dtype=np.float32,
+).reshape(3, 1, 1)
+
 
 def parse_args():
     p = argparse.ArgumentParser()
@@ -38,9 +48,14 @@ def parse_args():
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--threshold", type=float, default=0.4371)
     p.add_argument("--thresholds", type=float, nargs="*", default=[0.30, 0.4371, 0.60])
-    p.add_argument("--stride", type=int, default=192)
+    p.add_argument(
+        "--stride",
+        type=int,
+        default=128,
+        help="Stride del sliding window. 128 coincide con el serving actual de dinov3-hot.",
+    )
     p.add_argument("--only", nargs="*")
-    p.add_argument("--progress-every", type=int, default=1)
+    p.add_argument("--progress-every", type=int, default=10)
     p.add_argument("--provider", choices=["auto", "cpu", "directml"], default="auto")
     p.add_argument("--device-id", type=int, default=0)
     p.add_argument("--cpu-threads", type=int, default=0,
@@ -48,26 +63,34 @@ def parse_args():
     return p.parse_args()
 
 
-def softmax(x, axis=0):
-    x = x - np.max(x, axis=axis, keepdims=True)
-    e = np.exp(x)
-    return e / np.sum(e, axis=axis, keepdims=True)
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    # Clip sólo para estabilidad numérica; no altera la región útil de sigmoid.
+    x = np.clip(x, -80.0, 80.0)
+    return 1.0 / (1.0 + np.exp(-x))
 
 
 def positions(length: int, window: int, stride: int):
     if length <= window:
         return [0]
-    out = list(range(0, length - window + 1, stride))
-    if out[-1] != length - window:
+    out = list(range(0, max(1, length - window + 1), stride))
+    if out[-1] + window < length:
         out.append(length - window)
     return out
 
 
-def blend_window(win: int) -> np.ndarray:
-    one = np.hanning(win).astype(np.float32)
-    two = np.outer(one, one)
-    two /= max(float(two.max()), 1e-6)
-    return np.maximum(two, 0.05).astype(np.float32)
+def gaussian_kernel(size: int, sigma_frac: float = 0.125) -> np.ndarray:
+    """Kernel gaussiano 2D equivalente al serving oficial de dinov3-hot."""
+    x = np.arange(size, dtype=np.float32) - (size - 1) / 2.0
+    sigma = sigma_frac * size
+    one = np.exp(-0.5 * (x / sigma) ** 2)
+    kernel = np.outer(one, one)
+    kernel /= max(float(kernel.max()), 1e-12)
+    return kernel.astype(np.float32)
+
+
+def normalize_chip(chip_rgb_uint8: np.ndarray) -> np.ndarray:
+    chw = chip_rgb_uint8.astype(np.float32).transpose(2, 0, 1) / 255.0
+    return (chw - HOT_MEAN) / HOT_STD
 
 
 def cpu_session(model: Path, cpu_threads: int):
@@ -122,14 +145,18 @@ def make_session(model: Path, provider: str, device_id: int, cpu_threads: int):
     return sess, "cpu", available, init
 
 
-def infer_image(sess, image_bgr, stride: int, progress_every: int):
-    rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-    h, w = rgb.shape[:2]
-    win = 256
+def infer_image(sess, image_bgr: np.ndarray, stride: int, progress_every: int):
+    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    h, w = image_rgb.shape[:2]
+    win = MODEL_INPUT_SIZE
     ys, xs = positions(h, win, stride), positions(w, win, stride)
-    tile_weight = blend_window(win)
-    sums = None
-    weight = np.zeros((h, w), np.float32)
+    kernel = gaussian_kernel(win)
+
+    mask_acc = np.zeros((h, w), np.float32)
+    boundary_acc = np.zeros((h, w), np.float32)
+    distance_acc = np.zeros((h, w), np.float32)
+    weight_acc = np.zeros((h, w), np.float32)
+
     input_name = sess.get_inputs()[0].name
     output_name = sess.get_outputs()[0].name
     total = len(ys) * len(xs)
@@ -138,38 +165,52 @@ def infer_image(sess, image_bgr, stride: int, progress_every: int):
 
     for y in ys:
         for x in xs:
-            chip = rgb[y:y+win, x:x+win]
-            if chip.shape[:2] != (win, win):
-                pad = np.zeros((win, win, 3), np.float32)
-                pad[:chip.shape[0], :chip.shape[1]] = chip
+            chip = image_rgb[y:y + win, x:x + win]
+            hh, ww = chip.shape[:2]
+            if (hh, ww) != (win, win):
+                pad = np.zeros((win, win, 3), dtype=np.uint8)
+                pad[:hh, :ww] = chip
                 chip = pad
-            tensor = np.transpose(chip, (2, 0, 1))[None]
+
+            tensor = normalize_chip(chip)[None]
             t0 = time.perf_counter()
             logits = sess.run([output_name], {input_name: tensor})[0][0]
             tile_seconds = time.perf_counter() - t0
-            probs = softmax(logits, axis=0).astype(np.float32)
-            if sums is None:
-                sums = np.zeros((probs.shape[0], h, w), np.float32)
-            hh, ww = min(win, h-y), min(win, w-x)
-            bw = tile_weight[:hh, :ww]
-            sums[:, y:y+hh, x:x+ww] += probs[:, :hh, :ww] * bw[None]
-            weight[y:y+hh, x:x+ww] += bw
+
+            if logits.shape[0] < 3:
+                raise RuntimeError(f"Se esperaban >=3 canales ONNX; recibido {logits.shape}")
+
+            mask_prob = sigmoid(logits[0]).astype(np.float32)
+            boundary_prob = sigmoid(logits[1]).astype(np.float32)
+            distance = np.tanh(logits[2]).astype(np.float32)
+
+            hh = min(win, h - y)
+            ww = min(win, w - x)
+            k = kernel[:hh, :ww]
+            mask_acc[y:y + hh, x:x + ww] += mask_prob[:hh, :ww] * k
+            boundary_acc[y:y + hh, x:x + ww] += boundary_prob[:hh, :ww] * k
+            distance_acc[y:y + hh, x:x + ww] += distance[:hh, :ww] * k
+            weight_acc[y:y + hh, x:x + ww] += k
+
             done += 1
             if progress_every > 0 and (done % progress_every == 0 or done == total):
                 elapsed = time.perf_counter() - started
                 rate = done / elapsed if elapsed > 0 else 0.0
                 remain = (total - done) / rate if rate > 0 else float("nan")
-                print(f"tiles {done}/{total} ({100*done/total:.1f}%) last={tile_seconds:.2f}s "
-                      f"elapsed={elapsed/60:.1f}m eta={remain/60:.1f}m", flush=True)
+                print(
+                    f"tiles {done}/{total} ({100 * done / total:.1f}%) "
+                    f"last={tile_seconds:.2f}s elapsed={elapsed / 60:.1f}m eta={remain / 60:.1f}m",
+                    flush=True,
+                )
 
-    sums /= np.maximum(weight[None], 1e-6)
-    channel_mean = sums.mean(axis=(1, 2))
-    argmax_map = np.argmax(sums, axis=0)
-    argmax_share = np.array([(argmax_map == i).mean() for i in range(sums.shape[0])])
-    background = int(np.argmax(channel_mean))
-    building_prob = 1.0 - sums[background]
+    if float(weight_acc.min()) <= 0.0:
+        raise RuntimeError("Sliding window dejó píxeles sin cobertura")
+
+    mask_prob = mask_acc / weight_acc
+    boundary_prob = boundary_acc / weight_acc
+    distance = distance_acc / weight_acc
     elapsed = time.perf_counter() - started
-    return building_prob, channel_mean, argmax_share, background, total, elapsed
+    return mask_prob, boundary_prob, distance, total, elapsed, float(weight_acc.min()), float(weight_acc.max())
 
 
 def threshold_tag(value: float) -> str:
@@ -182,8 +223,15 @@ def write_mask(path: Path, prob: np.ndarray, threshold: float):
     return float(mask.mean())
 
 
+def write_prob(path: Path, arr: np.ndarray):
+    cv2.imwrite(str(path), np.clip(arr * 255.0, 0, 255).astype(np.uint8))
+
+
 def main():
     a = parse_args()
+    if not (1 <= a.stride <= MODEL_INPUT_SIZE):
+        raise SystemExit(f"--stride debe estar entre 1 y {MODEL_INPUT_SIZE}")
+
     a.output_dir.mkdir(parents=True, exist_ok=True)
     sess, requested_provider, available, session_init_seconds = make_session(
         a.model, a.provider, a.device_id, a.cpu_threads
@@ -198,6 +246,7 @@ def main():
         wanted = set(a.only)
         files = [p for p in files if p.name in wanted or p.stem in wanted]
     reports = []
+
     thresholds = []
     for t in [a.threshold, *a.thresholds]:
         t = float(t)
@@ -209,16 +258,27 @@ def main():
         if im is None:
             raise RuntimeError(f"No se pudo leer {p}")
         print(f"\n=== {p.name} ===", flush=True)
-        prob, means, shares, bg, tile_count, elapsed = infer_image(sess, im, a.stride, a.progress_every)
+
+        mask_prob, boundary_prob, distance, tile_count, elapsed, weight_min, weight_max = infer_image(
+            sess, im, a.stride, a.progress_every
+        )
+
         stem = p.stem
-        cv2.imwrite(str(a.output_dir / f"{stem}-building-prob.png"),
-                    np.clip(prob * 255, 0, 255).astype(np.uint8))
+        write_prob(a.output_dir / f"{stem}-building-prob.png", mask_prob)
+        write_prob(a.output_dir / f"{stem}-building-boundary-prob.png", boundary_prob)
+        # distance está en [-1, 1]; se guarda visualmente reescalado a [0, 255].
+        write_prob(a.output_dir / f"{stem}-building-distance.png", (distance + 1.0) / 2.0)
+
         threshold_fractions = {}
         for t in thresholds:
             tag = threshold_tag(t)
-            frac = write_mask(a.output_dir / f"{stem}-building-mask-{tag}.png", prob, t)
+            frac = write_mask(a.output_dir / f"{stem}-building-mask-{tag}.png", mask_prob, t)
             threshold_fractions[f"{t:.4f}"] = frac
-        primary_fraction = write_mask(a.output_dir / f"{stem}-building-mask.png", prob, a.threshold)
+
+        primary_fraction = write_mask(
+            a.output_dir / f"{stem}-building-mask.png", mask_prob, a.threshold
+        )
+
         row = {
             "file": p.name,
             "requested_provider": requested_provider,
@@ -227,18 +287,29 @@ def main():
             "device_id": a.device_id if requested_provider == "directml" else None,
             "cpu_threads": a.cpu_threads if requested_provider == "cpu" else None,
             "session_init_seconds": float(session_init_seconds),
-            "background_channel": bg,
-            "channel_mean_probability": [float(v) for v in means],
-            "channel_argmax_share": [float(v) for v in shares],
+            "model_output_semantics": {
+                "channel_0": "mask_logit -> sigmoid",
+                "channel_1": "boundary_logit -> sigmoid",
+                "channel_2": "distance_logit -> tanh",
+            },
+            "normalization": {
+                "mean": HOT_MEAN.reshape(-1).astype(float).tolist(),
+                "std": HOT_STD.reshape(-1).astype(float).tolist(),
+            },
             "threshold": a.threshold,
             "threshold_pixel_fractions": threshold_fractions,
             "building_pixel_fraction": primary_fraction,
-            "probability_mean": float(prob.mean()),
-            "probability_p95": float(np.percentile(prob, 95)),
+            "probability_mean": float(mask_prob.mean()),
+            "probability_p95": float(np.percentile(mask_prob, 95)),
+            "boundary_probability_mean": float(boundary_prob.mean()),
+            "distance_mean": float(distance.mean()),
             "stride": a.stride,
             "tile_count": tile_count,
             "elapsed_seconds": float(elapsed),
-            "blend": "hann_floor_0.05",
+            "blend": "gaussian_sigma_frac_0.125",
+            "weight_min": weight_min,
+            "weight_max": weight_max,
+            "pipeline_reference": "dinov3_hot.serve.sliding_window_onnx",
         }
         reports.append(row)
         print(json.dumps(row, ensure_ascii=False), flush=True)
@@ -247,7 +318,10 @@ def main():
         json.dumps(reports, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(f"Salida: {a.output_dir}")
-    print("IMPORTANTE: background_channel sigue siendo provisional; validar visualmente antes de cuantificar m².")
+    print(
+        "NOTA: la probabilidad ahora sigue la semántica oficial del modelo (sigmoid canal 0). "
+        "Validar visualmente antes de cuantificar m²."
+    )
 
 
 if __name__ == "__main__":
