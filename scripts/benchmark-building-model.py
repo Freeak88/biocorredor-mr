@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Benchmark corto del modelo ONNX sobre tiles reales, CPU o DirectML."""
+"""Benchmark corto del modelo ONNX sobre tiles reales, CPU o DirectML.
+
+Importante: un benchmark pedido como DirectML sólo se acepta si la sesión usa
+realmente DmlExecutionProvider. ONNX Runtime puede hacer fallback silencioso a
+CPU si DirectML falla; ese caso se reporta como error y no como resultado GPU.
+"""
 from __future__ import annotations
 
 import argparse
@@ -52,8 +57,17 @@ def dml_session(model: Path, device_id: int):
     so=ort.SessionOptions(); so.execution_mode=ort.ExecutionMode.ORT_SEQUENTIAL
     so.enable_mem_pattern=False
     so.graph_optimization_level=ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-    return ort.InferenceSession(str(model), sess_options=so,
-        providers=[("DmlExecutionProvider", {"device_id": str(device_id)}), "CPUExecutionProvider"])
+    sess = ort.InferenceSession(
+        str(model),
+        sess_options=so,
+        providers=[("DmlExecutionProvider", {"device_id": str(device_id)}), "CPUExecutionProvider"],
+    )
+    effective = sess.get_providers()
+    if "DmlExecutionProvider" not in effective:
+        raise RuntimeError(
+            f"DirectML no quedó activo; ONNX Runtime hizo fallback. effective_providers={effective}"
+        )
+    return sess
 
 
 def measure(sess, chips, warmup, label):
@@ -97,6 +111,8 @@ def main():
                 "effective_providers":sess.get_providers()})
 
     print("\n=== RESUMEN ===")
+    if not reports:
+        print("Sin benchmarks válidos.")
     for r in sorted(reports,key=lambda x:x["mean_tile_seconds"]):
         ident=f"device={r['device_id']}" if r["provider"]=="directml" else f"threads={r['threads']}"
         print(f"{r['provider']} {ident} mean={r['mean_tile_seconds']:.3f}s/tile proj255={r['projected_255_minutes']:.1f}m")
