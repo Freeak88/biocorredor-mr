@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark corto del modelo ONNX de edificios sobre tiles reales.
-
-Mide latencia por tile con distintas cantidades de threads de ONNX Runtime para
-no lanzar mosaicos completos a ciegas. No modifica datos ni genera detecciones.
-"""
+"""Benchmark corto del modelo ONNX sobre tiles reales, CPU o DirectML."""
 from __future__ import annotations
 
 import argparse
@@ -20,7 +16,9 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--model", type=Path, required=True)
     p.add_argument("--image", type=Path, required=True)
-    p.add_argument("--threads", type=int, nargs="+", default=[1, 2, 4])
+    p.add_argument("--provider", choices=["cpu", "directml", "auto"], default="auto")
+    p.add_argument("--threads", type=int, nargs="+", default=[1, 2, 4, 8])
+    p.add_argument("--device-ids", type=int, nargs="+", default=[0, 1, 2])
     p.add_argument("--tiles", type=int, default=3)
     p.add_argument("--warmup", type=int, default=1)
     return p.parse_args()
@@ -31,77 +29,77 @@ def make_tiles(im_bgr: np.ndarray, n: int) -> list[np.ndarray]:
     h, w = rgb.shape[:2]
     win = 256
     centers = [
-        (max(0, w // 2 - win // 2), max(0, h // 2 - win // 2)),
-        (max(0, w // 4 - win // 2), max(0, h // 4 - win // 2)),
-        (max(0, 3 * w // 4 - win // 2), max(0, 3 * h // 4 - win // 2)),
-        (max(0, w // 4 - win // 2), max(0, 3 * h // 4 - win // 2)),
-        (max(0, 3 * w // 4 - win // 2), max(0, h // 4 - win // 2)),
+        (w//2-win//2, h//2-win//2), (w//4-win//2, h//4-win//2),
+        (3*w//4-win//2, 3*h//4-win//2), (w//4-win//2, 3*h//4-win//2),
+        (3*w//4-win//2, h//4-win//2),
     ]
-    out = []
-    for x, y in centers[: max(1, n)]:
-        chip = rgb[y:y+win, x:x+win]
-        if chip.shape[:2] != (win, win):
-            pad = np.zeros((win, win, 3), np.float32)
-            pad[:chip.shape[0], :chip.shape[1]] = chip
-            chip = pad
-        out.append(np.transpose(chip, (2, 0, 1))[None])
+    out=[]
+    for x,y in centers[:max(1,n)]:
+        x=max(0,x); y=max(0,y)
+        chip=rgb[y:y+win,x:x+win]
+        out.append(np.transpose(chip,(2,0,1))[None])
     return out
 
 
-def make_session(model: Path, threads: int):
-    so = ort.SessionOptions()
-    so.intra_op_num_threads = threads
-    so.inter_op_num_threads = 1
-    so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+def cpu_session(model: Path, threads: int):
+    so=ort.SessionOptions(); so.intra_op_num_threads=threads; so.inter_op_num_threads=1
+    so.execution_mode=ort.ExecutionMode.ORT_SEQUENTIAL
+    so.graph_optimization_level=ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     return ort.InferenceSession(str(model), sess_options=so, providers=["CPUExecutionProvider"])
 
 
+def dml_session(model: Path, device_id: int):
+    so=ort.SessionOptions(); so.execution_mode=ort.ExecutionMode.ORT_SEQUENTIAL
+    so.enable_mem_pattern=False
+    so.graph_optimization_level=ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    return ort.InferenceSession(str(model), sess_options=so,
+        providers=[("DmlExecutionProvider", {"device_id": str(device_id)}), "CPUExecutionProvider"])
+
+
+def measure(sess, chips, warmup, label):
+    inp=sess.get_inputs()[0].name; out=sess.get_outputs()[0].name
+    for _ in range(max(0,warmup)): sess.run([out], {inp:chips[0]})
+    times=[]
+    for i,chip in enumerate(chips,1):
+        t=time.perf_counter(); sess.run([out], {inp:chip}); dt=time.perf_counter()-t
+        times.append(dt); print(f"{label} tile={i}/{len(chips)} {dt:.3f}s", flush=True)
+    return times
+
+
 def main():
-    a = parse_args()
-    im = cv2.imread(str(a.image), cv2.IMREAD_COLOR)
-    if im is None:
-        raise SystemExit(f"No se pudo leer {a.image}")
-    chips = make_tiles(im, a.tiles)
-    reports = []
+    a=parse_args(); im=cv2.imread(str(a.image),cv2.IMREAD_COLOR)
+    if im is None: raise SystemExit(f"No se pudo leer {a.image}")
+    chips=make_tiles(im,a.tiles); available=ort.get_available_providers()
+    print("available_providers=", available, flush=True)
+    reports=[]
 
-    for threads in a.threads:
-        started_session = time.perf_counter()
-        sess = make_session(a.model, threads)
-        session_seconds = time.perf_counter() - started_session
-        input_name = sess.get_inputs()[0].name
-        output_name = sess.get_outputs()[0].name
+    use_dml = a.provider in ("directml","auto") and "DmlExecutionProvider" in available
+    if a.provider == "directml" and not use_dml:
+        raise SystemExit("DmlExecutionProvider no disponible")
 
-        for _ in range(max(0, a.warmup)):
-            sess.run([output_name], {input_name: chips[0]})
+    if use_dml:
+        for dev in a.device_ids:
+            try:
+                t0=time.perf_counter(); sess=dml_session(a.model,dev); init=time.perf_counter()-t0
+                times=measure(sess,chips,a.warmup,f"directml device={dev}")
+                reports.append({"provider":"directml","device_id":dev,"session_init_seconds":init,
+                    "mean_tile_seconds":float(np.mean(times)),"projected_255_minutes":float(np.mean(times)*255/60),
+                    "effective_providers":sess.get_providers()})
+            except Exception as exc:
+                print(f"directml device={dev} ERROR: {exc}", flush=True)
 
-        times = []
-        for i, chip in enumerate(chips, 1):
-            t0 = time.perf_counter()
-            sess.run([output_name], {input_name: chip})
-            dt = time.perf_counter() - t0
-            times.append(dt)
-            print(f"threads={threads} tile={i}/{len(chips)} {dt:.3f}s", flush=True)
-
-        row = {
-            "threads": threads,
-            "session_init_seconds": session_seconds,
-            "tiles": len(times),
-            "mean_tile_seconds": float(np.mean(times)),
-            "median_tile_seconds": float(np.median(times)),
-            "min_tile_seconds": float(np.min(times)),
-            "max_tile_seconds": float(np.max(times)),
-            "projected_255_minutes": float(np.mean(times) * 255 / 60),
-        }
-        reports.append(row)
-        print(json.dumps(row), flush=True)
+    if a.provider in ("cpu","auto"):
+        for th in a.threads:
+            t0=time.perf_counter(); sess=cpu_session(a.model,th); init=time.perf_counter()-t0
+            times=measure(sess,chips,a.warmup,f"cpu threads={th}")
+            reports.append({"provider":"cpu","threads":th,"session_init_seconds":init,
+                "mean_tile_seconds":float(np.mean(times)),"projected_255_minutes":float(np.mean(times)*255/60),
+                "effective_providers":sess.get_providers()})
 
     print("\n=== RESUMEN ===")
-    for r in sorted(reports, key=lambda x: x["mean_tile_seconds"]):
-        print(
-            f"threads={r['threads']} mean={r['mean_tile_seconds']:.3f}s/tile "
-            f"proj255={r['projected_255_minutes']:.1f}m"
-        )
+    for r in sorted(reports,key=lambda x:x["mean_tile_seconds"]):
+        ident=f"device={r['device_id']}" if r["provider"]=="directml" else f"threads={r['threads']}"
+        print(f"{r['provider']} {ident} mean={r['mean_tile_seconds']:.3f}s/tile proj255={r['projected_255_minutes']:.1f}m")
+    print(json.dumps(reports,indent=2))
 
-
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
