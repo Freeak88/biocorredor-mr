@@ -49,12 +49,46 @@ Firma observada:
 - input: `image`, `[1,3,256,256]`, float
 - output: `logits`, `[1,3,256,256]`, float
 
-QA piloto 2023:
+Baseline piloto previo:
 - canal de fondo inferido provisionalmente: 2
 - fracción de píxeles sobre umbral 0.4371: ~9.4%
 - se detectan muchos techos reales
 - hay falsos positivos en suelo desnudo, vegetación/sombras y algunas texturas brillantes
-- la probabilidad muestra artefactos visibles de tiling; no cuantificar m² todavía
+- la probabilidad mostraba artefactos visibles de tiling; no cuantificar m² todavía
+
+#### Corrida V2 2023 — workstation
+Configuración:
+- provider efectivo: `CPUExecutionProvider`
+- CPU: Intel i7-12700
+- threads: 20
+- stride: 192
+- tiles: 255
+- blending: `hann_floor_0.05`
+- tiempo total de inferencia: 42.20 s
+
+QA:
+- `background_channel`: 2, todavía provisional
+- `channel_mean_probability`: [0.083798, 0.106257, 0.809945]
+- `channel_argmax_share`: [0.064534, 0.009539, 0.925927]
+- `probability_mean`: 0.190055
+- `probability_p95`: 0.769534
+
+Fracción de píxeles por umbral:
+- 0.30: 16.3604%
+- 0.4371: 9.7568%
+- 0.60: 6.5442%
+
+Artefactos QA generados localmente:
+- `2023-04-19-building-prob.png`
+- `2023-04-19-building-mask-t0300.png`
+- `2023-04-19-building-mask-t0437.png`
+- `2023-04-19-building-mask-t0600.png`
+- `2023-04-19-overlay.jpg`
+- `2023-04-19-overlay-center.jpg`
+- `2023-04-19-threshold-comparison-center.jpg`
+- `2023-04-19-diagnostic-center.jpg`
+
+Decisión actual: Fase B queda bloqueada únicamente por inspección visual de estos artefactos. No vectorizar ni cuantificar m² hasta validar costuras, semántica de salida y umbral operativo.
 
 ### 2.4 Entorno de cómputo validado
 
@@ -69,7 +103,6 @@ QA piloto 2023:
 - Intel Core i7-12700, 12 cores / 20 hilos.
 - 32 GiB RAM.
 - AMD Radeon RX 6700 XT disponible, pero DirectML falló al inicializar y ONNX Runtime hizo fallback a CPU; no atribuir a GPU resultados del benchmark.
-- benchmark CPU local sobre tiles reales:
 
 | Threads | s/tile medio | proyección 255 tiles |
 |---:|---:|---:|
@@ -132,23 +165,26 @@ Criterios de aceptación:
 - overlay visual de al menos 5 estructuras persistentes por fecha.
 
 ### Fase B — Corregir inferencia y mosaico de probabilidad
-Estado: EN CURSO
+Estado: EN CURSO — gate visual pendiente
 
 Tareas:
-1. añadir progreso visible por ventana.
-2. blending ponderado en zonas solapadas.
-3. minimizar artefactos de borde de tile.
-4. preservar `stride=192` como baseline.
-5. ejecutar QA rápido sobre recortes antes de mosaico completo.
-6. no asumir semántica de los 3 logits sin validación adicional.
-7. producir comparativa de umbrales 0.30 / 0.4371 / 0.60.
-8. ejecutar el baseline pesado en workstation, no VPS.
+1. progreso visible por ventana. HECHO.
+2. blending ponderado en zonas solapadas. HECHO.
+3. minimizar artefactos de borde de tile. IMPLEMENTADO, PENDIENTE QA VISUAL.
+4. preservar `stride=192` como baseline. HECHO.
+5. ejecutar QA sobre recortes. HECHO.
+6. no asumir semántica de los 3 logits sin validación adicional. VIGENTE.
+7. producir comparativa 0.30 / 0.4371 / 0.60. HECHO.
+8. ejecutar baseline pesado en workstation. HECHO.
 
 Criterios de aceptación:
 - ausencia de cuadrícula dominante en probability map.
 - techos persistentes conservan forma continua en bordes de tile.
-- falsos positivos de suelo/sombra claramente menores que baseline.
+- falsos positivos de suelo/sombra aceptables y caracterizados.
+- selección de umbral operativo documentada.
 - pipeline reproducible y con log de progreso.
+
+Gate actual: inspección visual de V2. Si pasa, avanzar directamente a Fase C.
 
 ### Fase C — Vectorización de objetos
 Estado: PENDIENTE
@@ -252,7 +288,7 @@ Capas previstas:
 - `elongation`
 - orientación del eje mayor
 - número de huecos
-- número de componentes que se fusionaron en postproceso
+- número de componentes fusionados en postproceso
 
 Uso esperado:
 - vivienda: área media/chica, mayor compactación, menor elongación extrema.
@@ -270,8 +306,8 @@ Uso esperado:
 - varianza interna de probabilidad
 - distancia al borde de tile más cercano
 
-### 5.3 Apariencia / textura de imagen
-Calcular sobre RGB original, no sobre overlay:
+### 5.3 Apariencia / textura
+Calcular sobre RGB original:
 - media y desvío RGB
 - brillo medio
 - saturación
@@ -290,7 +326,7 @@ No usar estas variables solas para determinar uso del inmueble.
 - cantidad de objetos en parcela
 - área del objeto mayor / área construida total
 - distancia al límite de parcela
-- distancia al camino/calle más cercano
+- distancia a camino/calle
 - cantidad de objetos vecinos a 10/25/50 m
 - densidad de construcciones vecinas
 - cluster morfológico
@@ -301,7 +337,7 @@ No usar estas variables solas para determinar uso del inmueble.
 - persistencia entre fechas
 - cambio de área absoluta y porcentual
 - expansión de polígono respecto de fecha previa
-- intersección IoU temporal
+- IoU temporal
 - aparición/desaparición
 - continuidad de centroides
 
@@ -346,9 +382,9 @@ Todas las variables de la sección 5, con nombres versionados.
 ### 6.5 Dataset inicial
 Los 40 casos existentes son semilla de QA, no dataset definitivo de entrenamiento.
 
-Objetivo inicial recomendado: 200-300 ejemplos humanos, balanceados por clase y contexto.
+Objetivo inicial: 200-300 ejemplos humanos balanceados por clase y contexto.
 
-Cuotas mínimas orientativas para primera versión:
+Cuotas orientativas:
 - 70 vivienda probable
 - 40 galpón/productivo
 - 30 invernadero/estructura agrícola si existen suficientes ejemplos
@@ -356,24 +392,21 @@ Cuotas mínimas orientativas para primera versión:
 - 50 ruido/no edificio
 - 30 ambiguos
 
-Las cuotas pueden variar según prevalencia real; no duplicar artificialmente objetos para "llenar" una clase.
+No duplicar artificialmente objetos para llenar clases.
 
 ### 6.6 Selección de ejemplos
 Combinar:
-- detecciones de alta confianza
-- detecciones de baja confianza
+- alta y baja confianza
 - falsos positivos visuales
-- objetos grandes
-- objetos pequeños
-- zonas densas
-- zonas rurales/periurbanas
+- objetos grandes y pequeños
+- zonas densas y rurales/periurbanas
 - casos con y sin Overture
-- casos en años con distinta calidad geométrica
+- años con distinta calidad geométrica
 
-### 6.7 Separación train/validation/test
+### 6.7 Split train/validation/test
 Nunca separar aleatoriamente píxeles del mismo lugar entre conjuntos.
 
-Separar espacialmente por parcela o, mejor, por grupos de parcelas/cluster:
+Separar espacialmente por parcela o grupos de parcelas/cluster:
 - train ~70%
 - validation ~15%
 - test ~15%
@@ -394,8 +427,8 @@ Evitar que la misma construcción en años distintos caiga en train y test.
 - macro F1
 - precision/recall por clase
 - matriz de confusión
-- recall específico de `residential_probable`
-- tasa de falsos residenciales sobre galpones/productivos
+- recall de `residential_probable`
+- falsos residenciales sobre galpones/productivos
 
 ### Parcela
 - error absoluto de m² construidos
@@ -405,12 +438,10 @@ Evitar que la misma construcción en años distintos caiga en train y test.
 
 ## 8. Diseño de confianza
 
-Guardar tres dimensiones distintas:
+Guardar por separado:
 - `registration_confidence`
 - `segmentation_confidence`
 - `classification_confidence`
-
-Confianza final no debe ocultar las componentes.
 
 Ejemplo:
 ```text
@@ -422,49 +453,49 @@ final=review
 
 ## 9. Flujo de trabajo y responsabilidad
 
-### Cambios de código / documentación
+### Código / documentación
 Los realiza el asistente directamente en GitHub sobre `feature/validacion-territorial` cuando sea posible.
 
-### Ejecución pesada en workstation
-El usuario ejecuta los comandos entregados sobre su PC para:
-- inferencia ONNX pesada;
-- vectorización masiva;
-- extracción de features;
-- entrenamiento y benchmarks;
-- procesamiento de artefactos locales bajo `tmp/`.
+### Workstation
+El usuario ejecuta comandos entregados para:
+- inferencia ONNX pesada
+- vectorización masiva
+- extracción de features
+- entrenamiento y benchmarks
+- artefactos locales bajo `tmp/`
 
-Baseline actual de inferencia local:
+Baseline:
 ```text
 --provider cpu --cpu-threads 20
 ```
 
-### Ejecución en VPS
-La VPS se reserva para:
-- `git pull` e integración;
-- publicación y servicios;
-- almacenamiento operativo;
-- validaciones contra entorno de producción;
-- archivos que sólo existan allí.
+### VPS
+Reservada para:
+- `git pull` e integración
+- publicación y servicios
+- almacenamiento operativo
+- validaciones contra producción
+- archivos que sólo existan allí
 
-No usar VPS para iteración ML pesada si existe el equivalente local en workstation.
+No usar VPS para iteración ML pesada si existe equivalente local.
 
 ### Sincronización de artefactos
 - no versionar mosaicos VHR, máscaras pesadas o modelos grandes en Git;
-- subir a VPS sólo resultados necesarios para integración: GeoJSON, CSV, QA JSON, máscaras seleccionadas y modelos versionados cuando corresponda;
-- mantener nombres y metadata reproducibles para poder reconstruir cada resultado.
+- subir a VPS sólo resultados necesarios: GeoJSON, CSV, QA JSON, máscaras seleccionadas y modelos versionados cuando corresponda;
+- mantener nombres y metadata reproducibles.
 
 ### Despliegue
-Sólo cuando exista una versión explícitamente validada. No mezclar pipeline experimental bajo `tmp/` con producción.
+Sólo con versión explícitamente validada. No mezclar `tmp/` experimental con producción.
 
 ## 10. Orden inmediato de implementación
 
 ### Sprint técnico 1 — inferencia limpia 2023
-1. mejorar `infer-building-mask.py` con blending ponderado. HECHO.
-2. añadir progreso y timing. HECHO.
-3. benchmark de hardware y elección de entorno. HECHO: workstation CPU, 20 threads.
-4. producir 3 umbrales sin repetir inferencia.
-5. generar overlay comparativo.
-6. validar visualmente.
+1. blending ponderado. HECHO.
+2. progreso y timing. HECHO.
+3. benchmark de hardware. HECHO.
+4. tres umbrales sin repetir inferencia. HECHO.
+5. overlays/paneles QA. HECHO.
+6. validación visual. PENDIENTE.
 
 Gate: no seguir si persisten costuras fuertes o semántica de canales dudosa.
 
@@ -509,13 +540,13 @@ Sólo después evaluar fine-tuning de segmentación o clasificador visual dedica
 
 - 2020 conserva mayor error local.
 - 2016 tiene menos tiles confiables.
-- salida ONNX observada de 3 canales requiere validación de semántica.
+- salida ONNX de 3 canales requiere validación de semántica.
 - escenas VHR cambian iluminación, estación y sensor.
 - sombras, suelo desnudo y vegetación generan falsos positivos.
-- galpones/productivo pueden parecer "más construidos" que vivienda; no mezclar usos.
-- Overture puede fragmentar o representar sólo una parte de un complejo.
+- galpones/productivo pueden parecer más construidos que vivienda; no mezclar usos.
+- Overture puede fragmentar o representar sólo parte de un complejo.
 - un único umbral global puede no ser óptimo para todas las fechas.
-- DirectML en la workstation actualmente falla al inicializar y cae a CPU; no usar métricas de fallback como si fueran GPU.
+- DirectML actualmente falla al inicializar y cae a CPU; no usar métricas de fallback como si fueran GPU.
 
 ## 12. Fuentes metodológicas de referencia
 
