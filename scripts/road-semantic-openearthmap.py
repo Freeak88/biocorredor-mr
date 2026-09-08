@@ -5,9 +5,11 @@ Objetivo: evaluar sin fine-tuning local si un modelo multi-clase entrenado sobre
 OpenEarthMap separa mejor `Road` de `Bareland`, `Pavement`, `Cropland` y
 `Building` que las heurísticas V4.
 
-Soporta aceleración DirectML opcional en Windows/AMD mediante torch-directml.
-Con --device auto intenta DirectML y, si no está disponible o falla un operador,
-cae explícitamente a CPU sin mezclar resultados parciales.
+Nota de runtime Windows/AMD: este checkpoint usa backbone Swin/Mask2Former y la
+combinación torch-directml actual falla en un operador nativo de broadcast después
+de caer parcialmente a CPU (`aten::roll`). Ese fallo termina el proceso y no es
+capturable como excepción Python. Por seguridad, `--device auto` usa CPU para este
+modelo. `--device directml` aborta con explicación en vez de provocar un crash.
 
 No es una capa final ni una conclusión de loteo/legalidad.
 """
@@ -60,7 +62,10 @@ def parse_args() -> argparse.Namespace:
         "--device",
         choices=["auto", "directml", "cpu"],
         default="auto",
-        help="auto intenta DirectML y cae a CPU; directml exige torch-directml; cpu fuerza CPU",
+        help=(
+            "auto usa CPU para este Mask2Former porque DirectML/Swin presenta un "
+            "crash nativo conocido en este entorno; directml aborta de forma segura"
+        ),
     )
     return p.parse_args()
 
@@ -102,26 +107,20 @@ def save_gray(path: Path, arr01: np.ndarray) -> None:
 
 
 def choose_device(args, torch):
-    if args.device == "cpu":
-        return torch.device("cpu"), "cpu"
-
-    try:
-        import torch_directml
-        dml = torch_directml.device()
-        return dml, "directml"
-    except Exception as exc:
-        if args.device == "directml":
-            raise SystemExit(f"DirectML solicitado pero no disponible: {exc}")
-        print(f"DirectML no disponible; usando CPU: {exc}")
-        return torch.device("cpu"), "cpu"
+    if args.device == "directml":
+        raise SystemExit(
+            "DirectML queda deshabilitado para este checkpoint Mask2Former/Swin en Windows: "
+            "torch-directml 0.2.5 + torch 2.4.1 cae en CPU para aten::roll y termina con "
+            "un fallo nativo de broadcast (dml_tensor_desc.cc). Usá --device cpu/auto."
+        )
+    if args.device == "auto":
+        print("device=cpu (auto: DirectML deshabilitado para Mask2Former/Swin por crash nativo observado)")
+    else:
+        print("device=cpu")
+    return torch.device("cpu"), "cpu"
 
 
 def run_model_once(model, inputs, device, torch, tile: int):
-    # torch.inference_mode() crea "inference tensors" cuyo version counter no
-    # es compatible con algunos operadores del backend PrivateUse1/DirectML.
-    # no_grad() evita autograd igualmente, mantiene la inferencia reproducible
-    # y permite que Mask2Former corra sobre torch-directml cuando los operadores
-    # están soportados.
     with torch.no_grad():
         outputs = model(**{k: v.to(device) for k, v in inputs.items()})
         sem = semantic_scores(outputs, torch)
@@ -167,17 +166,7 @@ def main() -> None:
     model.eval()
 
     device, device_name = choose_device(args, torch)
-    print(f"device={device_name}")
-    try:
-        model.to(device)
-    except Exception as exc:
-        if device_name != "directml" or args.device == "directml":
-            raise
-        print(f"DirectML no pudo cargar el modelo; fallback CPU: {exc}")
-        device = torch.device("cpu")
-        device_name = "cpu"
-        model.to(device)
-        print("device=cpu")
+    model.to(device)
 
     ys = positions(h, args.tile, args.stride)
     xs = positions(w, args.tile, args.stride)
@@ -188,7 +177,6 @@ def main() -> None:
     processed = 0
     skipped = 0
     labels = None
-    dml_fallback_done = False
 
     for y in ys:
         for x in xs:
@@ -210,20 +198,7 @@ def main() -> None:
                 return_tensors="pt",
                 do_resize=False,
             )
-
-            try:
-                sem_np = run_model_once(model, inputs, device, torch, args.tile)
-            except Exception as exc:
-                if device_name == "directml" and args.device == "auto" and not dml_fallback_done:
-                    print(f"DirectML falló durante inferencia; reiniciando en CPU: {exc}")
-                    device = torch.device("cpu")
-                    device_name = "cpu"
-                    model.to(device)
-                    dml_fallback_done = True
-                    print("device=cpu")
-                    sem_np = run_model_once(model, inputs, device, torch, args.tile)
-                else:
-                    raise
+            sem_np = run_model_once(model, inputs, device, torch, args.tile)
 
             if labels is None:
                 labels = labels_for_channels(int(sem_np.shape[0]))
