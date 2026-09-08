@@ -1,12 +1,23 @@
 {
   "updated_at": "2026-09-08",
   "scope": {
-    "label": "Zona Productiva únicamente",
-    "parcel_count": 520,
-    "membership_source": "zones.productiva de zonificacion-11819-asignaciones.json.gz",
-    "geometry_rule": "intersección entre las 520 parcelas GeoARBA y la máscara Productivo reconstruida del Anexo I",
-    "effective_area_ha": 1301.886167,
-    "administrative_area_reference_ha": 1303.584699
+    "physical_analysis": {
+      "label": "Zona Productiva únicamente",
+      "parcel_count": 520,
+      "membership_source": "zones.productiva de zonificacion-11819-asignaciones.json.gz",
+      "geometry_rule": "intersección entre las 520 parcelas GeoARBA y la máscara Productivo reconstruida del Anexo I",
+      "effective_area_ha": 1301.886167,
+      "administrative_area_reference_ha": 1303.584699,
+      "rule": "fuera de Productivo no entra al indicador físico principal"
+    },
+    "legal_quota": {
+      "label": "Cupo de Clubes de Campo de la Ordenanza 11.366/18",
+      "applies_to": "clubes_de_campo",
+      "does_not_mean": "porcentaje máximo de cualquier vivienda o de toda urbanización residencial",
+      "base_rule": "hasta 10% de la superficie bruta total del área rural con las exclusiones expresamente previstas por la norma",
+      "additional_rule": "una vez cubierto el cupo, el Departamento Ejecutivo podrá promover un nuevo cupo de hasta 5%",
+      "important_distinction": "la Zona Productiva es el scope de nuestra auditoría física, pero Productivo por sí solo no es el denominador jurídico del cupo del 10%"
+    }
   },
   "current_findings": {
     "reference_date": "2023-04-19",
@@ -20,15 +31,45 @@
     "raw_instance_labels": 790,
     "overture_any_overlap": {"count": 279, "total": 290, "pct": 96.2},
     "overture_overlap_ge_50": {"count": 229, "total": 290, "pct": 79.0},
-    "median_overture_overlap_fraction": 0.7436
+    "median_overture_overlap_fraction": 0.7436,
+    "cluster02_observed_productivo_parcels": 74,
+    "cluster02_full_coverage_parcels": 67,
+    "cluster02_partial_coverage_parcels": 7,
+    "road_semantic_model": "OpenEarthMap / mask2former-satellite",
+    "road_argmax_fraction_2016": 0.00569069,
+    "road_argmax_fraction_2020": 0.01236472,
+    "road_argmax_fraction_2022": 0.02578247,
+    "road_argmax_fraction_2023": 0.03784849,
+    "road_argmax_fraction_2026": 0.04118187,
+    "parcel_qa_v6": {
+      "strong_convergent_candidate": 5,
+      "intermediate_convergent_candidate": 2,
+      "edge_access_or_perimeter_review": 6,
+      "occupation_only_review": 38,
+      "negative_control": 4,
+      "other_observed": 12,
+      "partial_coverage_review": 7,
+      "human_seed_result": "V6 mejora falsos positivos perimetrales; el proxy productivo aún no discrimina bien invernaderos"
+    },
+    "commercial_evidence": {
+      "status": "corpus_publico_persistido",
+      "rule": "publicaciones prueban comercialización pública, no venta consumada ni aprobación",
+      "saint_henri": "fuera del scope Productivo principal; contexto normativo Uso Específico",
+      "barrio_don_vicente": "ancla comercial puntual sobre parcela Productivo; límite real del emprendimiento pendiente"
+    }
   },
   "decisions": [
-    "El universo del indicador es Productivo y sólo Productivo; las demás zonas se usan como contexto.",
+    "El universo del indicador físico es Productivo y sólo Productivo; las demás zonas se usan como contexto.",
+    "El cupo normativo del 10% no es un límite para cualquier vivienda: la Ordenanza 11.366/18 lo formula específicamente para Clubes de Campo.",
+    "El eventual 5% es una ampliación del mismo cupo de Clubes de Campo, no un 15% automático ni general.",
+    "No usar Productivo como denominador jurídico definitivo del cupo: la norma refiere a superficie bruta total del área rural con exclusiones.",
+    "La vivienda aparece en la Ordenanza 11.366/18 como uso complementario vinculado a los usos anteriores, separada del régimen porcentual de Clubes de Campo.",
     "La segmentación V3 queda aceptada como subcapa de superficie cubierta observable, no como conteo validado de edificios.",
     "Los 290 objetos y 790 labels no se interpretan como cantidad real de edificios.",
-    "Los 60.381,44 m² son provisionales hasta separar cubiertas edilicias/productivas, falsos positivos y casos ambiguos.",
-    "Overture es evidencia auxiliar de QA; no se usa como ground truth ni filtro duro.",
-    "No se vuelve a correr V3 por ahora: el próximo esfuerzo se concentra en señales no edilicias de preparación física para loteo.",
+    "OpenEarthMap queda aceptado como baseline semántico de calles para el análisis temporal del Cluster 2.",
+    "La V6 de QA parcelario separa señal vial interior de accesos/perímetros, pero no constituye un clasificador legal ni comercial.",
+    "Parcelas Productivo fuera de cobertura VHR equivalente se marcan not_observed; nunca se les asigna cero por ausencia de observación.",
+    "Saint Henri debe tratarse como contexto de Uso Específico y no computarse en el indicador Productivo principal.",
     "Transformación física observable no equivale a aprobación, venta, irregularidad ni ilegalidad."
   ],
   "completed": [
@@ -38,36 +79,47 @@
     "Georreferencia píxel↔coordenada del mosaico 2023 validada.",
     "Inferencia V3 oficial de cubiertas sobre 2023.",
     "Vectorización y recorte estricto a Productivo.",
-    "QA visual general de 40 casos.",
     "Comparación auxiliar con Overture y revisión dirigida de desacuerdos.",
-    "Capa histórica Esri Wayback y herramientas de validación humana existentes."
+    "Baseline semántico OpenEarthMap de calles 2016/2020/2022/2023/2026.",
+    "Persistencia temporal de calles y score híbrido V5.",
+    "Contraste de corredores viales con GeoARBA y morfología parcelaria.",
+    "Cronología auxiliar de cinco parcelas madre con Road/Building/Pavement.",
+    "Features para 74 parcelas Productivo realmente observadas en Cluster 2.",
+    "QA humano semilla y estratificación V6 con guard de borde/red interior.",
+    "Corpus inicial de evidencia comercial pública persistido y separado de la evidencia física/administrativa.",
+    "Corrección de Saint Henri como contexto de Uso Específico fuera del scope Productivo principal."
   ],
   "pending": [
-    "Detectar movimiento de suelo, nivelación y desmonte dentro de Productivo.",
-    "Detectar calles o trazados internos.",
+    "Ampliar cobertura VHR histórica a otros sectores Productivo; las parcelas no observadas permanecen not_observed.",
+    "Mejorar discriminación de invernaderos/cubiertas productivas antes de calibrar un physical_loteo_score.",
     "Detectar infraestructura visible: postes, tendidos y accesos.",
     "Detectar cercos y muros.",
     "Detectar patrón morfológico de subdivisión.",
-    "Construir un score combinado de señal de loteo físico por parcela y por fecha.",
-    "Extender la serie temporal 2016/2020/2022/2023/2026 para las señales físicas.",
-    "Clasificar la superficie cubierta en edilicia/productiva/no edilicia/ambigua.",
-    "Verificar documentalmente el porcentaje jurídico aplicable (10% vs 15%), el denominador oficial y sus exclusiones.",
-    "Cruzar los casos priorizados con expedientes, actos aprobatorios y antecedentes administrativos oficiales."
+    "Construir un score combinado de señal de loteo físico sólo después de ampliar QA humano.",
+    "Geolocalizar y vincular con GeoARBA más publicaciones comerciales dentro de Productivo.",
+    "Reconstruir expedientes, actos aprobatorios y superficie efectivamente imputada al cupo de Clubes de Campo.",
+    "Verificar con documentación oficial el denominador histórico del 10%, sus exclusiones, proyectos imputados y si se promovió formalmente el 5% adicional.",
+    "Verificar cómo la Ordenanza 13.378/24 modificó, sustituyó o mantuvo vigente el mecanismo anterior."
   ],
   "phase_status": [
     {"phase": "A", "name": "Base cartográfica y registro", "status": "operativa_cluster_2"},
     {"phase": "B", "name": "Inferencia de cubiertas 2023", "status": "completa"},
     {"phase": "C", "name": "Vectorización / superficie cubierta", "status": "cerrada_con_qa"},
-    {"phase": "D", "name": "Señales no edilicias de loteo físico", "status": "activa"},
-    {"phase": "E", "name": "Agregación Productivo por parcela", "status": "pendiente"},
-    {"phase": "F", "name": "Serie histórica", "status": "pendiente"},
-    {"phase": "G", "name": "Dataset y validación humana", "status": "mvp_existente_a_ampliar"},
-    {"phase": "H", "name": "Capa operativa integrada", "status": "pendiente"}
+    {"phase": "D", "name": "Señales no edilicias de loteo físico", "status": "road_temporal_operativo_con_qa_v6"},
+    {"phase": "E", "name": "Agregación Productivo por parcela", "status": "piloto_cluster_2_74_parcelas"},
+    {"phase": "F", "name": "Serie histórica", "status": "operativa_cluster_2_para_road_building_pavement"},
+    {"phase": "G", "name": "Dataset y validación humana", "status": "semilla_qa_activa"},
+    {"phase": "H", "name": "Capa operativa integrada", "status": "pendiente_actualizacion_ui"}
   ],
   "legal_status": {
     "quota_conclusion": "no_cerrada",
-    "official_denominator": "pendiente",
-    "threshold": "pendiente_verificacion_10_vs_15",
-    "warning": "El análisis actual identifica señales físicas y reconstruye contexto territorial; no determina por sí solo legalidad, aprobación ni comercialización."
+    "quota_subject": "clubes_de_campo",
+    "ordinary_threshold": "hasta_10_pct",
+    "additional_threshold": "hasta_5_pct_adicional_si_DE_lo_promueve_una_vez_cubierto_el_cupo",
+    "automatic_15_pct": false,
+    "official_denominator": "superficie_bruta_total_area_rural_menos_exclusiones_normativas; cálculo oficial pendiente",
+    "productivo_only_is_legal_denominator": false,
+    "housing_general_subject_to_quota": false,
+    "warning": "El análisis físico Productivo y el régimen jurídico del cupo son capas distintas. El primero detecta transformación observable; el segundo requiere reconstrucción administrativa proyecto por proyecto."
   }
 }
