@@ -7,6 +7,10 @@ Lee el CSV de vecindarios comerciales y produce, por proyecto:
 - bbox WGS84 de adquisición con margen adicional;
 - dimensiones aproximadas a z18 para planificar mosaicos comparables con Cluster 2.
 
+Respeta correcciones manuales de zonificación de proyecto. Un pin comercial que caiga
+sobre Productivo no puede promover por sí solo un proyecto conocido fuera del scope
+Productivo principal.
+
 El AOI NO es el límite del emprendimiento. Es sólo un recorte de adquisición/QA.
 """
 from __future__ import annotations
@@ -27,6 +31,7 @@ DEFAULT_NEIGHBORHOODS = Path(
     "commercial-productivo-anchor-neighborhoods.csv"
 )
 DEFAULT_ASSIGNMENTS = Path("public/data/auditoria/zonificacion-11819-asignaciones.json.gz")
+DEFAULT_OVERRIDES = Path("config/territorial/project-zoning-overrides.json")
 DEFAULT_GEOARBA = [
     Path("public/data/geoarba/ministro-rivadavia-parcels-noreste.geojson"),
     Path("public/data/geoarba/ministro-rivadavia-parcels-noroeste.geojson"),
@@ -40,6 +45,7 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--neighborhoods", type=Path, default=DEFAULT_NEIGHBORHOODS)
     p.add_argument("--assignments", type=Path, default=DEFAULT_ASSIGNMENTS)
+    p.add_argument("--overrides", type=Path, default=DEFAULT_OVERRIDES)
     p.add_argument("--geoarba", nargs="+", type=Path, default=DEFAULT_GEOARBA)
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     p.add_argument("--candidate-radius-m", type=int, default=500)
@@ -65,6 +71,13 @@ def load_membership(path: Path) -> set[str]:
             n = x.get("nomenclatura") or x.get("id")
             if n: out.add(str(n))
     return out
+
+
+def load_project_scope_overrides(path: Path) -> dict[str, dict]:
+    if not path.exists():
+        return {}
+    data = load_json(path)
+    return dict(data.get("projects") or {})
 
 
 def load_geoms(paths, membership):
@@ -100,6 +113,7 @@ def world_px(lon: float, lat: float, z: int):
 def main():
     a = parse_args(); a.output_dir.mkdir(parents=True, exist_ok=True)
     membership = load_membership(a.assignments)
+    overrides = load_project_scope_overrides(a.overrides)
     geoms = load_geoms(a.geoarba, membership)
 
     with a.neighborhoods.open("r", encoding="utf-8-sig", newline="") as fh:
@@ -111,8 +125,19 @@ def main():
 
     fc_features = []
     summaries = []
+    excluded_projects = []
     for project_id, vals in sorted(grouped.items()):
         if not project_id: continue
+        override = overrides.get(project_id) or {}
+        if override.get("main_productivo_scope") is False:
+            excluded_projects.append({
+                "project_id": project_id,
+                "project_name": str(vals[0].get("project_name") or project_id),
+                "zoning_context": override.get("zoning_context"),
+                "reason": "excluded_by_project_zoning_override",
+            })
+            continue
+
         name = str(vals[0].get("project_name") or project_id)
         selected = []
         for r in vals:
@@ -171,11 +196,12 @@ def main():
     geojson_path = a.output_dir / "commercial-vhr-target-aois.geojson"
     geojson_path.write_text(json.dumps({"type":"FeatureCollection","features":fc_features}, ensure_ascii=False, indent=2), encoding="utf-8")
     qa = {
-        "scope":"Productivo candidate neighborhoods around exact commercial anchors",
+        "scope":"Productivo candidate neighborhoods around exact commercial anchors, respecting manual project zoning overrides",
         "candidate_radius_m":a.candidate_radius_m,
         "margin_m":a.margin_m,
         "zoom":a.zoom,
         "projects":summaries,
+        "excluded_projects": excluded_projects,
         "warning":"AOIs are for VHR acquisition and QA only; they are not project polygons and areas must not be treated as sold/developed area.",
     }
     qa_path = a.output_dir / "commercial-vhr-target-aois-qa.json"
