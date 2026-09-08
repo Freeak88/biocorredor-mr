@@ -57,6 +57,28 @@ def draw_geom(draw: ImageDraw.ImageDraw, geom, left_px: float, top_px: float, z:
         draw.line(ring + [ring[0]], fill=outline, width=width)
 
 
+def safe_crop(image: Image.Image, box: tuple[int, int, int, int], size: int) -> tuple[Image.Image, tuple[int, int]]:
+    """Recorta sin relleno negro fuera del raster y devuelve el origen real usado."""
+    w, h = image.size
+    x0, y0, x1, y1 = box
+    if w <= size:
+        x0 = 0
+    else:
+        x0 = max(0, min(x0, w - size))
+    if h <= size:
+        y0 = 0
+    else:
+        y0 = max(0, min(y0, h - size))
+    x1 = min(w, x0 + size)
+    y1 = min(h, y0 + size)
+    crop = image.crop((x0, y0, x1, y1))
+    if crop.size != (size, size):
+        canvas = Image.new("RGB", (size, size), "white")
+        canvas.paste(crop, (0, 0))
+        crop = canvas
+    return crop, (x0, y0)
+
+
 def main() -> None:
     a = parse_args()
     a.output_dir.mkdir(parents=True, exist_ok=True)
@@ -133,12 +155,12 @@ def main() -> None:
         cxw, cyw = lonlat_to_world_px(float(c.x), float(c.y), z)
         cx, cy = cxw - left_px, cyw - top_px
         half = crop_size // 2
-        box = (int(cx - half), int(cy - half), int(cx + half), int(cy + half))
-        crop = image.crop(box)
+        requested_box = (int(cx - half), int(cy - half), int(cx + half), int(cy + half))
+        crop, (ox, oy) = safe_crop(image, requested_box, crop_size)
+        box = (ox, oy, ox + crop_size, oy + crop_size)
         cd = ImageDraw.Draw(crop)
 
         # Dibujar todos los V3 que tocan el crop usando coordenadas locales.
-        ox, oy = box[0], box[1]
         for _, r2 in vectors.iterrows():
             minx, miny, maxx, maxy = r2.geometry.bounds
             px1, py1 = lonlat_to_world_px(minx, maxy, z)
