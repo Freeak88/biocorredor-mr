@@ -117,7 +117,12 @@ def choose_device(args, torch):
 
 
 def run_model_once(model, inputs, device, torch, tile: int):
-    with torch.inference_mode():
+    # torch.inference_mode() crea "inference tensors" cuyo version counter no
+    # es compatible con algunos operadores del backend PrivateUse1/DirectML.
+    # no_grad() evita autograd igualmente, mantiene la inferencia reproducible
+    # y permite que Mask2Former corra sobre torch-directml cuando los operadores
+    # están soportados.
+    with torch.no_grad():
         outputs = model(**{k: v.to(device) for k, v in inputs.items()})
         sem = semantic_scores(outputs, torch)
         sem = torch.nn.functional.interpolate(
