@@ -25,8 +25,9 @@ from shapely.geometry import shape
 
 DEFAULT_META = Path("config/territorial/cluster-02-georef.json")
 DEFAULT_PRODUCTIVA = Path("public/data/auditoria/zonificacion-11819-productiva.geojson.gz")
-DEFAULT_REGISTERED = Path("tmp/territorial-analysis/cluster-02-history/registered-v2")
-DEFAULT_OUTPUT = Path("tmp/territorial-analysis/cluster-02-history/earthwork-road-candidates-v2")
+HISTORY_ROOT = Path("tmp/territorial-analysis/cluster-02-history")
+DEFAULT_REGISTERED = HISTORY_ROOT / "registered-v2"
+DEFAULT_OUTPUT = HISTORY_ROOT / "earthwork-road-candidates-v2"
 DEFAULT_DATES = ["2016-11-30", "2020-03-03", "2022-03-01", "2023-04-19", "2026-01-11"]
 
 
@@ -48,6 +49,53 @@ def load_json(path: Path):
         with gzip.open(path, "rt", encoding="utf-8") as fh:
             return json.load(fh)
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def has_all_dates(path: Path, dates: list[str]) -> bool:
+    return path.is_dir() and all((path / f"{d}.jpg").is_file() for d in dates)
+
+
+def resolve_registered_dir(requested: Path, dates: list[str]) -> Path:
+    """Resuelve un directorio de mosaicos ya registrados sin caer a imágenes crudas.
+
+    Prioridad:
+    1) --registered-dir explícito/default si contiene todas las fechas;
+    2) nombres históricos conocidos del proyecto;
+    3) cualquier subdirectorio inmediato de cluster-02-history cuyo nombre contenga
+       'register' y tenga las cinco capturas.
+
+    Nunca usa silenciosamente JPG del directorio raíz porque pueden ser mosaicos sin
+    co-registro y eso invalidaría la comparación temporal.
+    """
+    candidates: list[Path] = []
+
+    def add(p: Path) -> None:
+        if p not in candidates:
+            candidates.append(p)
+
+    add(requested)
+    add(HISTORY_ROOT / "registered-local")
+    add(HISTORY_ROOT / "registered")
+    add(HISTORY_ROOT / "registered-v2")
+
+    if HISTORY_ROOT.is_dir():
+        for p in sorted(HISTORY_ROOT.iterdir()):
+            if p.is_dir() and "register" in p.name.lower():
+                add(p)
+
+    valid = [p for p in candidates if has_all_dates(p, dates)]
+    if valid:
+        chosen = valid[0]
+        if chosen != requested:
+            print(f"registered_dir auto-resuelto: {chosen}")
+        return chosen
+
+    checked = "\n  - ".join(str(p) for p in candidates)
+    raise SystemExit(
+        "No encontré un directorio de mosaicos co-registrados con todas las fechas. "
+        "Directorios revisados:\n  - " + checked +
+        "\nNo se usarán mosaicos crudos como fallback."
+    )
 
 
 def lonlat_to_world_px(lon: float, lat: float, z: int) -> tuple[float, float]:
@@ -167,12 +215,11 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     meta = load_json(args.metadata)
     prod = load_json(args.productiva_mask)
+    registered_dir = resolve_registered_dir(args.registered_dir, args.dates)
 
     images = {}
     for d in args.dates:
-        p = args.registered_dir / f"{d}.jpg"
-        if not p.exists():
-            raise SystemExit(f"Falta mosaico registrado: {p}")
+        p = registered_dir / f"{d}.jpg"
         images[d] = read_image(p)
 
     shape_hw = next(iter(images.values())).shape[:2]
@@ -186,6 +233,7 @@ def main() -> None:
 
     report = {
         "scope": "Productivo only",
+        "registered_dir": str(registered_dir),
         "method": "directional V2: vegetation loss + exposed-soil tendency + structural change + linear support",
         "warning": "Candidate generator only; no automatic loteo/legal classification.",
         "pairs": [],
@@ -200,9 +248,7 @@ def main() -> None:
         veg_loss = np.maximum(old_exg - new_exg, 0.0)
         veg_loss_s = robust01(veg_loss, valid, 55, 97)
 
-        # Baja vegetación relativa en la escena nueva: el percentil interno evita umbrales RGB rígidos.
         low_veg = np.clip(1.0 - robust01(new_exg, valid, 30, 80), 0.0, 1.0)
-
         soil_s = robust01(redness(new), valid, 55, 95)
 
         old_g = gradient_mag(cv2.cvtColor(old, cv2.COLOR_BGR2GRAY))
