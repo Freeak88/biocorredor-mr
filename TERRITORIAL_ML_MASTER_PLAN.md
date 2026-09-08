@@ -2,34 +2,70 @@
 
 Estado: activo
 Branch de trabajo: `feature/validacion-territorial`
-Unidad de referencia geométrica: mosaico `2023-04-19.jpg`
-Objetivo: medir transformación física observable por parcela y clasificar objetos construidos sin confundir automáticamente transformación física con situación administrativa o legal.
+Unidad geométrica de referencia: mosaico `2023-04-19.jpg`
+Scope espacial obligatorio: **Zona Productiva únicamente**.
+
+Objetivo: detectar y medir transformación física observable dentro del suelo Productivo de la Ordenanza 11.819/20, integrando señales de obra/urbanización visibles sin confundirlas con situación administrativa, comercial o legal.
 
 ## 1. Principios que no se negocian
 
-1. La unidad final de análisis es la parcela GeoARBA; los footprints individuales son evidencia auxiliar.
-2. La imagen histórica debe estar co-registrada antes de comparar fechas.
-3. `ocupación física detectada`, `transformación aparente` y `urbanización observable` no equivalen a irregularidad, ilegalidad ni estado registral.
-4. Overture no es ground truth; se usa como referencia actual y apoyo de validación.
-5. Las detecciones productivas, galpones e invernaderos no se eliminan: se separan de vivienda probable.
-6. Toda inferencia temporal debe guardar nivel de confianza geométrica y de clasificación.
-7. La validación humana es parte del sistema, no un parche posterior.
-8. No desplegar a producción artefactos analíticos hasta cerrar QA y criterios de aceptación.
+1. El universo espacial del indicador es exclusivamente `Productivo`.
+2. La membresía canónica Productivo es `zones["productiva"]` del archivo final de asignaciones: **520 nomenclaturas únicas**.
+3. Para geometría parcelaria se usan las parcelas GeoARBA actuales correspondientes a esas 520 nomenclaturas.
+4. Para recorte de píxeles/objetos se usa la intersección entre la unión de esas 520 parcelas y la máscara Productivo disuelta reconstruida del Anexo I.
+5. Otras categorías de la ordenanza (`recuperacion`, `equipamiento`, `uso_especifico`) son contexto; no entran ni en numerador ni en denominador del indicador Productivo.
+6. `ocupación física detectada`, `transformación aparente`, `urbanización observable` o `señal de loteo físico` no equivalen a aprobación, venta, irregularidad o ilegalidad.
+7. Un loteo físico puede existir sin viviendas: nivelación/desmonte, trazado de calles internas, postes/infraestructura, cercos/muros y morfología de subdivisión son señales válidas.
+8. Los edificios son sólo una subcapa de transformación física, no la definición de loteo.
+9. Toda comparación histórica debe usar imágenes co-registradas y guardar confianza geométrica.
+10. Overture es evidencia auxiliar y control de calidad, no ground truth.
+11. La validación humana forma parte del sistema.
+12. No desplegar artefactos analíticos experimentales hasta cerrar QA y criterios de aceptación.
 
-## 2. Estado técnico actual
+## 2. Baseline Productivo
 
-### 2.1 Datos históricos Cluster 2
-Capturas:
+Fuentes versionadas:
+- membresía: `public/data/auditoria/zonificacion-11819-asignaciones.json.gz`
+- máscara disuelta: `public/data/auditoria/zonificacion-11819-productiva.geojson.gz`
+- geometría parcelaria: cuatro capas GeoARBA de Ministro Rivadavia.
+
+Reconstrucción administrativa/cartográfica previa:
+- parcelas Productivo: **520**
+- superficie resumida por atributos parcelarios: **1303.584699 ha**
+
+Medición geométrica UTM 21S del pipeline V3 actual:
+- unión de las 520 parcelas GeoARBA: **1302.009911 ha**
+- máscara Productivo reparada: **1302.017563 ha**
+- intersección efectiva para el recorte analítico: **1301.886167 ha**
+- cobertura intersección / parcelas: **0.999905**
+- cobertura intersección / máscara: **0.999899**
+
+La diferencia entre `1303.584699 ha` y la medición geométrica no debe ocultarse: la primera proviene del resumen de superficies parcelarias; la segunda de geometrías proyectadas. Para métricas raster/vector se usa la geometría efectiva; para cualquier denominador jurídico/administrativo debe verificarse la regla legal y la fuente de superficie correspondiente.
+
+El porcentaje legal exacto aplicable (`10%` vs `15%`, definición de superficie bruta y exclusiones) continúa **pendiente de verificación documental/administrativa**. No convertir el screening espacial en conclusión jurídica.
+
+## 3. Datos históricos Cluster 2
+
+Capturas disponibles:
 - 2016-11-30
 - 2020-03-03
 - 2022-03-01
 - 2023-04-19
 - 2026-01-11
 
-Mosaicos: 2917 x 3152 px, VHR, z18.
+Mosaicos: `2917 x 3152 px`, VHR, zoom Web Mercator `z18`.
 
-### 2.2 Registro local contra 2023
-Resultado posterior a `apply-local-registration.py`:
+Georreferencia recuperada del pipeline histórico:
+- bbox WGS84: `[-58.34573983010086, -34.882246399467945, -58.33009294873659, -34.86837586219111]`
+- raster: `2917 x 3152 px`
+- span esperado por bbox/z18: `2916.790 x 3151.707 px`
+- delta georreferencia: `0.210 x 0.293 px`
+
+Conclusión: la relación píxel ↔ coordenada queda validada para el mosaico de referencia 2023.
+
+## 4. Registro temporal contra 2023
+
+Resultado posterior a registro local:
 
 | Año | tiles válidos | mediana dx | mediana dy | variación espacial | p95 residual |
 |---|---:|---:|---:|---:|---:|
@@ -39,178 +75,263 @@ Resultado posterior a `apply-local-registration.py`:
 | 2026 | 15/16 | 0.0 px | 0.0 px | 0.0 px | 0.0 px |
 
 Lectura operativa:
-- 2022 y 2026: aptos para comparación fina.
-- 2016: usable con máscara de confianza.
-- 2020: usar con menor confianza; no tomar cambios finos como evidencia fuerte sin revisión.
+- 2022 y 2026: alta confianza para comparación fina.
+- 2016: usable con confianza moderada.
+- 2020: menor confianza; cambios finos requieren revisión.
 
-### 2.3 Segmentación 2023
-Modelo piloto: `hotosm/dinov3s-buildings` ONNX.
-Firma observada:
-- input: `image`, `[1,3,256,256]`, float
-- output: `logits`, `[1,3,256,256]`, float
+## 5. Segmentación de edificios — HOTOSM V3 oficial
 
-Baseline piloto previo:
-- canal de fondo inferido provisionalmente: 2
-- fracción de píxeles sobre umbral 0.4371: ~9.4%
-- se detectan muchos techos reales
-- hay falsos positivos en suelo desnudo, vegetación/sombras y algunas texturas brillantes
-- la probabilidad mostraba artefactos visibles de tiling; no cuantificar m² todavía
+Modelo: `hotosm/dinov3s-buildings` ONNX.
 
-#### Corrida V2 2023 — workstation
-Configuración:
-- provider efectivo: `CPUExecutionProvider`
-- CPU: Intel i7-12700
-- threads: 20
-- stride: 192
-- tiles: 255
-- blending: `hann_floor_0.05`
-- tiempo total de inferencia: 42.20 s
+Semántica oficial confirmada:
+- canal 0: logit de máscara de edificio → sigmoid
+- canal 1: boundary → sigmoid
+- canal 2: signed distance → tanh
 
-QA:
-- `background_channel`: 2, todavía provisional
-- `channel_mean_probability`: [0.083798, 0.106257, 0.809945]
-- `channel_argmax_share`: [0.064534, 0.009539, 0.925927]
-- `probability_mean`: 0.190055
-- `probability_p95`: 0.769534
+Preprocesamiento oficial:
+- RGB `/255`
+- mean `[0.4296737853453577, 0.4001659668453235, 0.34333372802741474]`
+- std `[0.2056069389373208, 0.16738555558380538, 0.1598986422586595]`
+- Gaussian blending `sigma_frac=0.125`
+- stride operativo: `128`
+- threshold operativo: `0.4371`
 
-Fracción de píxeles por umbral:
-- 0.30: 16.3604%
-- 0.4371: 9.7568%
-- 0.60: 6.5442%
+Postproceso de referencia HOTOSM:
+- watershed
+- seed minimum distance: `6`
+- large blob area: `1500 px`
+- h-maxima depth: `0.2`
+- simplify: `0.9626 m`
+- overlap tolerance: `3.9251`
+- min area: `2.6465 m²`
 
-Artefactos QA generados localmente:
-- `2023-04-19-building-prob.png`
-- `2023-04-19-building-mask-t0300.png`
-- `2023-04-19-building-mask-t0437.png`
-- `2023-04-19-building-mask-t0600.png`
-- `2023-04-19-overlay.jpg`
-- `2023-04-19-overlay-center.jpg`
-- `2023-04-19-threshold-comparison-center.jpg`
-- `2023-04-19-diagnostic-center.jpg`
+### V1/V2
 
-Decisión actual: Fase B queda bloqueada únicamente por inspección visual de estos artefactos. No vectorizar ni cuantificar m² hasta validar costuras, semántica de salida y umbral operativo.
+Las corridas V1/V2 quedan como diagnóstico histórico y **no son válidas para cuantificación**, porque usaban semántica/preprocesamiento incorrectos y una estrategia de mosaico distinta de la oficial.
 
-### 2.4 Entorno de cómputo validado
+### V3 oficial 2023
 
-#### VPS
-- 8 vCPU AMD EPYC virtualizados, 23 GiB RAM.
-- benchmark ONNX CPU 1 thread: 66.42 s/tile.
-- proyección 255 tiles: ~282 min por mosaico.
-- 2 threads no mostró mejora inicial relevante.
-- decisión: no usar VPS para iteración ML pesada salvo necesidad operativa específica.
+Workstation CPU 20 threads:
+- tiles: `528`
+- tiempo total: `198.212 s`
+- threshold fractions:
+  - `0.30`: `0.07765338`
+  - `0.4371`: `0.07123598`
+  - `0.60`: `0.06470047`
+- probability mean: `0.07568246`
+- probability p95: `0.8767659`
+- boundary mean: `0.0406216`
+- distance mean: `-0.5772383`
 
-#### Workstation Windows
-- Intel Core i7-12700, 12 cores / 20 hilos.
-- 32 GiB RAM.
-- AMD Radeon RX 6700 XT disponible, pero DirectML falló al inicializar y ONNX Runtime hizo fallback a CPU; no atribuir a GPU resultados del benchmark.
+Gate visual V3: **APROBADO**.
+- elimina la mayor parte de falsos positivos masivos observados en V2;
+- conserva techos, galpones e invernaderos de forma consistente;
+- no muestra una cuadrícula dominante en la máscara principal;
+- `0.4371` queda aceptado como threshold operativo inicial.
 
-| Threads | s/tile medio | proyección 255 tiles |
-|---:|---:|---:|
-| 4 | 0.249 | 1.06 min |
-| 8 | 0.168 | 0.71 min |
-| 12 | 0.147 | 0.62 min |
-| 16 | 0.139 | 0.59 min |
-| 20 | 0.136 | 0.58 min |
+## 6. Vectorización 2023 dentro de Productivo
 
-Decisión operativa:
-- usar workstation para inferencia, vectorización, entrenamiento y procesamiento ML pesado;
-- usar `--provider cpu --cpu-threads 20` como baseline local actual;
-- DirectML queda como optimización opcional, no bloqueante;
-- VPS queda para integración, almacenamiento operativo, publicación y servicios.
+Script actual: `scripts/vectorize-building-v3-productivo.py`.
 
-## 3. Arquitectura objetivo
+Pipeline:
 
 ```text
-VHR histórica
-  -> control de fechas y metadata
-  -> co-registro local a 2023
-  -> máscara de confianza geométrica
-  -> segmentación de superficie construida
-  -> blending de tiles / eliminación de costuras
-  -> máscara probabilística
-  -> vectorización
-  -> atributos geométricos + espectrales + contextuales
-  -> clasificación de objeto
-  -> agregación por parcela GeoARBA
-  -> métricas temporales por parcela
-  -> alertas / ranking
+V3 probability + signed distance
+  -> watershed de instancias
+  -> contornos
+  -> píxel z18 -> WGS84
+  -> EPSG:32721
+  -> recorte contra scope Productivo efectivo
+  -> filtro de área mínima
+  -> asignación por máxima intersección a parcela Productivo
+  -> GeoJSON + CSV + resumen por parcela + QA JSON
+```
+
+Último resultado 2023:
+- `productiva_parcels_resolved`: **520**
+- parcelas Productivo inválidas reparadas: **0**
+- geometrías inválidas de máscara reparadas: **1**
+- raw instance labels: **790**
+- objetos V3 dentro de Productivo: **290**
+- superficie construida detectada dentro de Productivo: **60,381.44 m²**
+- parcelas Productivo con al menos un objeto detectado: **49**
+
+Estos números son **preliminares hasta completar QA de polígonos**. No usarlos todavía como cifra territorial final ni compararlos jurídicamente con el cupo de la ordenanza.
+
+## 7. Arquitectura objetivo de detección territorial
+
+```text
+MÁSCARA PRODUCTIVO (scope duro)
+  |
+  +-> VHR histórica / fechas / registro / confianza geométrica
+  |
+  +-> señal: edificios
+  |     -> segmentación V3
+  |     -> watershed / vectorización
+  |
+  +-> señal: movimiento de suelo / nivelación / desmonte
+  |
+  +-> señal: calles o trazados internos
+  |
+  +-> señal: infraestructura visible (postes, tendidos, accesos)
+  |
+  +-> señal: muros / cercos
+  |
+  +-> señal: patrón morfológico de subdivisión
+        |
+        v
+features por objeto / píxel / parcela
+  -> score de transformación física
+  -> score de señal de loteo físico
+  -> serie temporal
+  -> ranking de casos
   -> validación humana
-  -> capa operativa en mapa
+  -> cruce administrativo/catastral
+  -> mapa operativo
 ```
 
-Arquitectura de ejecución:
+Separar siempre tres dimensiones:
+1. **física**: qué transformación se observa;
+2. **administrativa/catastral**: qué antecedentes o cambios registrales existen;
+3. **legal/comercial**: aprobación, venta, imputación al cupo, etc.
+
+## 8. Fases y gates
+
+### Fase A — Base cartográfica y registro
+Estado: OPERATIVA PARA CLUSTER 2.
+
+Pendiente antes de escalar:
+- formalizar máscara de confianza espacial por fecha;
+- repetir control de registro al incorporar nuevos clusters.
+
+### Fase B — Inferencia de edificios
+Estado: COMPLETA PARA 2023.
+
+Gate V3 aprobado visualmente. V1/V2 descartadas para cuantificación.
+
+### Fase C — Vectorización de edificios
+Estado: EN CURSO.
+
+Hecho:
+- georreferencia recuperada y validada;
+- watershed V3;
+- scope Productivo duro;
+- 520 parcelas resueltas;
+- GeoJSON/CSV/QA 2023 generados.
+
+Gate actual:
+- comparar polígonos V3 contra imagen 2023 y Overture;
+- revisar falsos positivos grandes y fragmentación/fusión de techos;
+- validar una muestra mínima de 40 objetos/casos antes de aceptar métricas de área.
+
+### Fase D — Señales no edilicias de loteo físico
+Estado: PENDIENTE.
+
+Variables objetivo:
+- `earthwork_or_leveling_score`
+- `internal_road_score`
+- `utility_infrastructure_score`
+- `walls_fences_score`
+- `subdivision_pattern_score`
+- `access_pattern_score`
+- `building_presence_score`
+- `mixed_preparation_score`
+
+Un área sin viviendas puede tener señal alta si combina suelo nivelado, calles internas, postes, cercos y subdivisión aparente.
+
+### Fase E — Agregación Productivo por parcela
+Estado: PENDIENTE.
+
+Variables mínimas:
+- `partida`
+- `nomenclatura`
+- `productive_area_m2`
+- `building_area_productive_m2`
+- `building_coverage_productive_pct`
+- `earthwork_score`
+- `internal_road_score`
+- `utility_infrastructure_score`
+- `walls_fences_score`
+- `subdivision_pattern_score`
+- `physical_transformation_productive_pct`
+- `physical_loteo_score`
+- `physical_loteo_confidence`
+- `first_observed_date`
+- `latest_observed_date`
+
+Para parcelas parcialmente intersectadas por Productivo, cualquier métrica de superficie debe usar sólo la porción Productivo.
+
+### Fase F — Serie histórica
+Estado: PENDIENTE.
+
+Salida objetivo:
 
 ```text
-GitHub = fuente de verdad de código/documentación
-Workstation = cómputo ML pesado y generación de artefactos analíticos
-VPS = integración, publicación, servicios y almacenamiento operativo
+partida | 2016 | 2020 | 2022 | 2023 | 2026 | first_change | latest_change | physical_loteo_score | confidence
 ```
 
-## 4. Fases y criterios de salida
+No forzar una fecha de aparición cuando el registro o la escena no tengan confianza suficiente.
 
-### Fase A — Estabilizar base cartográfica
-Estado: EN CURSO
+### Fase G — Dataset y validación humana
+Estado: MVP EXISTENTE, A AMPLIAR.
 
-Objetivos:
-- 2023 como referencia geométrica.
-- registro local para cada fecha.
-- mapa de confianza por píxel/tesela.
-- excluir archivos auxiliares de cualquier batch histórico.
+Los 40 casos actuales son semilla de QA, no dataset definitivo.
+Objetivo inicial: 200–300 etiquetas humanas, con split espacial por parcela/cluster.
 
-Criterios de aceptación:
-- mediana residual dx/dy próxima a 0.
-- p95 residual <= 1 px para alta confianza.
-- p95 residual >1 y <=3 px: confianza media / revisión.
-- p95 residual >3 px: no usar para detección temporal fina.
-- overlay visual de al menos 5 estructuras persistentes por fecha.
+Labels sugeridos:
+- `building_yes_no_uncertain`
+- `footprint_quality`
+- `object_type`
+- `earthwork_yes_no_uncertain`
+- `internal_roads_yes_no_uncertain`
+- `utility_infrastructure_yes_no_uncertain`
+- `walls_fences_yes_no_uncertain`
+- `subdivision_pattern_yes_no_uncertain`
+- `physical_loteo_signal`
+- `confidence`
+- `notes`
 
-### Fase B — Corregir inferencia y mosaico de probabilidad
-Estado: EN CURSO — gate visual pendiente
+### Fase H — Capa operativa
+Estado: PENDIENTE.
 
-Tareas:
-1. progreso visible por ventana. HECHO.
-2. blending ponderado en zonas solapadas. HECHO.
-3. minimizar artefactos de borde de tile. IMPLEMENTADO, PENDIENTE QA VISUAL.
-4. preservar `stride=192` como baseline. HECHO.
-5. ejecutar QA sobre recortes. HECHO.
-6. no asumir semántica de los 3 logits sin validación adicional. VIGENTE.
-7. producir comparativa 0.30 / 0.4371 / 0.60. HECHO.
-8. ejecutar baseline pesado en workstation. HECHO.
+Capas previstas:
+- VHR original/registrada
+- Productivo
+- GeoARBA
+- edificios detectados
+- movimiento de suelo
+- calles internas
+- infraestructura
+- cercos/muros
+- subdivisión
+- score físico combinado
+- confianza
+- validación humana
+- antecedentes administrativos vinculados
 
-Criterios de aceptación:
-- ausencia de cuadrícula dominante en probability map.
-- techos persistentes conservan forma continua en bordes de tile.
-- falsos positivos de suelo/sombra aceptables y caracterizados.
-- selección de umbral operativo documentada.
-- pipeline reproducible y con log de progreso.
+## 9. Variables de edificios
 
-Gate actual: inspección visual de V2. Si pasa, avanzar directamente a Fase C.
-
-### Fase C — Vectorización de objetos
-Estado: PENDIENTE
-
-Salida requerida por objeto:
+Por objeto conservar:
 - `object_id`
-- geometría
-- fecha
-- área en píxeles y m²
+- `date`
+- `partida`
+- `nomenclatura`
+- `area_m2`
 - perímetro
-- bbox
 - centroid
-- score probabilístico
-- calidad geométrica local
+- bbox
+- `prob_mean`, `prob_p10`, `prob_p90`
+- compactness
+- rectangularity
+- solidity
+- elongation
+- orientación
+- relación con límite de parcela
+- relación con caminos
+- IoU/intersección con Overture
+- confianza geométrica local
 
-Postproceso inicial:
-- closing suave para huecos/fragmentos de un mismo techo.
-- opening suave para ruido aislado.
-- componentes conectados.
-- filtro de área mínima configurable; no fijar aún como verdad un mínimo de 10 m².
-- conservar objetos grandes y elongados para clasificación productiva.
-
-### Fase D — Clasificador de objeto
-Estado: PENDIENTE
-
-Clases operativas iniciales:
+Clases operativas posibles:
 - `residential_probable`
 - `productive_shed`
 - `greenhouse`
@@ -219,349 +340,109 @@ Clases operativas iniciales:
 - `noise_or_nonbuilding`
 - `uncertain`
 
-No usar `ilegal`, `usurpado`, `en negro` ni equivalentes como clases automáticas.
+Nunca usar `ilegal`, `usurpado`, `en negro` ni equivalentes como clases automáticas.
 
-### Fase E — Agregación por parcela GeoARBA
-Estado: PENDIENTE
+## 10. QA y métricas
 
-Por cada parcela y fecha calcular:
-- superficie construida detectada total
-- superficie residencial probable
-- superficie productiva probable
-- cantidad de objetos
-- área del mayor objeto
-- densidad construida
-- porcentaje ocupado
-- confianza media geométrica
-- confianza media de clasificación
-
-Salida temporal objetivo:
-
-```text
-partida | 2016_m2 | 2020_m2 | 2022_m2 | 2023_m2 | 2026_m2 | delta_m2 | patrón | confianza
-```
-
-Patrones operativos:
-- estable
-- expansión
-- reducción
-- reemplazo
-- mixto
-- incierto
-
-### Fase F — Validación humana
-Estado: MVP EXISTENTE, A AMPLIAR
-
-Separar:
-- juicio humano
-- score automático
-- datos crudos de imagen
-- interpretación parcelaria
-
-No sobreescribir datos automáticos con la validación; guardar ambos.
-
-### Fase G — Capa operativa de mapa
-Estado: PENDIENTE
-
-Capas previstas:
-- VHR original
-- VHR registrada
-- Overture actual
-- superficie construida detectada
-- objetos clasificados
-- cambio temporal
-- confianza geométrica
-- GeoARBA
-- validaciones humanas
-
-## 5. Variables para clasificar cada objeto
-
-### 5.1 Geometría
-- `area_m2`
-- `perimeter_m`
-- `bbox_width_m`
-- `bbox_height_m`
-- `aspect_ratio`
-- `compactness = 4*pi*area/perimeter^2`
-- `rectangularity = area/minimum_rotated_rectangle_area`
-- `solidity = area/convex_hull_area`
-- `elongation`
-- orientación del eje mayor
-- número de huecos
-- número de componentes fusionados en postproceso
-
-Uso esperado:
-- vivienda: área media/chica, mayor compactación, menor elongación extrema.
-- galpón: área grande, alta rectangularidad, elongación posible.
-- invernadero: elongación alta, repetición espacial, agrupamientos paralelos.
-- ruido: baja solidez, contorno irregular, área mínima, mala confianza.
-
-### 5.2 Probabilidad ML
-- `prob_mean`
-- `prob_median`
-- `prob_p10`
-- `prob_p90`
-- `prob_max`
-- fracción del objeto por encima de 0.30 / 0.4371 / 0.60
-- varianza interna de probabilidad
-- distancia al borde de tile más cercano
-
-### 5.3 Apariencia / textura
-Calcular sobre RGB original:
-- media y desvío RGB
-- brillo medio
-- saturación
-- entropía local
-- contraste
-- gradiente medio
-- porcentaje de sombra dentro y alrededor del objeto
-- uniformidad de textura
-
-No usar estas variables solas para determinar uso del inmueble.
-
-### 5.4 Contexto parcelario
-- `partida`
-- área de parcela
-- porcentaje de parcela ocupado
-- cantidad de objetos en parcela
-- área del objeto mayor / área construida total
-- distancia al límite de parcela
-- distancia a camino/calle
-- cantidad de objetos vecinos a 10/25/50 m
-- densidad de construcciones vecinas
-- cluster morfológico
-- zonificación/categoría parcelaria disponible
-
-### 5.5 Contexto temporal
-- primera fecha de presencia con confianza suficiente
-- persistencia entre fechas
-- cambio de área absoluta y porcentual
-- expansión de polígono respecto de fecha previa
-- IoU temporal
-- aparición/desaparición
-- continuidad de centroides
-
-### 5.6 Evidencia auxiliar
-- intersección con Overture
-- IoU con footprint Overture
-- diferencia de área vs Overture
-- si Overture representa fragmento, edificio completo o complejo
-- validación humana previa si existe
-
-## 6. Dataset maestro
-
-### 6.1 Unidad de fila
-Una fila = un objeto detectado en una fecha dentro de una parcela.
-
-No usar como única unidad el footprint Overture actual.
-
-### 6.2 Identificadores mínimos
-- `sample_id`
-- `object_id`
-- `partida`
-- `capture_date`
-- `cluster_id`
-- `source_image`
-- `geometry_version`
-
-### 6.3 Features
-Todas las variables de la sección 5, con nombres versionados.
-
-### 6.4 Labels humanos
-- `label_object_type`
-- `label_building_yes_no_uncertain`
-- `label_residential_yes_no_uncertain`
-- `label_footprint_quality`: correct / partial / incorrect
-- `label_larger_structure_associated`: yes / no / uncertain
-- `label_growth_pattern`
-- `label_confidence`: low / medium / high
-- `label_notes`
-- `validator_id` o identificador anónimo estable
-- `validated_at`
-
-### 6.5 Dataset inicial
-Los 40 casos existentes son semilla de QA, no dataset definitivo de entrenamiento.
-
-Objetivo inicial: 200-300 ejemplos humanos balanceados por clase y contexto.
-
-Cuotas orientativas:
-- 70 vivienda probable
-- 40 galpón/productivo
-- 30 invernadero/estructura agrícola si existen suficientes ejemplos
-- 30 auxiliar/mixto
-- 50 ruido/no edificio
-- 30 ambiguos
-
-No duplicar artificialmente objetos para llenar clases.
-
-### 6.6 Selección de ejemplos
-Combinar:
-- alta y baja confianza
-- falsos positivos visuales
-- objetos grandes y pequeños
-- zonas densas y rurales/periurbanas
-- casos con y sin Overture
-- años con distinta calidad geométrica
-
-### 6.7 Split train/validation/test
-Nunca separar aleatoriamente píxeles del mismo lugar entre conjuntos.
-
-Separar espacialmente por parcela o grupos de parcelas/cluster:
-- train ~70%
-- validation ~15%
-- test ~15%
-
-Evitar que la misma construcción en años distintos caiga en train y test.
-
-## 7. Métricas de evaluación
-
-### Segmentación
-- precision
-- recall
-- F1 / Dice
-- IoU
+### Segmentación / vectorización
+- precision / recall / F1 / IoU sobre muestra humana
 - false positive area ratio
-- métricas separadas por vivienda / galpón / zonas rurales
+- error de área
+- tasa de fragmentación
+- tasa de fusión de edificios contiguos
+- IoU con Overture sólo como comparación auxiliar
 
-### Clasificación de objeto
-- macro F1
-- precision/recall por clase
-- matriz de confusión
-- recall de `residential_probable`
-- falsos residenciales sobre galpones/productivos
+### Parcela / transformación física
+- área transformada dentro de Productivo
+- porcentaje Productivo transformado
+- acuerdo humano en `physical_loteo_signal`
+- precision@k del ranking de parcelas a revisar
 
-### Parcela
-- error absoluto de m² construidos
-- error porcentual de superficie ocupada
-- acuerdo en patrón temporal
-- ranking precision@k para parcelas a revisar
-
-## 8. Diseño de confianza
-
+### Confianza
 Guardar por separado:
 - `registration_confidence`
 - `segmentation_confidence`
-- `classification_confidence`
+- `object_classification_confidence`
+- `physical_loteo_confidence`
 
-Ejemplo:
-```text
-registration=medium
-segmentation=high
-classification=low
-final=review
-```
+## 11. Cómputo y responsabilidad
 
-## 9. Flujo de trabajo y responsabilidad
+### GitHub
+Fuente de verdad para código, documentación, criterios y scripts reproducibles.
 
-### Código / documentación
-Los realiza el asistente directamente en GitHub sobre `feature/validacion-territorial` cuando sea posible.
-
-### Workstation
-El usuario ejecuta comandos entregados para:
-- inferencia ONNX pesada
-- vectorización masiva
+### Workstation Windows
+Usar para:
+- ONNX pesado
+- vectorización
 - extracción de features
-- entrenamiento y benchmarks
-- artefactos locales bajo `tmp/`
+- QA visual local
+- entrenamiento/benchmarks
 
-Baseline:
-```text
---provider cpu --cpu-threads 20
-```
+Hardware validado:
+- Intel i7-12700, 20 hilos lógicos
+- 32 GiB RAM
+- RX 6700 XT; DirectML falla actualmente y cae a CPU
+
+Baseline: `--provider cpu --cpu-threads 20`.
 
 ### VPS
-Reservada para:
-- `git pull` e integración
-- publicación y servicios
+Usar para:
+- integración
+- publicación
+- servicios
 - almacenamiento operativo
-- validaciones contra producción
-- archivos que sólo existan allí
+- artefactos que sólo existan allí
 
-No usar VPS para iteración ML pesada si existe equivalente local.
+No usarla para inferencia ML pesada si la workstation está disponible.
 
-### Sincronización de artefactos
-- no versionar mosaicos VHR, máscaras pesadas o modelos grandes en Git;
-- subir a VPS sólo resultados necesarios: GeoJSON, CSV, QA JSON, máscaras seleccionadas y modelos versionados cuando corresponda;
-- mantener nombres y metadata reproducibles.
+No borrar archivos locales desconocidos ni usar `git clean -fd`.
 
-### Despliegue
-Sólo con versión explícitamente validada. No mezclar `tmp/` experimental con producción.
+## 12. Orden inmediato
 
-## 10. Orden inmediato de implementación
+### Sprint actual — QA de edificios 2023
+1. comparar 290 polígonos V3 contra imagen 2023;
+2. comparar contra Overture como referencia auxiliar;
+3. revisar al menos 40 casos, incluyendo objetos grandes, pequeños, rurales, productivos y falsos positivos probables;
+4. medir fragmentación/fusión y error de área;
+5. decidir si el watershed/umbral requiere ajuste;
+6. congelar `building-v3-productivo-2023` como subcapa aceptada o iterar.
 
-### Sprint técnico 1 — inferencia limpia 2023
-1. blending ponderado. HECHO.
-2. progreso y timing. HECHO.
-3. benchmark de hardware. HECHO.
-4. tres umbrales sin repetir inferencia. HECHO.
-5. overlays/paneles QA. HECHO.
-6. validación visual. PENDIENTE.
+### Sprint siguiente — señales físicas no edilicias
+1. movimiento de suelo/nivelación;
+2. calles internas;
+3. infraestructura visible;
+4. cercos/muros;
+5. patrón de subdivisión;
+6. score combinado de `physical_loteo_signal`.
 
-Gate: no seguir si persisten costuras fuertes o semántica de canales dudosa.
+## 13. Riesgos conocidos
 
-### Sprint técnico 2 — vectorización y features
-1. vectorizar máscara 2023.
-2. postproceso configurable.
-3. extraer features geométricas/probabilísticas/contextuales.
-4. exportar GeoJSON + CSV.
-5. comparar con Overture.
-
-Gate: revisar al menos 40 casos y falsos positivos grandes.
-
-### Sprint técnico 3 — dataset humano
-1. generar candidatos balanceados.
-2. extender UI de validación a objeto detectado.
-3. alcanzar 200-300 casos.
-4. congelar split espacial train/val/test.
-
-### Sprint técnico 4 — clasificador de objeto
-Baseline recomendado antes de deep learning adicional:
-- reglas interpretables + Gradient Boosting / Random Forest sobre features de objeto.
-
-Razón: dataset inicial chico, variables tabulares fuertes y necesidad de explicabilidad.
-
-Sólo después evaluar fine-tuning de segmentación o clasificador visual dedicado.
-
-### Sprint técnico 5 — serie histórica
-1. correr segmentación sobre años registrados.
-2. propagar confianza geométrica.
-3. matching temporal de objetos.
-4. agregación por parcela.
-5. tabla 2016/2020/2022/2023/2026.
-
-### Sprint técnico 6 — mapa operativo
-1. capas automáticas.
-2. filtros por confianza/tipo/año.
-3. comparación temporal.
-4. validación humana.
-5. exportación de casos para revisión municipal.
-
-## 11. Riesgos conocidos
-
-- 2020 conserva mayor error local.
-- 2016 tiene menos tiles confiables.
-- salida ONNX de 3 canales requiere validación de semántica.
+- 2020 tiene mayor error de registro local.
 - escenas VHR cambian iluminación, estación y sensor.
-- sombras, suelo desnudo y vegetación generan falsos positivos.
-- galpones/productivo pueden parecer más construidos que vivienda; no mezclar usos.
+- sombras/suelo desnudo pueden afectar señales no edilicias.
+- edificios agrícolas pueden dominar área sin implicar loteo residencial.
 - Overture puede fragmentar o representar sólo parte de un complejo.
-- un único umbral global puede no ser óptimo para todas las fechas.
-- DirectML actualmente falla al inicializar y cae a CPU; no usar métricas de fallback como si fueran GPU.
+- un único threshold puede no generalizar a todas las fechas/sensores.
+- la máscara Productivo necesitó reparación topológica de una geometría; mantener QA de validez.
+- superficies por atributos parcelarios y superficies geométricas no son idénticas; no mezclar denominadores.
+- el porcentaje jurídico exacto y su método de cómputo siguen pendientes.
 
-## 12. Fuentes metodológicas de referencia
+## 14. Fuentes metodológicas
 
-- Quilmes, solución geoespacial VHR: clasificación/extracción de superficies construidas -> análisis zonal por parcela -> comparación con base catastral -> alertas -> supervisión humana.
+- Quilmes, solución geoespacial VHR: clasificación/extracción de superficies construidas -> análisis zonal por parcela -> comparación catastral -> alertas -> supervisión humana.
   - https://fh.mdp.edu.ar/revistas/index.php/pleamar/article/view/8433/9222
-- HOTOSM `dinov3s-buildings`: segmentación de edificios VHR; ventana 256 px, stride 192, threshold documentado 0.4371.
+- HOTOSM `dinov3s-buildings`:
   - https://huggingface.co/hotosm/dinov3s-buildings
 
-## 13. Regla para actualizar este documento
+## 15. Regla de actualización
 
 Cada cambio importante debe actualizar:
-- estado de la fase
-- commit relevante
-- métricas QA
-- decisión tomada
-- siguiente gate
+- estado de fase;
+- commit relevante;
+- métricas QA;
+- decisión tomada;
+- siguiente gate.
+
+Ante ambigüedad espacial, prevalecen `TERRITORIAL_SCOPE_PRODUCTIVO.md` y `TERRITORIAL_LOTEO_CRITERIA.md`.
 
 Este archivo es la fuente de verdad del plan técnico para evitar desvíos y trabajo duplicado.
