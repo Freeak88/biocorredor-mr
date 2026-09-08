@@ -1,6 +1,6 @@
 # BioCorredor MR — QA temporal OpenEarthMap / Road
 
-Estado: corrida temporal completa; QA visual multifecha **APROBADO COMO PRIOR TEMPORAL**
+Estado: corrida temporal completa; QA visual multifecha **APROBADO COMO PRIOR TEMPORAL**; persistencia numérica calculada y QA visual de esa capa pendiente
 Scope: **Productivo only**
 Branch: `feature/validacion-territorial`
 
@@ -78,7 +78,36 @@ Decisión:
 - la siguiente capa debe medir persistencia/aparición con tolerancia espacial por registro y separar señales intermitentes;
 - fine-tuning local continúa postergado.
 
-## 7. GPU / runtime
+## 7. Persistencia/aparición temporal contra 2026
+
+Script: `scripts/analyze-road-temporal-persistence.py`.
+
+Método:
+- referencia espacial/estado actual: `2026-01-11`;
+- input: `Road argmax` de las cinco fechas;
+- matching hacia atrás con tolerancia espacial diferenciada por fecha según QA de registro;
+- radios usados: 2016=`2 px`, 2020=`4 px`, 2022=`1 px`, 2023=`1 px`, 2026=`1 px`.
+
+Métricas de clase sobre Productivo:
+
+| Clase temporal | fracción Productivo |
+|---|---:|
+| `persistent_pre2020` | 0.011775 |
+| `new_2022_2023_candidate` | 0.021155 |
+| `new_2026_candidate` | 0.007543 |
+| `intermittent_or_disappeared` | 0.013740 |
+| `uncertain` | 0.001491 |
+
+Lectura sobre la red detectada en 2026:
+- con soporte pre-2020: **28.59%**;
+- primer soporte en 2022/2023: **51.37%**;
+- sólo soportada en 2026: **18.32%**.
+
+Esto es compatible con una expansión importante de la red vial observable posterior a 2020, pero **todavía no se acepta como `internal_road_score` final**. Falta revisar `road-temporal-overlay-2026.jpg` para comprobar que las clases temporales se alineen con calles/corredores reales y que `intermittent_or_disappeared` concentre señales agrícolas o inestables en vez de red válida omitida por el modelo en alguna fecha.
+
+Gate actual de esta subcapa: **MÉTRICAS PASS / QA VISUAL PENDIENTE**.
+
+## 8. GPU / runtime
 
 Workstation Windows con AMD RX 6700 XT:
 - `torch-directml` detecta `privateuseone:0`;
@@ -88,29 +117,26 @@ Workstation Windows con AMD RX 6700 XT:
 
 Esto no invalida el modelo. Sólo impide acelerarlo con este backend/arquitectura.
 
-## 8. Decisión actual
+## 9. Decisión actual
 
 - **Fine-tuning: POSTERGADO.** No es necesario todavía.
 - **OpenEarthMap Road: PASS como prior semántico y temporal.**
+- **Persistencia temporal: métricas generadas; QA visual final pendiente.**
 - **V4 corridor: mantener como feature geométrica auxiliar.**
 - **Earthwork: mantener como feature temporal auxiliar.**
-- Próximo objetivo: construir una capa temporal híbrida que mida **aparición, persistencia y consolidación** de trazas viales.
+- Próximo objetivo: cerrar QA visual de la persistencia y, si pasa, construir `internal_road_score` híbrido antes de agregar por parcela.
 
-## 9. Próximo gate
+## 10. Próximo gate
 
-Script preparado: `scripts/analyze-road-temporal-persistence.py`.
+Revisar `tmp/territorial-analysis/cluster-02-history/road-temporal-persistence/road-temporal-overlay-2026.jpg`.
 
-Debe:
-1. usar `road-argmax.png` de las cinco fechas ya inferidas;
-2. aplicar tolerancia espacial diferenciada por calidad de co-registro;
-3. usar 2026 como referencia de estado actual;
-4. distinguir, como mínimo:
-   - `persistent_pre2020`
-   - `new_2022_2023_candidate`
-   - `new_2026_candidate`
-   - `intermittent_or_disappeared`
-   - `uncertain`
-5. generar overlay y QA numérico;
-6. pasar QA visual antes de combinar con V4, earthwork o agregar por parcela.
+El gate debe verificar:
+1. que `persistent_pre2020` corresponda mayormente a corredores efectivamente antiguos;
+2. que `new_2022_2023_candidate` represente expansión visible en ese período;
+3. que `new_2026_candidate` no sea dominado por ruido radiométrico o bordes agrícolas;
+4. que `intermittent_or_disappeared` concentre señales no persistentes/agrícolas y no calles válidas perdidas por una fecha;
+5. que `uncertain` quede acotado.
+
+Si pasa, la siguiente versión debe combinar semántica temporal + continuidad/corredor V4 + earthwork y recién después derivar `internal_road_score` por parcela Productivo.
 
 No desplegar esta capa todavía.
