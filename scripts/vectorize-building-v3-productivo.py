@@ -23,6 +23,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from scipy import ndimage
+from shapely import make_valid
 from shapely.geometry import Polygon
 
 DEFAULT_META = Path("config/territorial/cluster-02-georef.json")
@@ -76,6 +77,39 @@ def norm_id(value) -> str:
     return "" if text.lower() in {"nan", "none"} else text
 
 
+def repair_polygonal_gdf(gdf: gpd.GeoDataFrame, label: str) -> tuple[gpd.GeoDataFrame, int]:
+    """Repara topología inválida sin cambiar CRS ni atributos.
+
+    GEOS puede rechazar union/intersection aunque la geometría se visualice bien.
+    make_valid conserva la forma siempre que puede; buffer(0) se usa sólo como
+    normalización final si el resultado sigue inválido o no es poligonal.
+    """
+    out = gdf.copy()
+    repaired = 0
+    fixed = []
+    for geom in out.geometry:
+        if geom is None or geom.is_empty:
+            fixed.append(geom)
+            continue
+        original_invalid = not geom.is_valid
+        candidate = make_valid(geom) if original_invalid else geom
+        if candidate.geom_type not in {"Polygon", "MultiPolygon"}:
+            candidate = candidate.buffer(0)
+        if not candidate.is_valid:
+            candidate = candidate.buffer(0)
+        if original_invalid:
+            repaired += 1
+        fixed.append(candidate)
+    out["geometry"] = fixed
+    out = out[out.geometry.notna() & ~out.geometry.is_empty].copy()
+    if out.empty:
+        raise SystemExit(f"{label}: no quedaron geometrías utilizables después de reparación")
+    still_invalid = int((~out.geometry.is_valid).sum())
+    if still_invalid:
+        raise SystemExit(f"{label}: quedaron {still_invalid} geometrías inválidas después de reparación")
+    return out, repaired
+
+
 def load_productiva_parcels(assignments_path: Path, geoarba_paths: list[Path]) -> gpd.GeoDataFrame:
     data = load_json(assignments_path)
     zones = data.get("zones") if isinstance(data, dict) else None
@@ -127,7 +161,6 @@ def load_productiva_parcels(assignments_path: Path, geoarba_paths: list[Path]) -
             f"faltantes={missing[:10]}, extras={extra[:10]}"
         )
 
-    # Mantener el orden canónico del archivo final de asignaciones.
     order = {n: i for i, n in enumerate(productiva_ids)}
     out["_order"] = out["nomenclatura"].map(order)
     out = out.sort_values("_order").drop(columns="_order").reset_index(drop=True)
@@ -206,7 +239,9 @@ def contour_to_wgs84(contour: np.ndarray, left_px: float, top_px: float, z: int)
     coords = [world_px_to_lonlat(left_px + float(x), top_px + float(y), z) for x, y in pts]
     poly = Polygon(coords)
     if not poly.is_valid:
-        poly = poly.buffer(0)
+        poly = make_valid(poly)
+        if poly.geom_type not in {"Polygon", "MultiPolygon"}:
+            poly = poly.buffer(0)
     return None if poly.is_empty else poly
 
 
@@ -237,16 +272,28 @@ def main() -> None:
     print(f"productiva_parcels_resolved={len(productiva)}")
 
     prod_m = productiva.to_crs(METRIC_CRS)
+    prod_m, parcel_repairs = repair_polygonal_gdf(prod_m, "Parcelas Productivo")
     parcel_union = prod_m.geometry.union_all()
+    if not parcel_union.is_valid:
+        parcel_union = make_valid(parcel_union)
+        if parcel_union.geom_type not in {"Polygon", "MultiPolygon"}:
+            parcel_union = parcel_union.buffer(0)
 
     mask = load_geojson(a.productiva_mask).to_crs(METRIC_CRS)
     if mask.empty:
         raise SystemExit(f"Máscara Productivo vacía: {a.productiva_mask}")
+    mask, mask_repairs = repair_polygonal_gdf(mask, "Máscara Productivo")
     dissolved_mask = mask.geometry.union_all()
+    if not dissolved_mask.is_valid:
+        dissolved_mask = make_valid(dissolved_mask)
+        if dissolved_mask.geom_type not in {"Polygon", "MultiPolygon"}:
+            dissolved_mask = dissolved_mask.buffer(0)
 
-    # El indicador sólo usa el área que simultáneamente pertenece al universo
-    # parcelario Productivo final y a la máscara Productivo disuelta.
     scope_geom = parcel_union.intersection(dissolved_mask)
+    if not scope_geom.is_valid:
+        scope_geom = make_valid(scope_geom)
+        if scope_geom.geom_type not in {"Polygon", "MultiPolygon"}:
+            scope_geom = scope_geom.buffer(0)
     if scope_geom.is_empty:
         raise SystemExit("La intersección entre parcelas Productivo y máscara disuelta es vacía")
 
@@ -256,6 +303,8 @@ def main() -> None:
     parcel_coverage = scope_area / parcel_union_area if parcel_union_area else 0.0
     mask_coverage = scope_area / mask_area if mask_area else 0.0
 
+    print(f"productiva_invalid_parcels_repaired={parcel_repairs}")
+    print(f"productiva_invalid_mask_geometries_repaired={mask_repairs}")
     print(f"productiva_parcel_union_area_ha={parcel_union_area / 10000.0:.6f}")
     print(f"productiva_mask_area_ha={mask_area / 10000.0:.6f}")
     print(f"productiva_scope_area_ha={scope_area / 10000.0:.6f}")
@@ -293,7 +342,6 @@ def main() -> None:
     objects = gpd.GeoDataFrame(rows, geometry="geometry", crs=4326)
     obj_m = objects.to_crs(METRIC_CRS)
 
-    # Scope lock estricto: todo lo que quede fuera de Productivo desaparece.
     obj_m["geometry"] = obj_m.geometry.intersection(scope_geom)
     obj_m = obj_m[~obj_m.geometry.is_empty].copy()
     obj_m["area_m2"] = obj_m.geometry.area
@@ -374,6 +422,8 @@ def main() -> None:
         "productiva_mask_source": str(a.productiva_mask),
         "productiva_geometry_source": [str(p) for p in a.geoarba],
         "productiva_parcel_count": int(len(productiva)),
+        "productiva_invalid_parcels_repaired": parcel_repairs,
+        "productiva_invalid_mask_geometries_repaired": mask_repairs,
         "productiva_parcel_union_area_ha": parcel_union_area / 10000.0,
         "productiva_mask_area_ha": mask_area / 10000.0,
         "productiva_scope_area_ha": scope_area / 10000.0,
