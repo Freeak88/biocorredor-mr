@@ -1,6 +1,6 @@
 # QA visual — edificios V3 Productivo — 2023-04-19
 
-Estado: revisión visual completada sobre overlay general + muestra intencional de 40 objetos.
+Estado: revisión visual completada sobre overlay general + muestra intencional de 40 objetos + comparación auxiliar con Overture.
 Scope: exclusivamente Zona Productiva.
 
 ## Insumos revisados
@@ -8,6 +8,7 @@ Scope: exclusivamente Zona Productiva.
 - overlay completo V3 sobre mosaico 2023;
 - panel de 40 objetos con prioridad a objetos grandes + muestra distribuida;
 - QA JSON generado localmente;
+- Overture buildings recuperado como referencia auxiliar;
 - threshold V3: `0.4371`;
 - vectorización actual: watershed sobre máscara + signed distance.
 
@@ -62,9 +63,22 @@ Consecuencia:
 
 La cifra `60,381.44 m²` queda **provisional** hasta separar o etiquetar falsos positivos no edilicios y confirmar la estrategia de medición de complejos productivos.
 
-## Overture
+## Comparación auxiliar con Overture
 
-El QA local reportó `overture_available = false`; por lo tanto esta revisión no incluye comparación auxiliar con Overture. Esto no bloquea el gate visual contra imagen, pero la comparación debe hacerse antes de congelar el producto final de edificios 2023 si el archivo auxiliar está disponible localmente o puede recuperarse.
+La segunda corrida de QA encontró Overture disponible y produjo:
+
+- `overture_features_in_bbox`: **1544**;
+- objetos V3 con cualquier solapamiento Overture: **279 / 290 = 96.2%**;
+- objetos V3 con solapamiento >= 50%: **229 / 290 = 79.0%**;
+- mediana de fracción V3 cubierta por Overture: **0.7436**;
+- objetos V3 sin ningún solapamiento Overture: **11**;
+- objetos V3 con solapamiento < 50%: **61**.
+
+Lectura metodológica:
+- el 96.2% con algún apoyo espacial Overture refuerza que la segmentación V3 está capturando mayoritariamente superficies edificadas/cubiertas reales;
+- el 79.0% con >=50% de solapamiento es un buen indicador auxiliar, pero no es una métrica de precisión porque Overture no es ground truth y puede fragmentar, omitir o simplificar estructuras;
+- los 11 objetos sin solapamiento y los 61 con menos del 50% son el conjunto prioritario para revisión dirigida de falsos positivos, desfases locales, fusiones o diferencias de representación;
+- `overture_features_in_bbox=1544` no debe compararse directamente con `290` como recall, porque Overture incluye todos los footprints del bbox mientras V3 ya está recortado al scope Productivo y además la lógica de objetos/instancias difiere.
 
 ## Decisión de gate
 
@@ -72,6 +86,7 @@ El QA local reportó `overture_available = false`; por lo tanto esta revisión n
 - Máscara/segmentación V3 como evidencia de superficie cubierta: **PASS CON QA**.
 - Threshold `0.4371`: **se mantiene** como baseline operativo.
 - Vectorización geográfica: **PASS**.
+- Apoyo auxiliar Overture: **FUERTE (96.2% con algún solapamiento)**.
 - Conteo/separación de instancias: **FAIL / ITERAR**.
 - Cifra de área construida: **PROVISIONAL**.
 - Uso jurídico/administrativo: **NO APLICA**; esta subcapa no prueba loteo, venta, aprobación ni ilegalidad.
@@ -80,14 +95,15 @@ El QA local reportó `overture_available = false`; por lo tanto esta revisión n
 
 1. No repetir inferencia V3.
 2. Mantener la máscara/probabilidad actual.
-3. Mejorar postproceso de instancias para evitar fusiones grandes y marcar explícitamente complejos productivos/invernaderos.
-4. Añadir filtros/etiquetas de falsos positivos frecuentes (pileta/agua, suelo desnudo, superficie no edilicia).
-5. Comparar con Overture como referencia auxiliar cuando esté disponible.
-6. Recalcular área parcelaria separando al menos:
+3. Revisar primero los **11 objetos sin solapamiento Overture** y luego una muestra de los **61 objetos con solapamiento <50%**.
+4. Distinguir en esa revisión: falso positivo, edificio omitido por Overture, fusión de múltiples cubiertas, representación parcial o caso incierto.
+5. Mejorar postproceso de instancias para evitar fusiones grandes y marcar explícitamente complejos productivos/invernaderos.
+6. Añadir filtros/etiquetas de falsos positivos frecuentes (pileta/agua, suelo desnudo, superficie no edilicia).
+7. Recalcular área parcelaria separando al menos:
    - `building_or_roof_surface_m2`;
    - `greenhouse_or_productive_cover_m2`;
    - `probable_nonbuilding_surface_m2`;
    - `uncertain_surface_m2`.
-7. Sólo después congelar la subcapa de edificios 2023.
+8. Sólo después congelar la subcapa de edificios 2023.
 
 Los edificios siguen siendo sólo una señal del análisis territorial. El objetivo principal continúa siendo detectar transformación física y señal de loteo físico dentro de Productivo, incluyendo calles internas, movimiento de suelo, infraestructura, cercos y patrón de subdivisión.
