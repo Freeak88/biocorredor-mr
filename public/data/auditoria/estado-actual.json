@@ -1,0 +1,73 @@
+{
+  "updated_at": "2026-09-08",
+  "scope": {
+    "label": "Zona Productiva únicamente",
+    "parcel_count": 520,
+    "membership_source": "zones.productiva de zonificacion-11819-asignaciones.json.gz",
+    "geometry_rule": "intersección entre las 520 parcelas GeoARBA y la máscara Productivo reconstruida del Anexo I",
+    "effective_area_ha": 1301.886167,
+    "administrative_area_reference_ha": 1303.584699
+  },
+  "current_findings": {
+    "reference_date": "2023-04-19",
+    "georeference_status": "PASS",
+    "georef_delta_px": [0.209907, 0.292536],
+    "building_model": "hotosm/dinov3s-buildings V3 con preprocesamiento oficial",
+    "building_threshold": 0.4371,
+    "detected_surface_m2_provisional": 60381.44,
+    "parcels_with_detected_surface": 49,
+    "vector_objects": 290,
+    "raw_instance_labels": 790,
+    "overture_any_overlap": {"count": 279, "total": 290, "pct": 96.2},
+    "overture_overlap_ge_50": {"count": 229, "total": 290, "pct": 79.0},
+    "median_overture_overlap_fraction": 0.7436
+  },
+  "decisions": [
+    "El universo del indicador es Productivo y sólo Productivo; las demás zonas se usan como contexto.",
+    "La segmentación V3 queda aceptada como subcapa de superficie cubierta observable, no como conteo validado de edificios.",
+    "Los 290 objetos y 790 labels no se interpretan como cantidad real de edificios.",
+    "Los 60.381,44 m² son provisionales hasta separar cubiertas edilicias/productivas, falsos positivos y casos ambiguos.",
+    "Overture es evidencia auxiliar de QA; no se usa como ground truth ni filtro duro.",
+    "No se vuelve a correr V3 por ahora: el próximo esfuerzo se concentra en señales no edilicias de preparación física para loteo.",
+    "Transformación física observable no equivale a aprobación, venta, irregularidad ni ilegalidad."
+  ],
+  "completed": [
+    "Reconstrucción parcelaria de la zonificación de la Ordenanza 11.819/20.",
+    "Scope Productivo bloqueado sobre 520 nomenclaturas.",
+    "Registro temporal del Cluster 2 contra 2023.",
+    "Georreferencia píxel↔coordenada del mosaico 2023 validada.",
+    "Inferencia V3 oficial de cubiertas sobre 2023.",
+    "Vectorización y recorte estricto a Productivo.",
+    "QA visual general de 40 casos.",
+    "Comparación auxiliar con Overture y revisión dirigida de desacuerdos.",
+    "Capa histórica Esri Wayback y herramientas de validación humana existentes."
+  ],
+  "pending": [
+    "Detectar movimiento de suelo, nivelación y desmonte dentro de Productivo.",
+    "Detectar calles o trazados internos.",
+    "Detectar infraestructura visible: postes, tendidos y accesos.",
+    "Detectar cercos y muros.",
+    "Detectar patrón morfológico de subdivisión.",
+    "Construir un score combinado de señal de loteo físico por parcela y por fecha.",
+    "Extender la serie temporal 2016/2020/2022/2023/2026 para las señales físicas.",
+    "Clasificar la superficie cubierta en edilicia/productiva/no edilicia/ambigua.",
+    "Verificar documentalmente el porcentaje jurídico aplicable (10% vs 15%), el denominador oficial y sus exclusiones.",
+    "Cruzar los casos priorizados con expedientes, actos aprobatorios y antecedentes administrativos oficiales."
+  ],
+  "phase_status": [
+    {"phase": "A", "name": "Base cartográfica y registro", "status": "operativa_cluster_2"},
+    {"phase": "B", "name": "Inferencia de cubiertas 2023", "status": "completa"},
+    {"phase": "C", "name": "Vectorización / superficie cubierta", "status": "cerrada_con_qa"},
+    {"phase": "D", "name": "Señales no edilicias de loteo físico", "status": "activa"},
+    {"phase": "E", "name": "Agregación Productivo por parcela", "status": "pendiente"},
+    {"phase": "F", "name": "Serie histórica", "status": "pendiente"},
+    {"phase": "G", "name": "Dataset y validación humana", "status": "mvp_existente_a_ampliar"},
+    {"phase": "H", "name": "Capa operativa integrada", "status": "pendiente"}
+  ],
+  "legal_status": {
+    "quota_conclusion": "no_cerrada",
+    "official_denominator": "pendiente",
+    "threshold": "pendiente_verificacion_10_vs_15",
+    "warning": "El análisis actual identifica señales físicas y reconstruye contexto territorial; no determina por sí solo legalidad, aprobación ni comercialización."
+  }
+}
