@@ -258,11 +258,39 @@ Gate:
 No seguir invirtiendo tiempo en conteo fino salvo que una salida específica lo requiera.
 
 ### Fase D — Señales no edilicias de loteo físico
-Estado: **SIGUIENTE BLOQUE ACTIVO**.
+Estado: **ACTIVA — earthwork parcial; road todavía no aprobado**.
 
-Orden:
-1. movimiento de suelo / nivelación / desmonte;
-2. calles o trazados internos;
+Iteraciones realizadas:
+- cambio físico V1 (`generate-physical-change-candidates.py`): útil como heatmap amplio, demasiado sensible a vegetación/cultivos/estación para cuantificar;
+- earthwork/road V2: redujo ruido en earthwork, pero `road` forzaba ~4% del Productivo por percentil global;
+- earthwork/road V3: corrigió ese defecto con compuerta por earthwork + soporte lineal, dejando road en 0.07–0.13% del Productivo, pero el QA visual muestra baja cobertura de calles reales y falsos positivos sobre bordes de cubiertas/cultivos.
+
+Métricas V3 por intervalo:
+
+| Intervalo | earthwork frac. | earthwork comp. | road eligible | road frac. | road comp. |
+|---|---:|---:|---:|---:|---:|
+| 2016→2020 | 0.0254 | 414 | 0.0088 | 0.0007 | 45 |
+| 2020→2022 | 0.0265 | 444 | 0.0142 | 0.0012 | 68 |
+| 2022→2023 | 0.0267 | 481 | 0.0099 | 0.0009 | 46 |
+| 2023→2026 | 0.0255 | 629 | 0.0160 | 0.0013 | 95 |
+
+Gate actual:
+- `earthwork`: **PARCIAL**. Se acepta como generador de candidatos, no como porcentaje de superficie transformada final. Sigue confundiendo rotación agrícola, cultivos en hileras y algunas cubiertas.
+- `road`: **FAIL como detector final**. La V3 es conservadora pero pierde corredores viales evidentes y todavía detecta bordes de cubiertas/invernaderos o estructuras lineales agrícolas.
+
+Siguiente cambio metodológico obligatorio:
+1. mantener `earthwork` y `internal_road` como señales separadas;
+2. incorporar persistencia temporal para distinguir obra persistente de rotación agrícola cuando exista fecha posterior;
+3. penalizar/excluir patrones agrícolas repetitivos y cubiertas;
+4. abandonar Hough como criterio principal de calle;
+5. detectar **corredores de ancho finito**, continuidad y red, no sólo bordes/segmentos lineales;
+6. exigir que la próxima versión recupere visualmente los trazados ortogonales evidentes del Cluster 2.
+
+Documento QA: `TERRITORIAL_EARTHWORK_ROAD_V3_QA.md`.
+
+Orden restante de Fase D:
+1. estabilizar movimiento de suelo / nivelación / desmonte;
+2. estabilizar calles o trazados internos;
 3. infraestructura visible;
 4. cercos / muros;
 5. patrón de subdivisión;
@@ -451,20 +479,23 @@ No borrar archivos locales desconocidos ni usar `git clean -fd`.
 7. decisión: subcapa aceptada como superficie cubierta observable; conteo individual no validado.
 
 ### Sprint activo — señales físicas no edilicias
-1. movimiento de suelo/nivelación;
-2. calles internas;
-3. infraestructura visible;
-4. cercos/muros;
-5. patrón de subdivisión;
-6. score combinado de `physical_loteo_signal`.
+1. baseline de cambio físico temporal: HECHO COMO GENERADOR, NO COMO MÉTRICA;
+2. earthwork V3: PARCIAL, requiere separar manejo agrícola de transformación persistente;
+3. roads V3: FAIL como detector final; siguiente versión debe detectar corredores/red y no bordes Hough;
+4. infraestructura visible: PENDIENTE;
+5. cercos/muros: PENDIENTE;
+6. patrón de subdivisión: PENDIENTE;
+7. score combinado de `physical_loteo_signal`: PENDIENTE.
 
-La prioridad es detectar **preparación física para loteo incluso sin viviendas**.
+La prioridad inmediata es estabilizar **movimiento de suelo + corredores de calles** antes de pasar a infraestructura.
 
 ## 13. Riesgos conocidos
 
 - 2020 tiene mayor error de registro local.
 - escenas VHR cambian iluminación, estación y sensor.
 - sombras/suelo desnudo pueden afectar señales no edilicias.
+- manejo agrícola, rotación de cultivos y hileras productivas pueden parecer movimiento de suelo o linealidad vial.
+- Hough sobre bordes responde a invernaderos, techos y límites de cultivo; no usarlo como detector principal de calles.
 - edificios agrícolas pueden dominar área sin implicar loteo residencial.
 - Overture puede fragmentar, desplazar, simplificar u omitir una cubierta; no usarlo como filtro duro.
 - un único threshold puede no generalizar a todas las fechas/sensores.
