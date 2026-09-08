@@ -22,6 +22,7 @@ import csv
 import gzip
 import json
 import math
+import numbers
 import time
 import urllib.parse
 import urllib.request
@@ -176,9 +177,13 @@ def choose_best(candidates: list[dict], project: dict) -> tuple[dict | None, str
 
 def point_matches(point: Point, geoms, tree, id_to_rec):
     containing = []
-    idxs = tree.query(point)
-    for idx in idxs:
-        g = geoms[int(idx)] if isinstance(idx, (int,)) else idx
+    hits = tree.query(point)
+    for hit in hits:
+        # Shapely 2.x devuelve índices NumPy; Shapely 1.x puede devolver geometrías.
+        if isinstance(hit, numbers.Integral):
+            g = geoms[int(hit)]
+        else:
+            g = hit
         if g.covers(point):
             rec = id_to_rec.get(id(g))
             if rec:
