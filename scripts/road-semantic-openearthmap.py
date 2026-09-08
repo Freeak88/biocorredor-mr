@@ -5,6 +5,10 @@ Objetivo: evaluar sin fine-tuning local si un modelo multi-clase entrenado sobre
 OpenEarthMap separa mejor `Road` de `Bareland`, `Pavement`, `Cropland` y
 `Building` que las heurísticas V4.
 
+Soporta aceleración DirectML opcional en Windows/AMD mediante torch-directml.
+Con --device auto intenta DirectML y, si no está disponible o falla un operador,
+cae explícitamente a CPU sin mezclar resultados parciales.
+
 No es una capa final ni una conclusión de loteo/legalidad.
 """
 from __future__ import annotations
@@ -29,10 +33,6 @@ spec.loader.exec_module(v2)
 MODEL_ID = "mfaytin/mask2former-satellite"
 DEFAULT_OUTPUT = v2.HISTORY_ROOT / "road-semantic-openearthmap"
 
-# OpenEarthMap se publica normalmente con 8 clases semánticas sin Background.
-# El model card de este checkpoint documenta además una variante de 9 clases con
-# Background explícito. Detectamos la cantidad real de canales en runtime y no
-# forzamos silenciosamente un índice de Road incorrecto.
 LABELS_8 = [
     "Bareland", "Grass", "Pavement", "Road",
     "Tree", "Water", "Cropland", "Building",
@@ -56,6 +56,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--threshold", type=float, default=0.35)
     p.add_argument("--cpu-threads", type=int, default=20)
     p.add_argument("--min-productivo-tile-fraction", type=float, default=0.01)
+    p.add_argument(
+        "--device",
+        choices=["auto", "directml", "cpu"],
+        default="auto",
+        help="auto intenta DirectML y cae a CPU; directml exige torch-directml; cpu fuerza CPU",
+    )
     return p.parse_args()
 
 
@@ -95,6 +101,34 @@ def save_gray(path: Path, arr01: np.ndarray) -> None:
     cv2.imwrite(str(path), np.clip(arr01 * 255.0, 0, 255).astype(np.uint8))
 
 
+def choose_device(args, torch):
+    if args.device == "cpu":
+        return torch.device("cpu"), "cpu"
+
+    try:
+        import torch_directml
+        dml = torch_directml.device()
+        return dml, "directml"
+    except Exception as exc:
+        if args.device == "directml":
+            raise SystemExit(f"DirectML solicitado pero no disponible: {exc}")
+        print(f"DirectML no disponible; usando CPU: {exc}")
+        return torch.device("cpu"), "cpu"
+
+
+def run_model_once(model, inputs, device, torch, tile: int):
+    with torch.inference_mode():
+        outputs = model(**{k: v.to(device) for k, v in inputs.items()})
+        sem = semantic_scores(outputs, torch)
+        sem = torch.nn.functional.interpolate(
+            sem,
+            size=(tile, tile),
+            mode="bilinear",
+            align_corners=False,
+        )[0]
+        return sem.to("cpu").numpy().astype(np.float32)
+
+
 def main() -> None:
     args = parse_args()
     if args.stride <= 0 or args.tile <= 0 or args.stride > args.tile:
@@ -125,7 +159,20 @@ def main() -> None:
 
     processor = AutoImageProcessor.from_pretrained(args.model)
     model = Mask2FormerForUniversalSegmentation.from_pretrained(args.model)
-    model.eval().to("cpu")
+    model.eval()
+
+    device, device_name = choose_device(args, torch)
+    print(f"device={device_name}")
+    try:
+        model.to(device)
+    except Exception as exc:
+        if device_name != "directml" or args.device == "directml":
+            raise
+        print(f"DirectML no pudo cargar el modelo; fallback CPU: {exc}")
+        device = torch.device("cpu")
+        device_name = "cpu"
+        model.to(device)
+        print("device=cpu")
 
     ys = positions(h, args.tile, args.stride)
     xs = positions(w, args.tile, args.stride)
@@ -136,6 +183,7 @@ def main() -> None:
     processed = 0
     skipped = 0
     labels = None
+    dml_fallback_done = False
 
     for y in ys:
         for x in xs:
@@ -157,16 +205,20 @@ def main() -> None:
                 return_tensors="pt",
                 do_resize=False,
             )
-            with torch.inference_mode():
-                outputs = model(**{k: v.to("cpu") for k, v in inputs.items()})
-                sem = semantic_scores(outputs, torch)
-                sem = torch.nn.functional.interpolate(
-                    sem,
-                    size=(args.tile, args.tile),
-                    mode="bilinear",
-                    align_corners=False,
-                )[0]
-                sem_np = sem.cpu().numpy().astype(np.float32)
+
+            try:
+                sem_np = run_model_once(model, inputs, device, torch, args.tile)
+            except Exception as exc:
+                if device_name == "directml" and args.device == "auto" and not dml_fallback_done:
+                    print(f"DirectML falló durante inferencia; reiniciando en CPU: {exc}")
+                    device = torch.device("cpu")
+                    device_name = "cpu"
+                    model.to(device)
+                    dml_fallback_done = True
+                    print("device=cpu")
+                    sem_np = run_model_once(model, inputs, device, torch, args.tile)
+                else:
+                    raise
 
             if labels is None:
                 labels = labels_for_channels(int(sem_np.shape[0]))
@@ -204,8 +256,6 @@ def main() -> None:
     cv2.imwrite(str(out_dir / "road-argmax.png"), road_argmax.astype(np.uint8) * 255)
     cv2.imwrite(str(out_dir / "road-strong.png"), road_strong.astype(np.uint8) * 255)
 
-    # Overlay de contexto multiclase: Road=cian, Pavement=amarillo,
-    # Bareland=naranja, Building=magenta, Cropland=verde.
     overlay = image_bgr.astype(np.float32).copy()
     palette_bgr = {
         road_idx: np.array([255, 255, 0], dtype=np.float32),
@@ -245,6 +295,7 @@ def main() -> None:
         "training_domain": "OpenEarthMap",
         "status": "diagnostic external semantic baseline only",
         "registered_dir": str(registered_dir),
+        "device": device_name,
         "tile": args.tile,
         "stride": args.stride,
         "tiles_processed": processed,
