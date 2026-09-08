@@ -1,6 +1,6 @@
 # BioCorredor MR — QA temporal OpenEarthMap / Road
 
-Estado: corrida temporal completa; QA visual multifecha pendiente
+Estado: corrida temporal completa; QA visual multifecha **APROBADO COMO PRIOR TEMPORAL**
 Scope: **Productivo only**
 Branch: `feature/validacion-territorial`
 
@@ -30,7 +30,7 @@ Todas las inferencias usan mosaicos co-registrados en `tmp/territorial-analysis/
 | 2023-04-19 | 0.037848 | 0.040445 | 0.271200 | 0.979874 |
 | 2026-01-11 | 0.041182 | 0.042433 | 0.317524 | 0.986998 |
 
-La fracción `Road` por argmax aumenta de ~0.57% en 2016 a ~4.12% en 2026 dentro del Productivo del Cluster 2. Esa trayectoria es compatible con expansión/consolidación vial observable, pero **todavía no debe interpretarse causalmente** hasta cerrar QA visual multifecha y controlar sensibilidad radiométrica/domain shift entre escenas.
+La fracción `Road` por argmax aumenta de ~0.57% en 2016 a ~4.12% en 2026 dentro del Productivo del Cluster 2. Esa trayectoria es compatible con expansión/consolidación vial observable, pero **no debe interpretarse causalmente ni como porcentaje loteado**.
 
 ## 4. Contexto multiclase por fecha
 
@@ -44,7 +44,7 @@ La fracción `Road` por argmax aumenta de ~0.57% en 2016 a ~4.12% en 2026 dentro
 
 La evolución conjunta de `Road`, `Pavement`, `Cropland` y `Building` es territorialmente plausible, pero las clases no son mediciones administrativas ni legales y pueden variar por condiciones de captura.
 
-## 5. Gate 2023
+## 5. QA visual 2023
 
 QA visual 2023: **PASS como prior semántico de caminos, no como máscara final cruda**.
 
@@ -59,7 +59,26 @@ Errores aún visibles:
 - ciertos elementos vegetales lineales;
 - trazos internos productivos que pueden confundirse con road.
 
-## 6. GPU / runtime
+## 6. QA visual multifecha 2016–2026
+
+Gate visual multifecha: **PASS COMO PRIOR TEMPORAL**.
+
+Lectura de los overlays:
+- 2016 muestra una red interna muy limitada, con detecciones concentradas en corredores ya consolidados o accesos puntuales;
+- 2020 incorpora algunos ejes nuevos y una primera expansión localizada hacia sectores con ocupación incipiente;
+- 2022 muestra una ampliación clara de trazados internos ortogonales y redes de acceso en sectores que luego continúan ocupándose;
+- 2023 consolida esa red y recupera buena parte de las grillas viales visibles;
+- 2026 mantiene gran parte de los corredores detectados previamente y agrega/fortalece otros, especialmente en sectores de expansión reciente.
+
+La comparación visual favorece la hipótesis de **aparición y persistencia real de infraestructura vial observable**, no sólo un cambio radiométrico global entre escenas. Aun así, algunos falsos positivos agrícolas/parcelarios siguen presentes y deben tratarse como señal incierta.
+
+Decisión:
+- la tendencia temporal agregada se acepta como evidencia física auxiliar;
+- `Road argmax` por fecha no se convierte directamente en superficie vial final;
+- la siguiente capa debe medir persistencia/aparición con tolerancia espacial por registro y separar señales intermitentes;
+- fine-tuning local continúa postergado.
+
+## 7. GPU / runtime
 
 Workstation Windows con AMD RX 6700 XT:
 - `torch-directml` detecta `privateuseone:0`;
@@ -69,22 +88,29 @@ Workstation Windows con AMD RX 6700 XT:
 
 Esto no invalida el modelo. Sólo impide acelerarlo con este backend/arquitectura.
 
-## 7. Decisión actual
+## 8. Decisión actual
 
 - **Fine-tuning: POSTERGADO.** No es necesario todavía.
-- **OpenEarthMap Road: PASS como prior semántico.**
+- **OpenEarthMap Road: PASS como prior semántico y temporal.**
 - **V4 corridor: mantener como feature geométrica auxiliar.**
 - **Earthwork: mantener como feature temporal auxiliar.**
-- Próximo objetivo: construir una capa temporal híbrida que mida **aparición, persistencia y consolidación** de trazas viales, no sólo una máscara independiente por fecha.
+- Próximo objetivo: construir una capa temporal híbrida que mida **aparición, persistencia y consolidación** de trazas viales.
 
-## 8. Próximo gate
+## 9. Próximo gate
 
-Antes de derivar `internal_road_score` por parcela:
-1. revisar visualmente `road-overlay.jpg` de 2016, 2020, 2022 y 2026;
-2. comprobar que el aumento agregado corresponde a calles/corredores reales y no a cambio de radiometría o estilo de escena;
-3. construir persistencia multifecha a partir de `Road probability`/argmax, con tolerancia espacial por registro;
-4. distinguir `persistent_road`, `new_road_candidate`, `intermittent_linear_signal` y `uncertain`;
-5. combinar luego con V4, earthwork y superficie cubierta;
-6. sólo después agregar por parcela Productivo.
+Script preparado: `scripts/analyze-road-temporal-persistence.py`.
+
+Debe:
+1. usar `road-argmax.png` de las cinco fechas ya inferidas;
+2. aplicar tolerancia espacial diferenciada por calidad de co-registro;
+3. usar 2026 como referencia de estado actual;
+4. distinguir, como mínimo:
+   - `persistent_pre2020`
+   - `new_2022_2023_candidate`
+   - `new_2026_candidate`
+   - `intermittent_or_disappeared`
+   - `uncertain`
+5. generar overlay y QA numérico;
+6. pasar QA visual antes de combinar con V4, earthwork o agregar por parcela.
 
 No desplegar esta capa todavía.
