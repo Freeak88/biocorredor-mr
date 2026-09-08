@@ -35,7 +35,7 @@ from shapely.geometry import shape
 
 DEFAULT_META = Path("config/territorial/cluster-02-georef.json")
 DEFAULT_PRODUCTIVA = Path("public/data/auditoria/zonificacion-11819-productiva.geojson.gz")
-DEFAULT_REGISTERED = Path("tmp/territorial-analysis/cluster-02-history/registered-v2")
+DEFAULT_REGISTERED = Path("tmp/territorial-analysis/cluster-02-history/registered-local")
 DEFAULT_OUTPUT = Path("tmp/territorial-analysis/cluster-02-history/physical-change-candidates")
 DEFAULT_DATES = ["2016-11-30", "2020-03-03", "2022-03-01", "2023-04-19", "2026-01-11"]
 
