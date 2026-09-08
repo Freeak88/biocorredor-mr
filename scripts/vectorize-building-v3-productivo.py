@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 """Vectoriza la segmentación V3 oficial y la restringe al suelo Productivo.
 
-Principios:
-- usa la georreferenciación histórica real del mosaico (bbox_wgs84 + z18);
-- separa instancias con watershed usando mask probability + signed distance;
-- convierte píxeles a WGS84 mediante Web Mercator world pixels;
-- recorta exclusivamente contra las parcelas Productivo ya reconstruidas;
-- exporta objetos y resumen por parcela.
+La georreferenciación se reconstruye desde bbox_wgs84 + z18 usando world pixels
+Web Mercator. La capa Productivo es la reconstrucción oficial ya versionada en
+public/data/auditoria/zonificacion-11819-productiva.geojson.gz.
 
-Esto NO determina legalidad, aprobación ni venta. Produce evidencia de superficie
-construida como una subcapa de transformación física observable.
+Los edificios son una subcapa de transformación física observable; no prueban por
+sí solos loteo, venta, aprobación ni ilegalidad.
 """
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import math
 from pathlib import Path
@@ -24,15 +22,17 @@ import numpy as np
 import pandas as pd
 from scipy import ndimage
 from shapely.geometry import Polygon
-from shapely.ops import transform as shp_transform
+
+DEFAULT_META = Path("config/territorial/cluster-02-georef.json")
+DEFAULT_PRODUCTIVA = Path("public/data/auditoria/zonificacion-11819-productiva.geojson.gz")
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--seg-dir", type=Path, required=True)
     p.add_argument("--date", default="2023-04-19")
-    p.add_argument("--metadata", type=Path, required=True)
-    p.add_argument("--productiva-parcels", type=Path, required=True)
+    p.add_argument("--metadata", type=Path, default=DEFAULT_META)
+    p.add_argument("--productiva", type=Path, default=DEFAULT_PRODUCTIVA)
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--threshold", type=float, default=0.4371)
     p.add_argument("--seed-distance-threshold", type=float, default=0.20)
@@ -65,51 +65,44 @@ def load_gray(path: Path) -> np.ndarray:
     return arr
 
 
+def load_geojson(path: Path) -> gpd.GeoDataFrame:
+    if path.suffix.lower() == ".gz":
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return gpd.GeoDataFrame.from_features(data["features"], crs=4326)
+    return gpd.read_file(path)
+
+
 def reconstruct_inputs(seg_dir: Path, date: str) -> tuple[np.ndarray, np.ndarray]:
-    prob_u8 = load_gray(seg_dir / f"{date}-building-prob.png")
-    dist_u8 = load_gray(seg_dir / f"{date}-building-distance.png")
-    prob = prob_u8.astype(np.float32) / 255.0
-    signed_distance = dist_u8.astype(np.float32) / 255.0 * 2.0 - 1.0
-    return prob, signed_distance
+    prob = load_gray(seg_dir / f"{date}-building-prob.png").astype(np.float32) / 255.0
+    dist = load_gray(seg_dir / f"{date}-building-distance.png").astype(np.float32) / 255.0 * 2.0 - 1.0
+    return prob, dist
 
 
 def watershed_instances(prob: np.ndarray, signed_distance: np.ndarray, threshold: float,
                         seed_distance_threshold: float, min_seed_px: int) -> np.ndarray:
     foreground = prob >= threshold
     seeds = foreground & (signed_distance >= seed_distance_threshold)
-
     labels, n = ndimage.label(seeds)
     if n:
         counts = np.bincount(labels.ravel())
-        remove = np.where(counts < min_seed_px)[0]
-        if len(remove):
-            labels[np.isin(labels, remove)] = 0
+        small = np.where(counts < min_seed_px)[0]
+        if len(small):
+            labels[np.isin(labels, small)] = 0
         labels, _ = ndimage.label(labels > 0)
 
-    # Fallback para edificios sin núcleo positivo suficiente.
-    unlabeled_fg = foreground & (labels == 0)
-    if labels.max() == 0 or unlabeled_fg.mean() > 0.01:
-        fallback, _ = ndimage.label(foreground)
-        if labels.max() == 0:
-            labels = fallback
-        else:
-            next_id = int(labels.max()) + 1
-            for lab in range(1, int(fallback.max()) + 1):
-                comp = fallback == lab
-                if np.any(labels[comp] > 0):
-                    continue
-                if int(comp.sum()) >= min_seed_px:
-                    labels[comp] = next_id
-                    next_id += 1
+    if labels.max() == 0:
+        labels, _ = ndimage.label(foreground)
 
-    # OpenCV watershed necesita una imagen de 3 canales. El gradiente combina
-    # probabilidad de máscara y distancia para empujar fronteras a zonas menos probables.
-    energy = np.clip((1.0 - prob) * 180.0 + (1.0 - (signed_distance + 1.0) / 2.0) * 75.0, 0, 255)
+    energy = np.clip(
+        (1.0 - prob) * 180.0 + (1.0 - (signed_distance + 1.0) / 2.0) * 75.0,
+        0,
+        255,
+    )
     img = cv2.cvtColor(energy.astype(np.uint8), cv2.COLOR_GRAY2BGR)
     markers = labels.astype(np.int32) + 1
     markers[~foreground] = 1
-    unknown = foreground & (labels == 0)
-    markers[unknown] = 0
+    markers[foreground & (labels == 0)] = 0
     cv2.watershed(img, markers)
     out = markers - 1
     out[out < 0] = 0
@@ -133,9 +126,9 @@ def main() -> None:
     a.output_dir.mkdir(parents=True, exist_ok=True)
 
     meta = json.loads(a.metadata.read_text(encoding="utf-8"))
-    bbox = meta["bbox_wgs84"]
+    bbox = list(map(float, meta["bbox_wgs84"]))
     z = int(meta.get("zoom", 18))
-    xmin, ymin, xmax, ymax = map(float, bbox)
+    xmin, ymin, xmax, ymax = bbox
     left_px, top_px = lonlat_to_world_px(xmin, ymax, z)
     right_px, bottom_px = lonlat_to_world_px(xmax, ymin, z)
 
@@ -158,20 +151,19 @@ def main() -> None:
     rows = []
     for lab in range(1, int(instances.max()) + 1):
         mask = (instances == lab).astype(np.uint8)
-        px_area = int(mask.sum())
-        if px_area == 0:
+        if not mask.any():
             continue
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        ys, xs = np.where(mask > 0)
+        vals = prob[ys, xs]
         for contour in contours:
             poly = contour_to_wgs84(contour, left_px, top_px, z)
             if poly is None:
                 continue
-            ys, xs = np.where(mask > 0)
-            vals = prob[ys, xs]
             rows.append({
                 "date": a.date,
                 "instance_id": int(lab),
-                "pixel_area": px_area,
+                "pixel_area": int(mask.sum()),
                 "prob_mean": float(vals.mean()),
                 "prob_p10": float(np.percentile(vals, 10)),
                 "prob_p90": float(np.percentile(vals, 90)),
@@ -179,21 +171,22 @@ def main() -> None:
             })
 
     objects = gpd.GeoDataFrame(rows, geometry="geometry", crs=4326)
-    productiva = gpd.read_file(a.productiva_parcels).to_crs(4326)
+    productiva = load_geojson(a.productiva).to_crs(4326)
     if "partida" not in productiva.columns:
         raise SystemExit("La capa Productivo no contiene columna 'partida'")
 
-    # Operación métrica en UTM 21S, adecuada para Almirante Brown.
     metric_crs = 32721
     obj_m = objects.to_crs(metric_crs)
     prod_m = productiva.to_crs(metric_crs)
 
+    # Scope lock: el recorte se hace contra la unión exacta de las 520 parcelas
+    # Productivo reconstruidas. Nada fuera de esta geometría sobrevive.
     productiva_union = prod_m.geometry.union_all()
     obj_m["geometry"] = obj_m.geometry.intersection(productiva_union)
     obj_m = obj_m[~obj_m.geometry.is_empty].copy()
     obj_m["area_m2"] = obj_m.geometry.area
     obj_m = obj_m[obj_m["area_m2"] >= a.min_area_m2].copy()
-    if a.simplify_m > 0:
+    if a.simplify_m > 0 and len(obj_m):
         obj_m["geometry"] = obj_m.geometry.simplify(a.simplify_m, preserve_topology=True)
 
     joined = gpd.sjoin(
@@ -203,18 +196,19 @@ def main() -> None:
         predicate="intersects",
     ).drop(columns=["index_right"], errors="ignore")
 
-    # Evitar doble asignación por bordes: asignar cada objeto a la parcela con mayor área de intersección.
     assignments = []
     prod_by_partida = {str(r.partida): r.geometry for _, r in prod_m.iterrows()}
     for idx, r in joined.iterrows():
         partida = str(r["partida"])
-        inter_area = float(r.geometry.intersection(prod_by_partida[partida]).area)
-        assignments.append((idx, partida, inter_area))
+        area = float(r.geometry.intersection(prod_by_partida[partida]).area)
+        assignments.append((idx, partida, area))
     assign_df = pd.DataFrame(assignments, columns=["idx", "partida", "inter_area_m2"])
+
     if not assign_df.empty:
         best = assign_df.sort_values("inter_area_m2", ascending=False).drop_duplicates("idx")
         obj_m = obj_m.loc[best["idx"]].copy()
-        obj_m["partida"] = best.set_index("idx").loc[obj_m.index, "partida"].values
+        lookup = best.set_index("idx")["partida"]
+        obj_m["partida"] = [lookup.loc[i] for i in obj_m.index]
     else:
         obj_m = obj_m.iloc[0:0].copy()
         obj_m["partida"] = pd.Series(dtype=str)
@@ -247,6 +241,8 @@ def main() -> None:
     qa = {
         "date": a.date,
         "scope": "Productivo only",
+        "productiva_source": str(a.productiva),
+        "productiva_parcel_count": int(len(productiva)),
         "bbox_wgs84": bbox,
         "zoom": z,
         "raster_width_px": w,
@@ -263,7 +259,7 @@ def main() -> None:
         "productiva_parcels_with_buildings": int(obj_m["partida"].nunique()) if len(obj_m) else 0,
         "min_area_m2": a.min_area_m2,
         "simplify_m": a.simplify_m,
-        "warning": "Edificios son una subcapa de transformación física; no equivalen por sí solos a loteo, venta o ilegalidad.",
+        "warning": "Edificios son sólo una subcapa de transformación física; no equivalen por sí solos a loteo, venta o ilegalidad.",
     }
     out_qa.write_text(json.dumps(qa, indent=2, ensure_ascii=False), encoding="utf-8")
 
