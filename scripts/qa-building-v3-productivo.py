@@ -13,6 +13,7 @@ from pathlib import Path
 
 import geopandas as gpd
 from PIL import Image, ImageDraw, ImageFont
+from shapely.geometry import box
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,10 +58,10 @@ def draw_geom(draw: ImageDraw.ImageDraw, geom, left_px: float, top_px: float, z:
         draw.line(ring + [ring[0]], fill=outline, width=width)
 
 
-def safe_crop(image: Image.Image, box: tuple[int, int, int, int], size: int) -> tuple[Image.Image, tuple[int, int]]:
+def safe_crop(image: Image.Image, box_coords: tuple[int, int, int, int], size: int) -> tuple[Image.Image, tuple[int, int]]:
     """Recorta sin relleno negro fuera del raster y devuelve el origen real usado."""
     w, h = image.size
-    x0, y0, x1, y1 = box
+    x0, y0, x1, y1 = box_coords
     if w <= size:
         x0 = 0
     else:
@@ -105,7 +106,7 @@ def main() -> None:
     overlap_stats = None
     if a.overture.exists():
         overture = gpd.read_file(a.overture).to_crs(4326)
-        bbox_poly = gpd.GeoSeries.from_bbox((xmin, ymin, xmax, ymax)).set_crs(4326).iloc[0]
+        bbox_poly = box(xmin, ymin, xmax, ymax)
         overture = overture[overture.geometry.intersects(bbox_poly)].copy()
         for _, row in overture.iterrows():
             draw_geom(draw, row.geometry, left_px, top_px, z, (64, 220, 255), 1)
@@ -157,7 +158,7 @@ def main() -> None:
         half = crop_size // 2
         requested_box = (int(cx - half), int(cy - half), int(cx + half), int(cy + half))
         crop, (ox, oy) = safe_crop(image, requested_box, crop_size)
-        box = (ox, oy, ox + crop_size, oy + crop_size)
+        crop_box = (ox, oy, ox + crop_size, oy + crop_size)
         cd = ImageDraw.Draw(crop)
 
         # Dibujar todos los V3 que tocan el crop usando coordenadas locales.
@@ -165,7 +166,7 @@ def main() -> None:
             minx, miny, maxx, maxy = r2.geometry.bounds
             px1, py1 = lonlat_to_world_px(minx, maxy, z)
             px2, py2 = lonlat_to_world_px(maxx, miny, z)
-            if px2 - left_px < box[0] or px1 - left_px > box[2] or py2 - top_px < box[1] or py1 - top_px > box[3]:
+            if px2 - left_px < crop_box[0] or px1 - left_px > crop_box[2] or py2 - top_px < crop_box[1] or py1 - top_px > crop_box[3]:
                 continue
             for ring in geom_to_rings(r2.geometry, left_px, top_px, z):
                 local = [(x - ox, y - oy) for x, y in ring]
@@ -176,7 +177,7 @@ def main() -> None:
                 minx, miny, maxx, maxy = r2.geometry.bounds
                 px1, py1 = lonlat_to_world_px(minx, maxy, z)
                 px2, py2 = lonlat_to_world_px(maxx, miny, z)
-                if px2 - left_px < box[0] or px1 - left_px > box[2] or py2 - top_px < box[1] or py1 - top_px > box[3]:
+                if px2 - left_px < crop_box[0] or px1 - left_px > crop_box[2] or py2 - top_px < crop_box[1] or py1 - top_px > crop_box[3]:
                     continue
                 for ring in geom_to_rings(r2.geometry, left_px, top_px, z):
                     local = [(x - ox, y - oy) for x, y in ring]
