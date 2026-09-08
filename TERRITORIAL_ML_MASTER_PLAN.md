@@ -18,7 +18,7 @@ Objetivo: detectar y medir transformación física observable dentro del suelo P
 7. Un loteo físico puede existir sin viviendas: nivelación/desmonte, trazado de calles internas, postes/infraestructura, cercos/muros y morfología de subdivisión son señales válidas.
 8. Los edificios son sólo una subcapa de transformación física, no la definición de loteo.
 9. Toda comparación histórica debe usar imágenes co-registradas y guardar confianza geométrica.
-10. Overture es evidencia auxiliar y control de calidad, no ground truth.
+10. Overture es evidencia auxiliar y control de calidad, no ground truth ni filtro duro.
 11. La validación humana forma parte del sistema.
 12. No desplegar artefactos analíticos experimentales hasta cerrar QA y criterios de aceptación.
 
@@ -90,8 +90,8 @@ Semántica oficial confirmada:
 
 Preprocesamiento oficial:
 - RGB `/255`
-- mean `[0.4296737853453577, 0.4001659668453235, 0.34333372802741474]`
-- std `[0.2056069389373208, 0.16738555558380538, 0.1598986422586595]`
+- mean `[0.4296737853453577,0.4001659668453235,0.34333372802741474]`
+- std `[0.2056069389373208,0.16738555558380538,0.1598986422586595]`
 - Gaussian blending `sigma_frac=0.125`
 - stride operativo: `128`
 - threshold operativo: `0.4371`
@@ -147,16 +147,44 @@ V3 probability + signed distance
   -> GeoJSON + CSV + resumen por parcela + QA JSON
 ```
 
-Último resultado 2023:
+Resultado 2023:
 - `productiva_parcels_resolved`: **520**
 - parcelas Productivo inválidas reparadas: **0**
 - geometrías inválidas de máscara reparadas: **1**
 - raw instance labels: **790**
 - objetos V3 dentro de Productivo: **290**
-- superficie construida detectada dentro de Productivo: **60,381.44 m²**
+- superficie detectada dentro de Productivo: **60,381.44 m²**
 - parcelas Productivo con al menos un objeto detectado: **49**
 
-Estos números son **preliminares hasta completar QA de polígonos**. No usarlos todavía como cifra territorial final ni compararlos jurídicamente con el cupo de la ordenanza.
+QA visual y Overture:
+- georreferencia: PASS;
+- máscara/segmentación como superficie cubierta: PASS CON QA;
+- vectorización geográfica: PASS;
+- Overture: `279/290 = 96.2%` con algún solapamiento;
+- `229/290 = 79.0%` con solapamiento >=50%;
+- mediana de solapamiento V3 cubierta por Overture: `0.7436`;
+- 11 objetos sin overlap;
+- 61 objetos con overlap <50%;
+- revisión dirigida de 40 desacuerdos: COMPLETA.
+
+Conclusión de la revisión dirigida:
+- el bajo overlap con Overture no implica por sí solo falso positivo V3;
+- muchos desacuerdos corresponden a cubiertas reales omitidas, parciales, desplazadas o segmentadas distinto por Overture;
+- existen falsos positivos reales sobre suelo desnudo/preparado, agua/piletas y algunas superficies no edilicias;
+- los complejos productivos e invernaderos muestran diferencias frecuentes de partición entre V3 y Overture;
+- Overture queda como feature/QA auxiliar, nunca como filtro duro.
+
+Decisión operativa:
+- `290` y `790` NO son conteos reales de edificios;
+- la separación fina de instancias no bloquea el uso de la subcapa como **superficie cubierta observable**;
+- la cifra `60,381.44 m²` continúa provisional hasta clasificar superficie edilicia/productiva/no edilicia/ambigua;
+- no se prioriza por ahora perfeccionar el conteo individual porque el objetivo territorial principal es señal de transformación física/loteo.
+
+Clases mínimas para esta subcapa:
+- `building_or_roof_surface`
+- `greenhouse_or_productive_cover`
+- `probable_nonbuilding_surface`
+- `uncertain_surface`
 
 ## 7. Arquitectura objetivo de detección territorial
 
@@ -165,9 +193,9 @@ MÁSCARA PRODUCTIVO (scope duro)
   |
   +-> VHR histórica / fechas / registro / confianza geométrica
   |
-  +-> señal: edificios
+  +-> señal: edificios / cubiertas
   |     -> segmentación V3
-  |     -> watershed / vectorización
+  |     -> superficie cubierta + clase + confianza
   |
   +-> señal: movimiento de suelo / nivelación / desmonte
   |
@@ -209,23 +237,37 @@ Estado: COMPLETA PARA 2023.
 
 Gate V3 aprobado visualmente. V1/V2 descartadas para cuantificación.
 
-### Fase C — Vectorización de edificios
-Estado: EN CURSO.
+### Fase C — Vectorización / superficie cubierta
+Estado: **CERRADA COMO SUBCAPA DE EVIDENCIA 2023, CON CONTEO DE INSTANCIAS NO VALIDADO**.
 
 Hecho:
 - georreferencia recuperada y validada;
 - watershed V3;
 - scope Productivo duro;
 - 520 parcelas resueltas;
-- GeoJSON/CSV/QA 2023 generados.
+- GeoJSON/CSV/QA 2023;
+- QA visual general;
+- comparación auxiliar Overture;
+- panel dirigido de desacuerdos.
 
-Gate actual:
-- comparar polígonos V3 contra imagen 2023 y Overture;
-- revisar falsos positivos grandes y fragmentación/fusión de techos;
-- validar una muestra mínima de 40 objetos/casos antes de aceptar métricas de área.
+Gate:
+- PASS para superficie cubierta observable;
+- FAIL/no usar para conteo individual de edificios;
+- área total todavía provisional por clasificación pendiente de falsos positivos y tipo de cubierta.
+
+No seguir invirtiendo tiempo en conteo fino salvo que una salida específica lo requiera.
 
 ### Fase D — Señales no edilicias de loteo físico
-Estado: PENDIENTE.
+Estado: **SIGUIENTE BLOQUE ACTIVO**.
+
+Orden:
+1. movimiento de suelo / nivelación / desmonte;
+2. calles o trazados internos;
+3. infraestructura visible;
+4. cercos / muros;
+5. patrón de subdivisión;
+6. accesos;
+7. combinación con presencia de cubiertas.
 
 Variables objetivo:
 - `earthwork_or_leveling_score`
@@ -246,8 +288,10 @@ Variables mínimas:
 - `partida`
 - `nomenclatura`
 - `productive_area_m2`
-- `building_area_productive_m2`
-- `building_coverage_productive_pct`
+- `building_or_roof_surface_m2`
+- `greenhouse_or_productive_cover_m2`
+- `probable_nonbuilding_surface_m2`
+- `uncertain_surface_m2`
 - `earthwork_score`
 - `internal_road_score`
 - `utility_infrastructure_score`
@@ -298,7 +342,7 @@ Capas previstas:
 - VHR original/registrada
 - Productivo
 - GeoARBA
-- edificios detectados
+- superficie cubierta detectada
 - movimiento de suelo
 - calles internas
 - infraestructura
@@ -309,9 +353,9 @@ Capas previstas:
 - validación humana
 - antecedentes administrativos vinculados
 
-## 9. Variables de edificios
+## 9. Variables de cubiertas / edificios
 
-Por objeto conservar:
+Por objeto o complejo conservar:
 - `object_id`
 - `date`
 - `partida`
@@ -330,15 +374,13 @@ Por objeto conservar:
 - relación con caminos
 - IoU/intersección con Overture
 - confianza geométrica local
+- `surface_class`
 
-Clases operativas posibles:
-- `residential_probable`
-- `productive_shed`
-- `greenhouse`
-- `auxiliary_structure`
-- `mixed_or_complex`
-- `noise_or_nonbuilding`
-- `uncertain`
+Clases operativas:
+- `building_or_roof_surface`
+- `greenhouse_or_productive_cover`
+- `probable_nonbuilding_surface`
+- `uncertain_surface`
 
 Nunca usar `ilegal`, `usurpado`, `en negro` ni equivalentes como clases automáticas.
 
@@ -362,7 +404,7 @@ Nunca usar `ilegal`, `usurpado`, `en negro` ni equivalentes como clases automát
 Guardar por separado:
 - `registration_confidence`
 - `segmentation_confidence`
-- `object_classification_confidence`
+- `surface_classification_confidence`
 - `physical_loteo_confidence`
 
 ## 11. Cómputo y responsabilidad
@@ -399,15 +441,16 @@ No borrar archivos locales desconocidos ni usar `git clean -fd`.
 
 ## 12. Orden inmediato
 
-### Sprint actual — QA de edificios 2023
-1. comparar 290 polígonos V3 contra imagen 2023;
-2. comparar contra Overture como referencia auxiliar;
-3. revisar al menos 40 casos, incluyendo objetos grandes, pequeños, rurales, productivos y falsos positivos probables;
-4. medir fragmentación/fusión y error de área;
-5. decidir si el watershed/umbral requiere ajuste;
-6. congelar `building-v3-productivo-2023` como subcapa aceptada o iterar.
+### Sprint cerrado — QA de cubiertas 2023
+1. inferencia V3 oficial: HECHO;
+2. georreferencia: HECHO;
+3. vectorización Productivo: HECHO;
+4. QA visual general: HECHO;
+5. comparación Overture: HECHO;
+6. panel de desacuerdos: HECHO;
+7. decisión: subcapa aceptada como superficie cubierta observable; conteo individual no validado.
 
-### Sprint siguiente — señales físicas no edilicias
+### Sprint activo — señales físicas no edilicias
 1. movimiento de suelo/nivelación;
 2. calles internas;
 3. infraestructura visible;
@@ -415,17 +458,20 @@ No borrar archivos locales desconocidos ni usar `git clean -fd`.
 5. patrón de subdivisión;
 6. score combinado de `physical_loteo_signal`.
 
+La prioridad es detectar **preparación física para loteo incluso sin viviendas**.
+
 ## 13. Riesgos conocidos
 
 - 2020 tiene mayor error de registro local.
 - escenas VHR cambian iluminación, estación y sensor.
 - sombras/suelo desnudo pueden afectar señales no edilicias.
 - edificios agrícolas pueden dominar área sin implicar loteo residencial.
-- Overture puede fragmentar o representar sólo parte de un complejo.
+- Overture puede fragmentar, desplazar, simplificar u omitir una cubierta; no usarlo como filtro duro.
 - un único threshold puede no generalizar a todas las fechas/sensores.
 - la máscara Productivo necesitó reparación topológica de una geometría; mantener QA de validez.
 - superficies por atributos parcelarios y superficies geométricas no son idénticas; no mezclar denominadores.
 - el porcentaje jurídico exacto y su método de cómputo siguen pendientes.
+- el conteo de instancias de edificios no está validado y no debe entrar como métrica jurídica o territorial sin revisión.
 
 ## 14. Fuentes metodológicas
 
