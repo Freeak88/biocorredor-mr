@@ -235,6 +235,9 @@ def main() -> None:
     save_gray(out_dir / "road-probability.png", road_prob)
     cv2.imwrite(str(out_dir / "road-argmax.png"), road_argmax.astype(np.uint8) * 255)
     cv2.imwrite(str(out_dir / "road-strong.png"), road_strong.astype(np.uint8) * 255)
+    # Persistimos la clase semántica completa para análisis temporal parcelario sin
+    # depender de overlays coloreados. Los valores son índices de `labels_runtime`.
+    cv2.imwrite(str(out_dir / "landcover-argmax.png"), argmax.astype(np.uint8))
 
     overlay = image_bgr.astype(np.float32).copy()
     palette_bgr = {
@@ -306,6 +309,7 @@ def main() -> None:
     print(json.dumps(report, indent=2, ensure_ascii=False))
     print(f"road_overlay={out_dir / 'road-overlay.jpg'}")
     print(f"landcover_overlay={out_dir / 'landcover-overlay.jpg'}")
+    print(f"landcover_argmax={out_dir / 'landcover-argmax.png'}")
     print(f"qa={qa}")
 
 
