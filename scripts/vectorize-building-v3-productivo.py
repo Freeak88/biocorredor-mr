@@ -2,8 +2,9 @@
 """Vectoriza la segmentación V3 oficial y la restringe al suelo Productivo.
 
 La georreferenciación se reconstruye desde bbox_wgs84 + z18 usando world pixels
-Web Mercator. La pertenencia a Productivo se toma de las asignaciones finales de
-la Ordenanza 11.819/20 y la geometría parcelaria exacta se toma de GeoARBA.
+Web Mercator. El universo Productivo se toma de la geometría final versionada de
+la Ordenanza 11.819/20 y cada polígono Productivo se vincula por máxima superposición
+a la parcela GeoARBA correspondiente para recuperar partida/nomenclatura.
 
 Los edificios son una subcapa de transformación física observable; no prueban por
 sí solos loteo, venta, aprobación ni ilegalidad.
@@ -24,13 +25,14 @@ from scipy import ndimage
 from shapely.geometry import Polygon
 
 DEFAULT_META = Path("config/territorial/cluster-02-georef.json")
-DEFAULT_ASSIGNMENTS = Path("public/data/auditoria/zonificacion-11819-asignaciones.json.gz")
+DEFAULT_PRODUCTIVA = Path("public/data/auditoria/zonificacion-11819-productiva.geojson.gz")
 DEFAULT_GEOARBA = [
     Path("public/data/geoarba/ministro-rivadavia-parcels-noroeste.geojson"),
     Path("public/data/geoarba/ministro-rivadavia-parcels-noreste.geojson"),
     Path("public/data/geoarba/ministro-rivadavia-parcels-suroeste.geojson"),
     Path("public/data/geoarba/ministro-rivadavia-parcels-sureste.geojson"),
 ]
+EXPECTED_PRODUCTIVA_PARCELS = 520
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seg-dir", type=Path, required=True)
     p.add_argument("--date", default="2023-04-19")
     p.add_argument("--metadata", type=Path, default=DEFAULT_META)
-    p.add_argument("--assignments", type=Path, default=DEFAULT_ASSIGNMENTS)
+    p.add_argument("--productiva", type=Path, default=DEFAULT_PRODUCTIVA)
     p.add_argument("--geoarba", type=Path, nargs="+", default=DEFAULT_GEOARBA)
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--threshold", type=float, default=0.4371)
@@ -72,11 +74,12 @@ def load_gray(path: Path) -> np.ndarray:
     return arr
 
 
-def load_json(path: Path):
+def load_geojson(path: Path) -> gpd.GeoDataFrame:
     if path.suffix.lower() == ".gz":
         with gzip.open(path, "rt", encoding="utf-8") as fh:
-            return json.load(fh)
-    return json.loads(path.read_text(encoding="utf-8"))
+            data = json.load(fh)
+        return gpd.GeoDataFrame.from_features(data.get("features", []), crs=4326)
+    return gpd.read_file(path).to_crs(4326)
 
 
 def norm_id(value) -> str:
@@ -88,15 +91,13 @@ def norm_id(value) -> str:
     return text
 
 
-def load_productiva_parcels(assignments_path: Path, geoarba_paths: list[Path]) -> gpd.GeoDataFrame:
-    data = load_json(assignments_path)
-    assignments = data.get("assignments", data if isinstance(data, list) else [])
-    productiva_rows = [r for r in assignments if str(r.get("zone", "")).lower() == "productiva"]
-    if not productiva_rows:
-        raise SystemExit(f"No se encontraron asignaciones Productivo en {assignments_path}")
-
-    partidas = {norm_id(r.get("partida")) for r in productiva_rows if norm_id(r.get("partida"))}
-    nomenclaturas = {norm_id(r.get("nomenclatura")) for r in productiva_rows if norm_id(r.get("nomenclatura"))}
+def load_productiva_parcels(productiva_path: Path, geoarba_paths: list[Path]) -> gpd.GeoDataFrame:
+    productiva_geom = load_geojson(productiva_path).to_crs(4326)
+    if len(productiva_geom) != EXPECTED_PRODUCTIVA_PARCELS:
+        raise SystemExit(
+            "La capa Productivo no contiene el universo esperado: "
+            f"esperadas={EXPECTED_PRODUCTIVA_PARCELS}, encontradas={len(productiva_geom)}"
+        )
 
     frames = []
     for path in geoarba_paths:
@@ -106,38 +107,85 @@ def load_productiva_parcels(assignments_path: Path, geoarba_paths: list[Path]) -
         if "partida" not in g.columns and "nomenclatura" not in g.columns:
             raise SystemExit(f"GeoARBA sin partida/nomenclatura: {path}")
         g = g.copy()
-        g["_partida"] = g["partida"].map(norm_id) if "partida" in g.columns else ""
-        g["_nomenclatura"] = g["nomenclatura"].map(norm_id) if "nomenclatura" in g.columns else ""
-        keep = g["_partida"].isin(partidas) | g["_nomenclatura"].isin(nomenclaturas)
-        if keep.any():
-            frames.append(g.loc[keep].copy())
+        g["partida"] = g["partida"].map(norm_id) if "partida" in g.columns else ""
+        g["nomenclatura"] = g["nomenclatura"].map(norm_id) if "nomenclatura" in g.columns else ""
+        frames.append(g[["partida", "nomenclatura", "geometry"]])
 
-    if not frames:
-        raise SystemExit("No se pudieron resolver las parcelas Productivo contra GeoARBA")
-
-    productiva = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), geometry="geometry", crs=4326)
-    productiva["partida"] = productiva["_partida"]
-    productiva["nomenclatura"] = productiva["_nomenclatura"]
-    productiva["_key"] = np.where(
-        productiva["partida"] != "",
-        "P:" + productiva["partida"],
-        "N:" + productiva["nomenclatura"],
+    geoarba = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), geometry="geometry", crs=4326)
+    geoarba["_key"] = np.where(
+        geoarba["partida"] != "",
+        "P:" + geoarba["partida"],
+        "N:" + geoarba["nomenclatura"],
     )
-    productiva = productiva.drop_duplicates("_key").copy()
+    geoarba = geoarba.drop_duplicates("_key").copy()
 
-    expected = len(productiva_rows)
-    resolved = len(productiva)
-    if resolved != expected:
-        missing_partidas = sorted(partidas - set(productiva["partida"]))
-        missing_nomenclaturas = sorted(nomenclaturas - set(productiva["nomenclatura"]))
-        raise SystemExit(
-            "Productivo no resolvió exactamente contra GeoARBA: "
-            f"asignaciones={expected}, parcelas_resueltas={resolved}, "
-            f"partidas_faltantes={missing_partidas[:10]}, "
-            f"nomenclaturas_faltantes={missing_nomenclaturas[:10]}"
+    metric_crs = 32721
+    prod_m = productiva_geom.to_crs(metric_crs).reset_index(drop=True)
+    geo_m = geoarba.to_crs(metric_crs).reset_index(drop=True)
+
+    pairs = gpd.sjoin(
+        prod_m[["geometry"]],
+        geo_m[["partida", "nomenclatura", "geometry"]],
+        how="left",
+        predicate="intersects",
+    )
+    if pairs.empty:
+        raise SystemExit("No hubo intersecciones entre Productivo y GeoARBA")
+
+    candidates = []
+    for prod_idx, row in pairs.iterrows():
+        geo_idx = row.get("index_right")
+        if pd.isna(geo_idx):
+            continue
+        geo_idx = int(geo_idx)
+        inter_area = float(prod_m.loc[prod_idx, "geometry"].intersection(geo_m.loc[geo_idx, "geometry"]).area)
+        prod_area = float(prod_m.loc[prod_idx, "geometry"].area)
+        coverage = inter_area / prod_area if prod_area > 0 else 0.0
+        candidates.append(
+            {
+                "prod_idx": int(prod_idx),
+                "geo_idx": geo_idx,
+                "partida": str(geo_m.loc[geo_idx, "partida"]),
+                "nomenclatura": str(geo_m.loc[geo_idx, "nomenclatura"]),
+                "inter_area_m2": inter_area,
+                "coverage": coverage,
+            }
         )
 
-    return productiva
+    cand = pd.DataFrame(candidates)
+    if cand.empty:
+        raise SystemExit("No se pudieron vincular geometrías Productivo con GeoARBA")
+
+    best = cand.sort_values(["prod_idx", "inter_area_m2"], ascending=[True, False]).drop_duplicates("prod_idx")
+    if len(best) != EXPECTED_PRODUCTIVA_PARCELS:
+        missing = sorted(set(range(EXPECTED_PRODUCTIVA_PARCELS)) - set(best["prod_idx"]))
+        raise SystemExit(
+            "No se resolvieron las 520 geometrías Productivo contra GeoARBA: "
+            f"resueltas={len(best)}, faltantes={missing[:20]}"
+        )
+
+    weak = best[best["coverage"] < 0.999]
+    if len(weak):
+        sample = weak[["prod_idx", "partida", "nomenclatura", "coverage"]].head(10).to_dict("records")
+        raise SystemExit(
+            "Hay geometrías Productivo sin coincidencia GeoARBA >=99.9%: "
+            f"cantidad={len(weak)}, muestra={sample}"
+        )
+
+    out = prod_m.copy()
+    lookup = best.set_index("prod_idx")
+    out["partida"] = [lookup.loc[i, "partida"] for i in out.index]
+    out["nomenclatura"] = [lookup.loc[i, "nomenclatura"] for i in out.index]
+    out["geoarba_match_coverage"] = [float(lookup.loc[i, "coverage"]) for i in out.index]
+    out = out.to_crs(4326)
+
+    if out["partida"].replace("", np.nan).dropna().nunique() != EXPECTED_PRODUCTIVA_PARCELS:
+        raise SystemExit(
+            "Las 520 geometrías Productivo no resolvieron a 520 partidas únicas; "
+            "se requiere revisar duplicados o nomenclaturas sin partida."
+        )
+
+    return out
 
 
 def reconstruct_inputs(seg_dir: Path, date: str) -> tuple[np.ndarray, np.ndarray]:
@@ -211,8 +259,9 @@ def main() -> None:
     print(f"bbox_world_span={expected_w:.3f}x{expected_h:.3f}px")
     print(f"delta={w-expected_w:.3f}x{h-expected_h:.3f}px")
 
-    productiva = load_productiva_parcels(a.assignments, list(a.geoarba))
+    productiva = load_productiva_parcels(a.productiva, list(a.geoarba))
     print(f"productiva_parcels_resolved={len(productiva)}")
+    print(f"productiva_match_min={productiva['geoarba_match_coverage'].min():.6f}")
 
     instances = watershed_instances(
         prob, signed_distance, a.threshold, a.seed_distance_threshold, a.min_seed_px
@@ -246,8 +295,8 @@ def main() -> None:
     obj_m = objects.to_crs(metric_crs)
     prod_m = productiva.to_crs(metric_crs)
 
-    # Scope lock: sólo las 520 parcelas asignadas a Productivo forman el universo.
-    # Nada fuera de la unión de esas geometrías sobrevive al recorte.
+    # Scope lock: sólo las 520 parcelas Productivo forman el universo.
+    # Nada fuera de la unión exacta de esas geometrías sobrevive al recorte.
     productiva_union = prod_m.geometry.union_all()
     obj_m["geometry"] = obj_m.geometry.intersection(productiva_union)
     obj_m = obj_m[~obj_m.geometry.is_empty].copy()
@@ -319,9 +368,11 @@ def main() -> None:
     qa = {
         "date": a.date,
         "scope": "Productivo only",
-        "productiva_membership_source": str(a.assignments),
-        "productiva_geometry_source": [str(p) for p in a.geoarba],
+        "productiva_membership_source": str(a.productiva),
+        "productiva_geometry_source": str(a.productiva),
+        "geoarba_sources": [str(p) for p in a.geoarba],
         "productiva_parcel_count": int(len(productiva)),
+        "productiva_geoarba_match_min": float(productiva["geoarba_match_coverage"].min()),
         "bbox_wgs84": bbox,
         "zoom": z,
         "raster_width_px": w,
