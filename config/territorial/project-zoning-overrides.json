@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-08",
+  "purpose": "Manual project-level zoning corrections used to prevent commercial geocoding anchors from overriding the ordinance zoning scope.",
+  "precedence_rule": "Project-level zoning context does not modify the canonical 520 Productivo parcel membership. When a commercial pin conflicts with the known project zoning/location, the pin is treated as a marketing/map anchor and must not promote the project into the Productivo audit universe.",
+  "projects": {
+    "saint-henri-aero-country-club": {
+      "zoning_context": "Uso Específico",
+      "main_productivo_scope": false,
+      "status": "manual_correction_pending_document_crosscheck",
+      "notes": [
+        "Saint Henri is located behind the municipal farm / CEA / other areas mapped as Equipamiento, rather than on those Equipamiento parcels.",
+        "The Saint Henri development itself is identified as Uso Específico.",
+        "The commercial coordinate previously extracted at -34.8549898,-58.342622 falls on a Productivo parcel but must be treated as a misplaced/general commercial map anchor, not as evidence that the project is Productivo.",
+        "Exclude Saint Henri from the main Productivo numerator/denominator and from Productivo VHR targeting unless an independently verified project geometry intersects Productivo."
+      ]
+    }
+  }
+}

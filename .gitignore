@@ -10,3 +10,4 @@ data/geoarba/
 artifacts/block-a/*.zip
 .env*
 !.env.example
+.venv-road-baseline/
