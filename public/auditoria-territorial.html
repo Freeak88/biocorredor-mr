@@ -3,447 +3,122 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="description" content="Mapa interactivo de la auditoría territorial del Parque Rural de Ministro Rivadavia: zonificación, cupos, desarrollos, parcelas y evidencia histórica." />
-  <title>Auditoría Territorial · Parque Rural Ministro Rivadavia</title>
+  <meta name="description" content="Auditoría territorial de Ministro Rivadavia: transformación física en Productivo, cupo jurídico de Clubes de Campo, zonificación, evidencia comercial y serie histórica." />
+  <title>Auditoría Territorial · Ministro Rivadavia</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
-    :root{
-      color-scheme:light;
-      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      --paper:#f4f0e7;--panel:#faf7ef;--ink:#1f211d;--muted:#68685f;--line:#b9b4a8;
-      --green:#315f49;--green-soft:#dde9df;--amber:#9a6a1f;--amber-soft:#f3e7c7;
-      --red:#98483b;--red-soft:#eed8d3;--violet:#6f5a8a;--brown:#9b6a45;--gray:#73736d;
-      --shadow:4px 4px 0 rgba(37,37,31,.10);
-    }
-    *{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--paper);color:var(--ink);overflow:hidden}
-    button,input,select{font:inherit}a{color:inherit}.app{height:100%;display:grid;grid-template-columns:minmax(360px,460px) 1fr}
-    .sidebar{overflow:auto;background:var(--panel);border-right:1px solid var(--ink);padding:16px 16px 28px;scrollbar-gutter:stable}
-    .eyebrow{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#75654f}.title{font:700 30px/1.02 Georgia,serif;margin:5px 0 8px}.lead{font-size:12px;line-height:1.5;color:var(--muted);margin:0}
-    .top-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.action{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--ink);background:white;font-size:10px;font-weight:850;text-decoration:none;cursor:pointer;box-shadow:2px 2px 0 rgba(37,37,31,.07)}.action.primary{background:var(--ink);color:white}
-    .card{border:1px solid var(--ink);background:#fffdf8;padding:12px;margin-top:12px;box-shadow:var(--shadow)}.card h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin:0 0 9px}.card h3{font-size:12px;margin:10px 0 6px}.small{font-size:10px;line-height:1.45;color:var(--muted)}
-    .verdict{padding:11px;border-left:5px solid var(--green);background:var(--green-soft)}.verdict b{display:block;font:700 16px/1.15 Georgia,serif}.verdict span{font-size:10px;line-height:1.4;display:block;margin-top:5px}
-    .kpis{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.kpi{padding:9px;background:#efeadf;border:1px solid #d5cfc1}.kpi b{display:block;font-size:16px}.kpi span{display:block;font-size:8.5px;line-height:1.3;text-transform:uppercase;letter-spacing:.05em;color:#666257;margin-top:2px}.kpi.full{grid-column:1/-1;background:#f6f1e6}
-    .certainty{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.certainty div{padding:7px;border:1px solid #c7c1b5;font-size:8.5px;line-height:1.25}.certainty strong{display:block;font-size:9px;margin-bottom:2px}.certainty .a{background:var(--green-soft)}.certainty .b{background:var(--amber-soft)}.certainty .c{background:#e7e5df}
-    .section-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:12px}.tab{border:1px solid var(--line);background:#fff;padding:7px 3px;font-size:8px;font-weight:900;text-transform:uppercase;cursor:pointer}.tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}.tab-panel{display:none}.tab-panel.active{display:block}
-    .case-list{display:grid;gap:7px}.case{padding:9px;border:1px solid #c7c1b5;background:#fff;cursor:pointer}.case:hover,.case.active{border-color:var(--ink);box-shadow:2px 2px 0 rgba(0,0,0,.10)}.case-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.case-code{font-weight:900;font-size:10px;border:1px solid var(--ink);padding:2px 5px;background:#f5f0e5}.case strong{font-size:11px}.case p{font-size:9px;line-height:1.35;margin:4px 0 0;color:var(--muted)}
-    .badge{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;padding:3px 5px;border-radius:10px;white-space:nowrap}.badge.high{background:var(--green-soft);color:#244a36}.badge.medium{background:var(--amber-soft);color:#765116}.badge.pending{background:#e7e5df;color:#55534d}.badge.priority{background:var(--red-soft);color:#7b342b}
-    .detail{font-size:10px;line-height:1.45}.detail .hero{border-left:5px solid var(--violet);padding:8px 9px;background:#f0eaf4;margin-bottom:8px}.detail .hero strong{font-size:13px}.detail ul{margin:5px 0 0;padding-left:18px}.detail li{margin:3px 0}.row{display:grid;grid-template-columns:110px 1fr;gap:6px;padding:4px 0;border-bottom:1px dotted #cbc6bb}.row b{font-size:8.5px;text-transform:uppercase;letter-spacing:.05em}.source-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}.source-tag{font-size:8px;border:1px solid #c8c1b5;padding:3px 5px;background:#f5f1e8}
-    .timeline{display:grid;gap:8px}.event{border-left:4px solid #79766c;padding:2px 0 5px 10px}.event time{font-size:9px;font-weight:900}.event strong{font-size:10px;display:block}.event p{font-size:9px;line-height:1.4;color:var(--muted);margin:3px 0}.event .keys{font-size:8px;font-weight:800;color:#605b50}
-    .request-list{counter-reset:req;display:grid;gap:7px}.request{counter-increment:req;display:grid;grid-template-columns:24px 1fr;gap:7px;font-size:9.5px;line-height:1.4}.request:before{content:counter(req);display:grid;place-items:center;width:22px;height:22px;background:var(--ink);color:#fff;font-size:9px;font-weight:900;border-radius:50%}
-    .lead-list{display:grid;gap:6px}.lead-row{font-size:9px;border-bottom:1px solid #ddd7ca;padding-bottom:6px}.lead-row strong{font-size:10px}.lead-row span{display:block;color:var(--muted);margin-top:2px}
-    .map-wrap{position:relative;height:100%}#map{width:100%;height:100%;background:#e9e5da}.map-ui{position:absolute;z-index:900;top:12px;right:12px;display:grid;gap:7px;max-width:320px}.map-box{background:rgba(255,253,248,.96);border:1px solid var(--ink);padding:9px;box-shadow:2px 2px 0 rgba(0,0,0,.12);font-size:9px;line-height:1.4}.layer-toggle{display:flex;align-items:center;gap:7px}.layer-toggle input{accent-color:var(--ink)}
-    .basemap-group{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.basemap-group .layer-toggle{padding:5px 6px;border:1px solid #d0c9bc;background:#fff;justify-content:center}
-    .history-controls{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.history-controls select{width:100%;padding:6px;border:1px solid #bdb6a9;background:#fff;color:var(--ink);font-size:9px}.history-status{grid-column:1/-1;font-size:8px;line-height:1.35;color:var(--muted)}.history-badge{display:inline-block;padding:2px 5px;border:1px solid #c7c1b5;background:#f4efe4;font-weight:850}
-    .legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}.legend span{font-size:8px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:-1px}
-    .map-label{background:#fffdf8;border:1px solid #26251f!important;border-radius:2px!important;box-shadow:2px 2px 0 rgba(0,0,0,.12)!important;color:#211f1a;font-size:9px;font-weight:900;padding:2px 5px}.leaflet-tooltip-top:before{border-top-color:#26251f}
-    .footer-note{font-size:8px;color:#757064;margin-top:9px}.loading{padding:12px;background:#ece7dc;font-size:10px}.error{padding:9px;background:var(--red-soft);font-size:9px;color:#762f27}
-    @media(max-width:900px){body{overflow:auto}.app{display:block;height:auto}.sidebar{border-right:0;border-bottom:1px solid var(--ink);max-height:none}.map-wrap{height:72vh}.map-ui{left:10px;right:10px;top:10px;max-width:none}.section-tabs{position:sticky;top:0;z-index:20;background:var(--panel);padding:5px 0}.title{font-size:26px}}
+    :root{color-scheme:light;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--paper:#f4f0e7;--panel:#faf7ef;--ink:#1f211d;--muted:#68685f;--line:#b9b4a8;--green:#315f49;--green-soft:#dde9df;--amber:#9a6a1f;--amber-soft:#f3e7c7;--red:#98483b;--red-soft:#eed8d3;--violet:#6f5a8a;--blue:#44687c;--gray:#73736d;--shadow:4px 4px 0 rgba(37,37,31,.10)}
+    *{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--paper);color:var(--ink);overflow:hidden}button,input,select{font:inherit}a{color:inherit}.app{height:100%;display:grid;grid-template-columns:minmax(390px,500px) 1fr}.sidebar{overflow:auto;background:var(--panel);border-right:1px solid var(--ink);padding:16px 16px 28px;scrollbar-gutter:stable}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#75654f}.title{font:700 30px/1.02 Georgia,serif;margin:5px 0 8px}.lead{font-size:12px;line-height:1.5;color:var(--muted);margin:0}.top-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.action{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--ink);background:#fff;font-size:10px;font-weight:850;text-decoration:none;cursor:pointer;box-shadow:2px 2px 0 rgba(37,37,31,.07)}.action.primary{background:var(--ink);color:#fff}.card{border:1px solid var(--ink);background:#fffdf8;padding:12px;margin-top:12px;box-shadow:var(--shadow)}.card h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin:0 0 9px}.card h3{font-size:12px;margin:10px 0 6px}.small{font-size:10px;line-height:1.45;color:var(--muted)}.split{display:grid;grid-template-columns:1fr 1fr;gap:8px}.reading{border:1px solid #c8c1b5;padding:10px;background:#fff}.reading.physical{border-top:5px solid var(--green)}.reading.legal{border-top:5px solid var(--violet)}.reading h3{margin:0 0 5px;font:700 15px/1.1 Georgia,serif}.reading p{margin:0;font-size:9.5px;line-height:1.45;color:var(--muted)}.callout{padding:10px;border-left:5px solid var(--amber);background:var(--amber-soft);font-size:9.5px;line-height:1.45;margin-top:8px}.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:9px}.kpi{padding:9px;background:#efeadf;border:1px solid #d5cfc1}.kpi b{display:block;font-size:16px}.kpi span{display:block;font-size:8px;line-height:1.3;text-transform:uppercase;letter-spacing:.05em;color:#666257;margin-top:2px}.kpi.full{grid-column:1/-1;background:#f6f1e6}.bar{height:7px;background:#ddd7ca;margin-top:5px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--green)}.pill{display:inline-block;padding:3px 6px;border-radius:10px;background:#ece7dc;font-size:8px;font-weight:900;text-transform:uppercase}.pill.green{background:var(--green-soft);color:#244a36}.pill.amber{background:var(--amber-soft);color:#765116}.pill.violet{background:#eee7f4;color:#5e4a78}.pill.gray{background:#e9e7e2;color:#5f5d58}.section-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:12px}.tab{border:1px solid var(--line);background:#fff;padding:7px 3px;font-size:8px;font-weight:900;text-transform:uppercase;cursor:pointer}.tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}.tab-panel{display:none}.tab-panel.active{display:block}.case-list,.commercial-list,.timeline{display:grid;gap:7px}.case,.commercial{padding:9px;border:1px solid #c7c1b5;background:#fff}.case{cursor:pointer}.case:hover,.case.active{border-color:var(--ink);box-shadow:2px 2px 0 rgba(0,0,0,.10)}.case-head,.commercial-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.case-code{font-weight:900;font-size:10px;border:1px solid var(--ink);padding:2px 5px;background:#f5f0e5}.case strong,.commercial strong{font-size:11px}.case p,.commercial p{font-size:9px;line-height:1.4;margin:4px 0 0;color:var(--muted)}.detail{font-size:10px;line-height:1.45}.detail .hero{border-left:5px solid var(--violet);padding:8px 9px;background:#f0eaf4;margin-bottom:8px}.detail .hero strong{font-size:13px}.detail ul{margin:5px 0 0;padding-left:18px}.detail li{margin:3px 0}.row{display:grid;grid-template-columns:115px 1fr;gap:6px;padding:4px 0;border-bottom:1px dotted #cbc6bb}.row b{font-size:8.5px;text-transform:uppercase;letter-spacing:.05em}.event{border-left:4px solid #79766c;padding:2px 0 5px 10px}.event time{font-size:9px;font-weight:900}.event strong{font-size:10px;display:block}.event p{font-size:9px;line-height:1.4;color:var(--muted);margin:3px 0}.request-list{counter-reset:req;display:grid;gap:7px}.request{counter-increment:req;display:grid;grid-template-columns:24px 1fr;gap:7px;font-size:9.5px;line-height:1.4}.request:before{content:counter(req);display:grid;place-items:center;width:22px;height:22px;background:var(--ink);color:#fff;font-size:9px;font-weight:900;border-radius:50%}.source-links{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.source-links a{font-size:8px;padding:3px 5px;border:1px solid #c8c1b5;background:#f5f1e8;text-decoration:none}.model-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.metric{padding:8px;border:1px solid #d3ccbf;background:#fff}.metric b{font-size:14px;display:block}.metric span{font-size:8px;color:var(--muted);text-transform:uppercase}.map-wrap{position:relative;height:100%}#map{width:100%;height:100%;background:#e9e5da}.map-ui{position:absolute;z-index:900;top:12px;right:12px;display:grid;gap:7px;max-width:340px}.map-box{background:rgba(255,253,248,.96);border:1px solid var(--ink);padding:9px;box-shadow:2px 2px 0 rgba(0,0,0,.12);font-size:9px;line-height:1.4}.layer-toggle{display:flex;align-items:center;gap:7px}.layer-toggle input{accent-color:var(--ink)}.basemap-group{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.basemap-group .layer-toggle{padding:5px 6px;border:1px solid #d0c9bc;background:#fff;justify-content:center}.history-controls{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid #d8d2c6}.history-controls select{width:100%;padding:6px;border:1px solid #bdb6a9;background:#fff;color:var(--ink);font-size:9px}.history-status{grid-column:1/-1;font-size:8px;line-height:1.35;color:var(--muted)}.history-badge{display:inline-block;padding:2px 5px;border:1px solid #c7c1b5;background:#f4efe4;font-weight:850}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:-1px}.map-label{background:#fffdf8;border:1px solid #26251f!important;border-radius:2px!important;box-shadow:2px 2px 0 rgba(0,0,0,.12)!important;color:#211f1a;font-size:9px;font-weight:900;padding:2px 5px}.footer-note{font-size:8px;color:#757064;margin-top:9px}.loading{padding:12px;background:#ece7dc;font-size:10px}.error{padding:9px;background:var(--red-soft);font-size:9px;color:#762f27}
+    @media(max-width:980px){body{overflow:auto}.app{display:block;height:auto}.sidebar{border-right:0;border-bottom:1px solid var(--ink);max-height:none}.map-wrap{height:72vh}.map-ui{left:10px;right:10px;top:10px;max-width:none}.section-tabs{position:sticky;top:0;z-index:20;background:var(--panel);padding:5px 0}.title{font-size:26px}.split{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="eyebrow">Biocorredor MR · reconstrucción pública</div>
+    <div class="eyebrow">BioCorredor MR · actualización 08/09/2026</div>
     <h1 class="title">Auditoría territorial</h1>
-    <p class="lead">Un mapa para reconstruir qué permitía la norma, qué cambió físicamente y qué documentación debería existir. Cada dato tiene un nivel de certeza explícito.</p>
-    <div class="top-actions">
-      <a class="action primary" href="/documentos/solicitud-informacion-territorial-municipio-2026-09.pdf" target="_blank" rel="noreferrer">Descargar pedido al Municipio</a>
-      <button class="action" id="fitAll">Ver todos los casos</button>
-    </div>
+    <p class="lead">La plataforma separa desde ahora dos preguntas distintas: qué transformación física se observa dentro de <b>Productivo</b> y cuánto del <b>cupo jurídico de Clubes de Campo</b> fue efectivamente utilizado.</p>
+    <div class="top-actions"><a class="action primary" href="/documentos/solicitud-informacion-territorial-municipio-2026-09.pdf" target="_blank" rel="noreferrer">Pedido al Municipio</a><button class="action" id="fitAll">Ver casos</button></div>
 
     <section class="card">
-      <h2>Estado preliminar del cupo</h2>
-      <div class="verdict"><b id="verdictLabel">Cargando…</b><span id="verdictText"></span></div>
+      <h2>Dos lecturas distintas</h2>
+      <div class="split">
+        <div class="reading physical"><h3>1 · Transformación física</h3><p><b>Scope:</b> sólo Zona Productiva. Analizamos las 520 nomenclaturas Productivo y únicamente su superficie efectivamente observada. Fuera de Productivo, el dato sirve como contexto pero no entra al indicador físico principal.</p></div>
+        <div class="reading legal"><h3>2 · Cupo jurídico</h3><p><b>Objeto:</b> Clubes de Campo. La regla ordinaria es hasta 10% del área rural computable; un nuevo cupo de hasta 5% adicional requiere una promoción del Departamento Ejecutivo una vez cubierto el anterior. No es 15% automático ni un límite general para cualquier vivienda.</p></div>
+      </div>
+      <div class="callout"><b>No mezclar denominadores.</b> Productivo es nuestro universo analítico para detectar transformación física. El denominador jurídico del 10% es la superficie bruta total del área rural con las exclusiones previstas por la norma y todavía requiere reconstrucción administrativa oficial.</div>
+    </section>
+
+    <section class="card">
+      <h2>Estado del análisis físico Productivo</h2>
       <div class="kpis">
-        <div class="kpi"><b id="proxyProductive">—</b><span>proxy geoespacial Productiva</span></div>
-        <div class="kpi"><b id="proxy10">—</b><span>referencia 10% sobre proxy</span></div>
-        <div class="kpi"><b id="productiveUrbanHa">—</b><span>GeoARBA Urbano dentro de Productiva</span></div>
-        <div class="kpi"><b id="gap10">—</b><span>margen hasta el 10% espacial</span></div>
-        <div class="kpi"><b id="proxy15">—</b><span>15% hipotético si hubo acto</span></div>
-        <div class="kpi"><b id="exceptionHa">—</b><span>GeoARBA Urbano en zonas no Productivas</span></div>
-        <div class="kpi full"><b>Denominador oficial: pendiente</b><span>Debe surgir del decreto reglamentario/listado de exclusiones y de la memoria administrativa del cupo. La Zona Productiva es un proxy espacial, no el denominador jurídico definitivo.</span></div>
+        <div class="kpi"><b id="scopeParcels">520</b><span>parcelas Productivo canónicas</span></div>
+        <div class="kpi"><b id="scopeArea">1.301,9 ha</b><span>scope geométrico efectivo</span></div>
+        <div class="kpi"><b id="observedParcels">74</b><span>parcelas observadas en Cluster 2</span></div>
+        <div class="kpi"><b id="coverageSplit">67 + 7</b><span>cobertura completa + parcial</span></div>
+        <div class="kpi"><b id="road2016">0,57%</b><span>Road argmax 2016</span></div>
+        <div class="kpi"><b id="road2026">4,12%</b><span>Road argmax 2026</span></div>
+        <div class="kpi full"><b>Las demás parcelas siguen como not_observed</b><span>No se asigna cero a una parcela sin cobertura VHR equivalente. La ausencia de observación no se interpreta como ausencia de transformación.</span></div>
       </div>
     </section>
 
     <section class="card">
-      <h2>Cómo leer el mapa</h2>
-      <div class="certainty">
-        <div class="a"><strong>Alta certeza</strong>anclas, superficies o categorías con respaldo fuerte.</div>
-        <div class="b"><strong>Estimación robusta</strong>reconstrucción geoespacial todavía revisable.</div>
-        <div class="c"><strong>Pendiente oficial</strong>expediente, acto, cálculo o polígono legal faltante.</div>
-      </div>
-      <p class="footer-note">No usamos “no existe” cuando un documento no aparece: usamos “no localizado públicamente”.</p>
+      <h2>Modelo territorial · QA V6</h2>
+      <div class="model-grid" id="modelMetrics"><div class="loading">Cargando estado…</div></div>
+      <p class="footer-note">V6 mejora los falsos positivos causados por accesos/perímetros. La señal productiva/invernaderos todavía requiere mejor discriminación antes de calibrar un physical_loteo_score final.</p>
+    </section>
+
+    <section class="card">
+      <h2>Regla jurídica de referencia</h2>
+      <div class="row"><b>10%</b><span>cupo ordinario para Clubes de Campo</span></div>
+      <div class="row"><b>+5%</b><span>eventual nuevo cupo si el DE lo promueve una vez cubierto el anterior</span></div>
+      <div class="row"><b>15% automático</b><span><b>No.</b> No debe mostrarse como umbral alternativo general.</span></div>
+      <div class="row"><b>Vivienda general</b><span>no queda sometida por esa cláusula porcentual a un máximo general de 10/15%</span></div>
+      <div class="row"><b>Estado</b><span>consumo real del cupo y denominador oficial: pendientes de reconstrucción documental</span></div>
     </section>
 
     <nav class="section-tabs" aria-label="Secciones">
       <button class="tab active" data-tab="cases">Casos</button>
+      <button class="tab" data-tab="commercial">Comercial</button>
       <button class="tab" data-tab="timeline">Normas</button>
       <button class="tab" data-tab="requests">Pedir</button>
-      <button class="tab" data-tab="leads">Pendientes</button>
     </nav>
 
-    <section class="tab-panel active" id="tab-cases">
-      <div class="card">
-        <h2>Casos y focos identificados</h2>
-        <div id="caseList" class="case-list"><div class="loading">Cargando casos…</div></div>
-      </div>
-      <div class="card">
-        <h2>Ficha del caso</h2>
-        <div id="caseDetail" class="detail small">Seleccioná un caso en la lista o un punto en el mapa.</div>
-      </div>
-    </section>
-
-    <section class="tab-panel" id="tab-timeline">
-      <div class="card"><h2>Reconstrucción normativa 2018-2026</h2><div id="timeline" class="timeline"></div></div>
-    </section>
-
-    <section class="tab-panel" id="tab-requests">
-      <div class="card">
-        <h2>Información que debe pedirse oficialmente</h2>
-        <p class="small">La auditoría puede reconstruir territorio y cronología, pero sólo el Estado puede cerrar la contabilidad administrativa del cupo y exhibir los instrumentos aprobatorios.</p>
-        <div id="requestList" class="request-list"></div>
-        <div class="top-actions"><a class="action primary" href="/documentos/solicitud-informacion-territorial-municipio-2026-09.pdf" target="_blank" rel="noreferrer">PDF listo para presentar</a></div>
-      </div>
-    </section>
-
-    <section class="tab-panel" id="tab-leads">
-      <div class="card"><h2>Otros desarrollos ya detectados</h2><div id="leadList" class="lead-list"></div></div>
-    </section>
+    <section class="tab-panel active" id="tab-cases"><div class="card"><h2>Casos y focos</h2><div id="caseList" class="case-list"><div class="loading">Cargando casos…</div></div></div><div class="card"><h2>Ficha del caso</h2><div id="caseDetail" class="detail small">Seleccioná un caso.</div></div></section>
+    <section class="tab-panel" id="tab-commercial"><div class="card"><h2>Evidencia comercial pública</h2><p class="small" id="commercialRule"></p><div id="commercialList" class="commercial-list"><div class="loading">Cargando publicaciones…</div></div></div></section>
+    <section class="tab-panel" id="tab-timeline"><div class="card"><h2>Reconstrucción normativa</h2><div id="timeline" class="timeline"><div class="loading">Cargando…</div></div></div></section>
+    <section class="tab-panel" id="tab-requests"><div class="card"><h2>Información a pedir oficialmente</h2><p class="small">La imagen satelital y las publicaciones comerciales no cierran el estado administrativo. Para el cupo de Clubes de Campo necesitamos el universo computable, exclusiones, proyectos imputados, actos aprobatorios y eventual acto que habilite el 5% adicional.</p><div id="requestList" class="request-list"></div><div class="top-actions"><a class="action primary" href="/documentos/solicitud-informacion-territorial-municipio-2026-09.pdf" target="_blank" rel="noreferrer">PDF listo para presentar</a></div></div></section>
   </aside>
 
   <main class="map-wrap">
     <div id="map"></div>
     <div class="map-ui">
-      <div class="map-box">
-        <strong>Mapa base</strong>
-        <div class="basemap-group" role="radiogroup" aria-label="Mapa base">
-          <label class="layer-toggle"><input type="radio" name="basemap" value="satellite" checked /> Satélite</label>
-          <label class="layer-toggle"><input type="radio" name="basemap" value="hybrid" /> Híbrido</label>
-          <label class="layer-toggle"><input type="radio" name="basemap" value="street" /> Mapa</label>
-        </div>
-
-        <strong>Imágenes históricas</strong>
-        <div class="history-controls">
-          <select id="historyYear" aria-label="Año de imagen satelital">
-            <option value="current">Actual</option>
-            <option value="2026">2026</option>
-            <option value="2024">2024</option>
-            <option value="2022">2022</option>
-            <option value="2020">2020</option>
-            <option value="2018">2018</option>
-          </select>
-          <span class="history-badge" id="historyBadge">Actual</span>
-          <div class="history-status" id="historyStatus">World Imagery actual. En histórico, el año indica la versión publicada por Esri; la captura local puede ser anterior.</div>
-        </div>
-
-        <strong>Capas · Zonificación Ord. 11.819/20</strong>
-        <label class="layer-toggle"><input id="toggleZoneProductiva" type="checkbox" checked /> <i class="dot" style="background:#789766"></i> Zona Productiva</label>
-        <label class="layer-toggle"><input id="toggleZoneRecuperacion" type="checkbox" checked /> <i class="dot" style="background:#9b6a45"></i> Zona de Recuperación</label>
-        <label class="layer-toggle"><input id="toggleZoneEquipamiento" type="checkbox" checked /> <i class="dot" style="background:#d4777e"></i> Equipamiento</label>
-        <label class="layer-toggle"><input id="toggleZoneUsoEspecifico" type="checkbox" checked /> <i class="dot" style="background:#73736d"></i> Uso Específico</label>
-        <div id="zoningStatus" class="history-status">Anexo I · vectorización parcelaria precisa · cargando…</div>
-        <label class="layer-toggle"><input id="toggleParcels" type="checkbox" /> Parcelas GeoARBA al acercar (capa pesada)</label>
-        <label class="layer-toggle"><input id="toggleLabels" type="checkbox" checked /> Códigos de auditoría</label>
-        <div class="legend">
-          <span><i class="dot" style="background:#789766"></i>Productiva</span>
-          <span><i class="dot" style="background:#9b6a45"></i>Recuperación</span>
-          <span><i class="dot" style="background:#d4777e"></i>Equipamiento</span>
-          <span><i class="dot" style="background:#73736d"></i>Uso Específico</span>
-          <span><i class="dot" style="background:#6f5a8a"></i>caso reconstruido</span>
-          <span><i class="dot" style="background:#b44c3d"></i>prioridad</span>
-        </div>
+      <div class="map-box"><strong>Mapa base</strong><div class="basemap-group"><label class="layer-toggle"><input type="radio" name="basemap" value="satellite" checked> Satélite</label><label class="layer-toggle"><input type="radio" name="basemap" value="hybrid"> Híbrido</label><label class="layer-toggle"><input type="radio" name="basemap" value="street"> Mapa</label></div>
+        <strong>Imágenes históricas</strong><div class="history-controls"><select id="historyYear"><option value="current">Actual</option><option value="2026">2026</option><option value="2024">2024</option><option value="2022">2022</option><option value="2020">2020</option><option value="2018">2018</option></select><span class="history-badge" id="historyBadge">Actual</span><div class="history-status" id="historyStatus">World Imagery actual. La versión Wayback no equivale necesariamente a la fecha exacta de captura local.</div></div>
+        <strong>Scope analítico</strong><label class="layer-toggle"><input id="toggleZoneProductiva" type="checkbox" checked> <i class="dot" style="background:#789766"></i> Productivo · indicador principal</label>
+        <strong style="display:block;margin-top:7px">Contexto normativo</strong><label class="layer-toggle"><input id="toggleZoneRecuperacion" type="checkbox"> <i class="dot" style="background:#9b6a45"></i> Recuperación</label><label class="layer-toggle"><input id="toggleZoneEquipamiento" type="checkbox"> <i class="dot" style="background:#d4777e"></i> Equipamiento</label><label class="layer-toggle"><input id="toggleZoneUsoEspecifico" type="checkbox"> <i class="dot" style="background:#73736d"></i> Uso Específico</label><div id="zoningStatus" class="history-status">Cargando zonificación…</div>
+        <label class="layer-toggle"><input id="toggleParcels" type="checkbox"> Parcelas GeoARBA al acercar</label><label class="layer-toggle"><input id="toggleValidation" type="checkbox"> Muestra histórica de validación</label>
       </div>
-      <div class="map-box"><strong>Importante</strong><br />Los círculos R/U son puntos de screening, no límites de desarrollos. EDS es un área de búsqueda. Las parcelas de SH se resaltan sólo cuando se activa GeoARBA.</div>
+      <div class="map-box"><strong>Lectura del mapa</strong><br>Productivo es el único scope del indicador físico. Recuperación, Equipamiento y Uso Específico son contexto. Saint Henri debe leerse como <b>Uso Específico</b>, fuera del indicador Productivo principal. Publicitado ≠ vendido ≠ aprobado.</div>
     </div>
   </main>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
-const DATA_URL='/data/auditoria/hallazgos-publicos.json.gz';
+const STATE_URL='/data/auditoria/estado-actual.json';
+const AUDIT_URL='/data/auditoria/hallazgos-publicos.json.gz';
+const COMMERCIAL_URL='/data/auditoria/evidencia-comercial-publica.json';
+const VALIDATION_URL='/data/auditoria/territorial-validation-cases.geojson';
 const WAYBACK_CONFIG_URL='https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json';
 const ZONING_DEFS=[
-  {key:'productiva',toggle:'toggleZoneProductiva',url:'/data/auditoria/zonificacion-11819-productiva.geojson.gz'},
-  {key:'recuperacion',toggle:'toggleZoneRecuperacion',url:'/data/auditoria/zonificacion-11819-recuperacion.geojson.gz'},
-  {key:'equipamiento',toggle:'toggleZoneEquipamiento',url:'/data/auditoria/zonificacion-11819-equipamiento.geojson.gz'},
-  {key:'uso_especifico',toggle:'toggleZoneUsoEspecifico',url:'/data/auditoria/zonificacion-11819-uso-especifico.geojson'}
+ {key:'productiva',toggle:'toggleZoneProductiva',url:'/data/auditoria/zonificacion-11819-productiva.geojson.gz'},
+ {key:'recuperacion',toggle:'toggleZoneRecuperacion',url:'/data/auditoria/zonificacion-11819-recuperacion.geojson.gz'},
+ {key:'equipamiento',toggle:'toggleZoneEquipamiento',url:'/data/auditoria/zonificacion-11819-equipamiento.geojson.gz'},
+ {key:'uso_especifico',toggle:'toggleZoneUsoEspecifico',url:'/data/auditoria/zonificacion-11819-uso-especifico.geojson'}
 ];
-const SH_PARTIDAS=new Set(['003000600','003075732','003075734','003075735','003018114','003000684','003075728','003075729']);
-let auditData=null;
-let selectedCaseId=null;
-let parcelLayer=null;
-const zoningLayers=new Map();
-let loadedSector=null;
-let labelsEnabled=true;
-let currentBasemap='satellite';
-let activeImageryLayer=null;
-let waybackCatalogPromise=null;
-const caseLayers=new Map();
-
-const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([-34.854,-58.337],14);
-map.createPane('referencePane');
-map.getPane('referencePane').style.zIndex=300;
-map.createPane('zoningPane');
-map.getPane('zoningPane').style.zIndex=360;
-map.getPane('referencePane').style.pointerEvents='none';
-const streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'});
-const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri · Sources: Esri, Vantor/Maxar, Earthstar Geographics, and the GIS User Community'});
-const referenceLayer=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Reference © Esri and contributors',pane:'referencePane'});
-activeImageryLayer=satelliteLayer;
-satelliteLayer.addTo(map);
-const casesGroup=L.featureGroup().addTo(map);
-
-function removeBaseLayers(){
-  if(map.hasLayer(streetLayer))map.removeLayer(streetLayer);
-  if(activeImageryLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
-  if(map.hasLayer(referenceLayer))map.removeLayer(referenceLayer);
-}
-function applyBasemap(){
-  removeBaseLayers();
-  if(currentBasemap==='street'){
-    streetLayer.addTo(map);
-  }else{
-    if(activeImageryLayer&&!map.hasLayer(activeImageryLayer))activeImageryLayer.addTo(map);
-    if(currentBasemap==='hybrid'&&!map.hasLayer(referenceLayer))referenceLayer.addTo(map);
-  }
-}
-document.querySelectorAll('input[name="basemap"]').forEach(input=>input.addEventListener('change',e=>{
-  if(!e.target.checked)return;
-  currentBasemap=e.target.value;
-  applyBasemap();
-}));
-
-function waybackDate(item){
-  if(item.releaseDateLabel)return item.releaseDateLabel;
-  const title=item.itemTitle||item.title||'';
-  return title.match(/Wayback\s+(\d{4}-\d{2}-\d{2})/i)?.[1]||null;
-}
-function waybackTileUrl(item){
-  const source=item.itemURL||item.layerURL||item.url;
-  if(!source)return null;
-  return source
-    .replace('{level}','{z}')
-    .replace('{row}','{y}')
-    .replace('{col}','{x}')
-    .replace('{TileMatrix}','{z}')
-    .replace('{TileRow}','{y}')
-    .replace('{TileCol}','{x}')
-    .replace('{TileMatrixSet}','default028mm');
-}
-async function getWaybackCatalog(){
-  if(!waybackCatalogPromise){
-    waybackCatalogPromise=fetch(WAYBACK_CONFIG_URL)
-      .then(r=>{if(!r.ok)throw new Error(`Wayback config: HTTP ${r.status}`);return r.json()})
-      .then(data=>Object.values(data).map(item=>({...item,__date:waybackDate(item)})).filter(item=>item.__date&&waybackTileUrl(item)));
-  }
-  return waybackCatalogPromise;
-}
-function selectReleaseForYear(catalog,year){
-  const matches=catalog
-    .filter(item=>Number(item.__date.slice(0,4))===year)
-    .sort((a,b)=>a.__date.localeCompare(b.__date));
-  return matches.at(-1)||null;
-}
-function setHistoryStatus(label,text,isError=false){
-  document.getElementById('historyBadge').textContent=label;
-  const status=document.getElementById('historyStatus');
-  status.textContent=text;
-  status.style.color=isError?'#762f27':'';
-}
-async function selectHistory(value){
-  if(value==='current'){
-    if(activeImageryLayer&&activeImageryLayer!==satelliteLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
-    activeImageryLayer=satelliteLayer;
-    setHistoryStatus('Actual','World Imagery actual. En histórico, el año indica la versión publicada por Esri; la captura local puede ser anterior.');
-    applyBasemap();
-    return;
-  }
-  const year=Number(value);
-  setHistoryStatus(String(year),`Buscando la última versión Wayback publicada durante ${year}…`);
-  try{
-    const catalog=await getWaybackCatalog();
-    const release=selectReleaseForYear(catalog,year);
-    if(!release)throw new Error(`No hay versión Wayback publicada en ${year}.`);
-    const url=waybackTileUrl(release);
-    const next=L.tileLayer(url,{
-      maxZoom:19,
-      attribution:`World Imagery Wayback © Esri · versión ${release.__date}`
-    });
-    if(activeImageryLayer&&activeImageryLayer!==satelliteLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
-    activeImageryLayer=next;
-    if(currentBasemap==='street'){
-      currentBasemap='satellite';
-      const radio=document.querySelector('input[name="basemap"][value="satellite"]');
-      if(radio)radio.checked=true;
-    }
-    setHistoryStatus(String(year),`Esri World Imagery Wayback · versión publicada ${release.__date}. La fecha de publicación no equivale necesariamente a la fecha de captura de la imagen en este punto.`);
-    applyBasemap();
-  }catch(err){
-    console.warn(err);
-    if(activeImageryLayer&&activeImageryLayer!==satelliteLayer&&map.hasLayer(activeImageryLayer))map.removeLayer(activeImageryLayer);
-    activeImageryLayer=satelliteLayer;
-    document.getElementById('historyYear').value='current';
-    setHistoryStatus('Actual',`No se pudo cargar Wayback para ${year}. Se mantiene World Imagery actual.`,true);
-    applyBasemap();
-  }
-}
-document.getElementById('historyYear').addEventListener('change',e=>selectHistory(e.target.value));
-
+let auditData=null,parcelLayer=null,loadedSector=null,currentBasemap='satellite',activeImageryLayer=null,waybackCatalogPromise=null,validationLayer=null;const caseLayers=new Map(),zoningLayers=new Map();
+const map=L.map('map',{preferCanvas:true}).setView([-34.86,-58.34],14);map.createPane('zoningPane');map.getPane('zoningPane').style.zIndex=330;map.createPane('referencePane');map.getPane('referencePane').style.zIndex=300;map.getPane('referencePane').style.pointerEvents='none';
+const streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'});const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});const referenceLayer=L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Reference © Esri',pane:'referencePane'});activeImageryLayer=satelliteLayer;satelliteLayer.addTo(map);const casesGroup=L.featureGroup().addTo(map);
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function range(v,d=0){return `${Number(v.min).toLocaleString('es-AR',{maximumFractionDigits:d})}-${Number(v.max).toLocaleString('es-AR',{maximumFractionDigits:d})} ha`}
-function badgeFor(c){
-  if(c.confidence?.includes('high')) return '<span class="badge high">alta</span>';
-  if(c.confidence?.includes('medium')) return '<span class="badge medium">media</span>';
-  if(c.status?.includes('priority')) return '<span class="badge priority">prioridad</span>';
-  return '<span class="badge pending">pendiente</span>';
-}
-function tab(name){
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`tab-${name}`));
-}
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-
-function caseCard(c){
-  const subtitle=c.kind==='exception_screening'?`${c.zone} · ${c.currentUrbanClusterAreaHa.toLocaleString('es-AR')} ha de screening`:c.statusLabel;
-  return `<article class="case" data-case="${esc(c.id)}"><div class="case-head"><div><span class="case-code">${esc(c.code)}</span> <strong>${esc(c.name)}</strong></div>${badgeFor(c)}</div><p>${esc(subtitle||'')}</p></article>`;
-}
-function detailHTML(c){
-  const nums=[];
-  if(c.candidateEnvelopeHa) nums.push(`<div class="row"><b>Envolvente</b><span>${c.candidateEnvelopeHa.toLocaleString('es-AR',{maximumFractionDigits:2})} ha</span></div>`);
-  if(c.advertised?.grossHa) nums.push(`<div class="row"><b>Publicitado</b><span>~${c.advertised.grossHa} ha${c.advertised.lots?` · ${c.advertised.lots} lotes`:''}</span></div>`);
-  if(c.currentUrbanClusterAreaHa) nums.push(`<div class="row"><b>Screening</b><span>${c.currentUrbanClusterAreaHa.toLocaleString('es-AR')} ha · ${c.currentUrbanFeatureCount} geometrías actuales</span></div>`);
-  if(c.annex11819) nums.push(`<div class="row"><b>Anexo 11.819</b><span>${c.annex11819.specificUseHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha Uso Específico · ${c.annex11819.recoveryHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha Recuperación</span></div>`);
-  if(c.partidas?.length) nums.push(`<div class="row"><b>Partidas</b><span>${c.partidas.map(esc).join(', ')}</span></div>`);
-  return `<div class="hero"><span class="case-code">${esc(c.code)}</span> <strong>${esc(c.name)}</strong><div class="small">${esc(c.confidenceLabel)}</div></div>
-    ${nums.join('')}
-    <h3>Qué encontramos</h3><p>${esc(c.finding)}</p>
-    <h3>Cómo lo interpretamos</h3><p>${esc(c.interpretation)}</p>
-    <h3>Qué falta cerrar</h3><ul>${(c.pending||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
-    <div class="source-tags">${(c.sourceLabels||[]).map(x=>`<span class="source-tag">${esc(x)}</span>`).join('')}</div>`;
-}
-function selectCase(id,fly=true){
-  const c=auditData?.cases.find(x=>x.id===id);if(!c)return;
-  selectedCaseId=id;tab('cases');
-  document.querySelectorAll('.case').forEach(el=>el.classList.toggle('active',el.dataset.case===id));
-  document.getElementById('caseDetail').innerHTML=detailHTML(c);
-  if(fly) map.flyTo([c.lat,c.lng],c.zoom||15,{duration:.7});
-  const layer=caseLayers.get(id); if(layer?.openPopup) layer.openPopup();
-}
-function caseLayer(c){
-  const color=c.mapStyle?.color||'#6b665d';
-  let layer;
-  if(c.kind==='search_area'){
-    layer=L.circle([c.lat,c.lng],{radius:c.radiusM||700,color,weight:2,dashArray:'8 6',fillColor:color,fillOpacity:.07});
-  }else{
-    layer=L.circleMarker([c.lat,c.lng],{radius:c.mapStyle?.radius||9,color:'#27251f',weight:1.3,fillColor:color,fillOpacity:.9});
-  }
-  const popup=`<strong>${esc(c.code)} · ${esc(c.name)}</strong><br><span style="font-size:11px">${esc(c.statusLabel||c.confidenceLabel)}</span>`;
-  layer.bindPopup(popup);layer.on('click',()=>selectCase(c.id,false));
-  if(labelsEnabled) layer.bindTooltip(c.code,{permanent:true,direction:'top',offset:[0,-8],className:'map-label'});
-  layer.addTo(casesGroup);caseLayers.set(c.id,layer);
-}
-function renderData(data){
-  auditData=data;
-  document.getElementById('verdictLabel').textContent=data.quota.assessmentLabel;
-  document.getElementById('verdictText').textContent=data.quota.assessmentDetail;
-  document.getElementById('proxyProductive').textContent=range(data.quota.productiveProxyHa,0);
-  document.getElementById('proxy10').textContent=range(data.quota.ordinary10ProxyHa,1);
-  document.getElementById('productiveUrbanHa').textContent=`${data.quota.productiveUrbanScreeningHa.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})} ha`;
-  document.getElementById('gap10').textContent=range(data.quota.gapToOrdinary10ProxyHa,1);
-  document.getElementById('proxy15').textContent=range(data.quota.hypothetical15ProxyHa,1);
-  document.getElementById('exceptionHa').textContent=`${data.quota.exceptionScreeningHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha`;
-  document.getElementById('caseList').innerHTML=data.cases.map(caseCard).join('');
-  document.querySelectorAll('.case').forEach(el=>el.addEventListener('click',()=>selectCase(el.dataset.case)));
-  document.getElementById('timeline').innerHTML=data.normativeTimeline.map(e=>`<article class="event"><time>${esc(e.date)}</time><strong>${esc(e.title)}</strong><p>${esc(e.summary)}</p><div class="keys">${e.keys.map(esc).join(' · ')}</div><p><b>Pendiente:</b> ${esc(e.pending)}</p></article>`).join('');
-  document.getElementById('requestList').innerHTML=data.officialRequests.map(r=>`<div class="request">${esc(r)}</div>`).join('');
-  document.getElementById('leadList').innerHTML=data.otherLeads.map(l=>`<div class="lead-row"><strong>${esc(l.name)}</strong> · ${esc(l.address)}<span>${esc(l.advertised)} · ${esc(l.status)}</span></div>`).join('');
-  data.cases.forEach(caseLayer);
-  fitAll();selectCase('saint-henri',false);
-}
-function fitAll(){if(casesGroup.getLayers().length)map.fitBounds(casesGroup.getBounds().pad(.12),{maxZoom:15})}
-document.getElementById('fitAll').addEventListener('click',fitAll);
-
+function pct(v){return `${(Number(v)*100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}%`}
+async function fetchJsonResource(url){const r=await fetch(url);if(!r.ok)throw new Error(`${url}: HTTP ${r.status}`);if(!url.endsWith('.gz'))return r.json();if(typeof DecompressionStream==='undefined')throw new Error('Navegador sin soporte gzip');const stream=r.body.pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(stream).text())}
+function tab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`tab-${name}`))}document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+function renderState(s){const sc=s.scope?.physical_analysis||{};const f=s.current_findings||{};document.getElementById('scopeParcels').textContent=Number(sc.parcel_count||520).toLocaleString('es-AR');document.getElementById('scopeArea').textContent=`${Number(sc.effective_area_ha||0).toLocaleString('es-AR',{maximumFractionDigits:1})} ha`;document.getElementById('observedParcels').textContent=Number(f.cluster02_observed_productivo_parcels||0).toLocaleString('es-AR');document.getElementById('coverageSplit').textContent=`${f.cluster02_full_coverage_parcels||0} + ${f.cluster02_partial_coverage_parcels||0}`;document.getElementById('road2016').textContent=pct(f.road_argmax_fraction_2016||0);document.getElementById('road2026').textContent=pct(f.road_argmax_fraction_2026||0);const q=f.parcel_qa_v6||{};document.getElementById('modelMetrics').innerHTML=`<div class="metric"><b>${q.strong_convergent_candidate??'—'}</b><span>strong convergent</span></div><div class="metric"><b>${q.intermediate_convergent_candidate??'—'}</b><span>intermediate</span></div><div class="metric"><b>${q.edge_access_or_perimeter_review??'—'}</b><span>edge/perimeter review</span></div><div class="metric"><b>${q.occupation_only_review??'—'}</b><span>occupation-only</span></div><div class="metric"><b>${q.negative_control??'—'}</b><span>negative control</span></div><div class="metric"><b>${q.partial_coverage_review??'—'}</b><span>partial coverage</span></div>`}
+function caseCard(c){const saint=String(c.id||'').includes('saint-henri')||String(c.name||'').toLowerCase().includes('saint henri');const tag=saint?'<span class="pill violet">Uso Específico</span>':`<span class="pill ${c.confidence?.includes('high')?'green':'gray'}">${esc(c.confidenceLabel||c.statusLabel||'caso')}</span>`;return `<article class="case" data-case="${esc(c.id)}"><div class="case-head"><div><span class="case-code">${esc(c.code||'CASO')}</span> <strong>${esc(c.name||c.id)}</strong></div>${tag}</div><p>${saint?'Contexto normativo. Fuera del indicador físico Productivo principal.':esc(c.statusLabel||c.finding||'')}</p></article>`}
+function detailHTML(c){const saint=String(c.id||'').includes('saint-henri')||String(c.name||'').toLowerCase().includes('saint henri');return `<div class="hero"><strong>${esc(c.name||c.id)}</strong><div class="small">${saint?'Uso Específico · contexto fuera de Productivo':esc(c.confidenceLabel||c.statusLabel||'')}</div></div>${saint?'<div class="callout"><b>Corrección de scope:</b> Saint Henri se muestra como Uso Específico. Un pin comercial cercano cayó sobre una parcela Productivo, pero no representa el polígono real del emprendimiento.</div>':''}<h3>Qué encontramos</h3><p>${esc(c.finding||'Sin detalle público adicional.')}</p><h3>Cómo lo interpretamos</h3><p>${esc(c.interpretation||'La evidencia física, administrativa y comercial se mantiene separada.')}</p>${(c.pending||[]).length?`<h3>Qué falta cerrar</h3><ul>${c.pending.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`}
+function selectCase(id,fly=true){const c=auditData?.cases?.find(x=>x.id===id);if(!c)return;document.querySelectorAll('.case').forEach(el=>el.classList.toggle('active',el.dataset.case===id));document.getElementById('caseDetail').innerHTML=detailHTML(c);if(fly&&Number.isFinite(Number(c.lat))&&Number.isFinite(Number(c.lng)))map.flyTo([c.lat,c.lng],c.zoom||15,{duration:.6})}
+function renderAudit(data){auditData=data;document.getElementById('caseList').innerHTML=(data.cases||[]).map(caseCard).join('')||'<div class="small">Sin casos.</div>';document.querySelectorAll('.case').forEach(el=>el.addEventListener('click',()=>selectCase(el.dataset.case)));document.getElementById('timeline').innerHTML=(data.normativeTimeline||[]).map(e=>`<article class="event"><time>${esc(e.date)}</time><strong>${esc(e.title)}</strong><p>${esc(e.summary)}</p><p><b>Pendiente:</b> ${esc(e.pending||'')}</p></article>`).join('')||'<div class="small">Sin cronología.</div>';const extra=['Cálculo oficial de la superficie bruta total del área rural y exclusiones aplicadas al cupo de Clubes de Campo.','Listado histórico de Clubes de Campo imputados al cupo del 10%, con superficie computada y acto aprobatorio.','Acto del Departamento Ejecutivo, si existió, que haya promovido el cupo adicional de hasta 5%.','Capas GIS o planos oficiales que permitan vincular cada proyecto a partidas/nomenclaturas y categoría normativa.'];document.getElementById('requestList').innerHTML=[...(data.officialRequests||[]),...extra].filter((v,i,a)=>a.indexOf(v)===i).map(r=>`<div class="request">${esc(r)}</div>`).join('');(data.cases||[]).forEach(c=>{if(!Number.isFinite(Number(c.lat))||!Number.isFinite(Number(c.lng)))return;const saint=String(c.id||'').includes('saint-henri')||String(c.name||'').toLowerCase().includes('saint henri');const color=saint?'#73736d':(c.mapStyle?.color||'#6f5a8a');const l=c.kind==='search_area'?L.circle([c.lat,c.lng],{radius:c.radiusM||700,color,weight:2,dashArray:'8 6',fillOpacity:.04}):L.circleMarker([c.lat,c.lng],{radius:8,color:'#26251f',weight:1,fillColor:color,fillOpacity:.9});l.bindPopup(`<strong>${esc(c.name||c.code)}</strong><br>${saint?'Uso Específico · contexto':esc(c.statusLabel||'')}`);l.on('click',()=>{tab('cases');selectCase(c.id,false)});l.addTo(casesGroup);caseLayers.set(c.id,l)});if((data.cases||[]).length)selectCase(data.cases[0].id,false)}
+function renderCommercial(d){document.getElementById('commercialRule').textContent=d.evidentiary_rule||'';document.getElementById('commercialList').innerHTML=(d.projects||[]).map(p=>{const cls=p.main_productivo_scope===false?'gray':p.main_productivo_scope==='pending_polygon'?'amber':'violet';const scope=p.main_productivo_scope===false?'fuera de Productivo':p.main_productivo_scope==='pending_polygon'?'ancla Productivo / polígono pendiente':'scope pendiente';return `<article class="commercial"><div class="commercial-head"><strong>${esc(p.name)}</strong><span class="pill ${cls}">${esc(scope)}</span></div><p><b>Zonificación/contexto:</b> ${esc(p.zoning_context||'pendiente')}</p><p><b>Publicitado:</b> ${(p.claims||[]).map(esc).join(' · ')}</p><p>${esc(p.note||'')}</p><div class="source-links">${(p.sources||[]).map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(s.label)}</a>`).join('')}</div></article>`}).join('')}
+function zoningStyle(f){const c=f.properties?.color||'#77736d';return{pane:'zoningPane',color:c,weight:.9,opacity:.9,fillColor:c,fillOpacity:.22}}
+function zoningPopup(f){const p=f.properties||{};return `<strong>${esc(p.label||'Zonificación 11.819/20')}</strong><br><span style="font-size:11px">${Number(p.parcel_count||0).toLocaleString('es-AR')} parcelas · ${Number(p.area_ha||0).toLocaleString('es-AR',{maximumFractionDigits:2})} ha<br>${p.label?.toLowerCase().includes('product')?'<b>Scope del indicador físico principal.</b>':'Contexto normativo; no entra al indicador físico Productivo.'}</span>`}
+async function loadZoning(){let total=0;for(const def of ZONING_DEFS){try{const data=await fetchJsonResource(def.url);const layer=L.geoJSON(data,{pane:'zoningPane',style:zoningStyle,onEachFeature:(f,l)=>l.bindPopup(zoningPopup(f))});zoningLayers.set(def.key,layer);const t=document.getElementById(def.toggle);if(t?.checked)layer.addTo(map);t?.addEventListener('change',e=>e.target.checked?layer.addTo(map):map.removeLayer(layer));total+=Number(data.metadata?.parcelCount||data.features?.length||0)}catch(e){console.warn(e)}}document.getElementById('zoningStatus').textContent=`Ordenanza 11.819/20 · ${total.toLocaleString('es-AR')} unidades clasificadas · Productivo activo por defecto; otras categorías sólo contexto.`}
 function sector(){const c=map.getCenter(),west=c.lng<-58.37,north=c.lat>=-34.88;return (north?'noroeste':'suroeste').replace('oeste',west?'oeste':'este')}
-function parcelStyle(feature){
-  const p=feature.properties||{};const isSH=SH_PARTIDAS.has(String(p.partida||''));
-  if(isSH){
-    const num=Number(String(p.nomenclatura||'').match(/(\d{3})000$/)?.[1]||0);
-    const fill=num>=776&&num<=777?'#9b6a45':'#6f5a8a';
-    return{color:'#2f2a25',weight:2,opacity:1,fillColor:fill,fillOpacity:.26};
-  }
-  return{color:'#77736b',weight:.55,opacity:.7,fillColor:'#9c978c',fillOpacity:.025};
-}
-function parcelPopup(feature){const p=feature.properties||{};const sh=SH_PARTIDAS.has(String(p.partida||''));return `<strong>${esc(p.nomenclatura||'Parcela')}</strong><br>Partida: ${esc(p.partida||'—')}<br>Tipo actual: ${esc(p.tipo||'—')}<br>Superficie: ${p.superficie_m2?Number(p.superficie_m2).toLocaleString('es-AR')+' m²':'—'}${sh?'<br><b>Incluida en la envolvente candidata SH.</b>':''}`}
-async function loadParcels(){
-  const enabled=document.getElementById('toggleParcels').checked;
-  if(!enabled||map.getZoom()<14){if(parcelLayer){map.removeLayer(parcelLayer);parcelLayer=null}loadedSector=null;return}
-  const s=sector(); if(s===loadedSector&&parcelLayer)return;
-  loadedSector=s;if(parcelLayer){map.removeLayer(parcelLayer);parcelLayer=null}
-  try{
-    const r=await fetch(`/data/geoarba/ministro-rivadavia-parcels-${s}.geojson`);if(!r.ok)throw new Error(`GeoARBA ${s}: ${r.status}`);
-    const geo=await r.json();parcelLayer=L.geoJSON(geo,{style:parcelStyle,onEachFeature:(f,l)=>l.bindPopup(parcelPopup(f))}).addTo(map);parcelLayer.bringToBack();
-  }catch(err){console.warn(err);document.getElementById('toggleParcels').checked=false;alert('No se pudo cargar la capa GeoARBA de este sector.');}
-}
-document.getElementById('toggleParcels').addEventListener('change',loadParcels);
-map.on('moveend zoomend',loadParcels);
-document.getElementById('toggleLabels').addEventListener('change',e=>{labelsEnabled=e.target.checked;caseLayers.forEach((layer,id)=>{const c=auditData.cases.find(x=>x.id===id);layer.unbindTooltip();if(labelsEnabled)layer.bindTooltip(c.code,{permanent:true,direction:'top',offset:[0,-8],className:'map-label'}).openTooltip();});});
-
-
-function zoningStyle(feature){
-  const c=feature.properties?.color||'#77736d';
-  return{pane:'zoningPane',color:c,weight:.9,opacity:.9,fillColor:c,fillOpacity:.22};
-}
-function zoningPopup(feature){
-  const p=feature.properties||{};
-  const area=Number.isFinite(Number(p.area_ha))?`${Number(p.area_ha).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:3})} ha`:'—';
-  const count=Number.isFinite(Number(p.parcel_count))?`${Number(p.parcel_count).toLocaleString('es-AR')} parcelas`:'—';
-  return `<strong>${esc(p.label||'Zonificación 11.819/20')}</strong><br><span style="font-size:11px">Ordenanza 11.819/20 · Anexo I · vectorización precisa<br>${count} · ${area}<br>La capa web es la unión de las parcelas GeoARBA asignadas, redondeada a 6 decimales (&lt;0,1 m de desplazamiento de borde). La clasificación parcelaria completa queda auditada en el índice de asignaciones; no sustituye mensura ni acto administrativo.</span>`;
-}
-async function fetchJsonResource(url){
-  const r=await fetch(url);
-  if(!r.ok)throw new Error(`${url}: HTTP ${r.status}`);
-  if(!url.endsWith('.gz'))return r.json();
-  if(typeof DecompressionStream==='undefined')throw new Error('Este navegador no soporta la descompresión gzip requerida por las capas precisas.');
-  if(!r.body)throw new Error(`${url}: respuesta sin cuerpo`);
-  const stream=r.body.pipeThrough(new DecompressionStream('gzip'));
-  return JSON.parse(await new Response(stream).text());
-}
-
-async function loadZoning(){
-  const status=document.getElementById('zoningStatus');
-  try{
-    let parcelCount=0;
-    let classifiedAreaHa=0;
-    for(const def of ZONING_DEFS){
-      const data=await fetchJsonResource(def.url);
-      parcelCount+=Number(data.metadata?.parcelCount||data.features?.length||0);
-      classifiedAreaHa+=Number(data.metadata?.areaHa||0);
-      const layer=L.geoJSON(data,{pane:'zoningPane',style:zoningStyle,onEachFeature:(f,l)=>l.bindPopup(zoningPopup(f))});
-      zoningLayers.set(def.key,layer);
-      const toggle=document.getElementById(def.toggle);
-      if(toggle?.checked)layer.addTo(map);
-      toggle?.addEventListener('change',e=>{
-        if(e.target.checked)layer.addTo(map);else map.removeLayer(layer);
-        if(casesGroup.bringToFront)casesGroup.bringToFront();
-        if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
-      });
-    }
-    if(status)status.textContent=`Anexo I · ${parcelCount.toLocaleString('es-AR')} parcelas · ${classifiedAreaHa.toLocaleString('es-AR',{maximumFractionDigits:1})} ha clasificadas · residuo mediano de registro ≈1,34 m · 4,857 ha limítrofes quedan sin forzar.`;
-    if(casesGroup.bringToFront)casesGroup.bringToFront();
-    if(parcelLayer?.bringToFront)parcelLayer.bringToFront();
-  }catch(err){
-    console.warn(err);
-    for(const def of ZONING_DEFS){
-      const toggle=document.getElementById(def.toggle);
-      if(toggle)toggle.checked=false;
-    }
-    if(status){status.textContent='No se pudo cargar la vectorización de la Ordenanza 11.819/20.';status.style.color='#762f27';}
-  }
-}
-loadZoning();
-
-fetchJsonResource(DATA_URL).then(renderData).catch(err=>{
-  console.error(err);document.getElementById('caseList').innerHTML='<div class="error">No se pudo cargar el dataset público de auditoría.</div>';document.getElementById('verdictLabel').textContent='Datos no disponibles';
-});
+async function loadParcels(){const enabled=document.getElementById('toggleParcels').checked;if(!enabled||map.getZoom()<14){if(parcelLayer){map.removeLayer(parcelLayer);parcelLayer=null}loadedSector=null;return}const s=sector();if(s===loadedSector&&parcelLayer)return;loadedSector=s;if(parcelLayer)map.removeLayer(parcelLayer);try{const r=await fetch(`/data/geoarba/ministro-rivadavia-parcels-${s}.geojson`);const g=await r.json();parcelLayer=L.geoJSON(g,{style:{color:'#77736b',weight:.55,fillOpacity:.015},onEachFeature:(f,l)=>{const p=f.properties||{};l.bindPopup(`<strong>${esc(p.nomenclatura||'Parcela')}</strong><br>Partida ${esc(p.partida||'—')}<br>${Number(p.superficie_m2||0).toLocaleString('es-AR')} m²`)}}).addTo(map)}catch(e){console.warn(e)}}document.getElementById('toggleParcels').addEventListener('change',loadParcels);map.on('moveend zoomend',loadParcels);
+async function toggleValidation(on){if(!on){if(validationLayer)map.removeLayer(validationLayer);return}if(!validationLayer){const d=await fetchJsonResource(VALIDATION_URL);validationLayer=L.geoJSON(d,{style:{color:'#b44c3d',weight:1,fillColor:'#b44c3d',fillOpacity:.25},onEachFeature:(f,l)=>l.bindPopup(`<strong>${esc(f.properties?.case_id)}</strong><br>QA histórico · partida ${esc(f.properties?.partida||'—')}`)})}validationLayer.addTo(map)}document.getElementById('toggleValidation').addEventListener('change',e=>toggleValidation(e.target.checked));
+function removeBase(){[streetLayer,referenceLayer,activeImageryLayer].forEach(l=>l&&map.hasLayer(l)&&map.removeLayer(l))}function applyBase(){removeBase();if(currentBasemap==='street')streetLayer.addTo(map);else{activeImageryLayer.addTo(map);if(currentBasemap==='hybrid')referenceLayer.addTo(map)}}document.querySelectorAll('input[name="basemap"]').forEach(i=>i.addEventListener('change',e=>{if(e.target.checked){currentBasemap=e.target.value;applyBase()}}));
+function waybackDate(i){return i.releaseDateLabel||(i.itemTitle||i.title||'').match(/Wayback\s+(\d{4}-\d{2}-\d{2})/i)?.[1]||null}function waybackUrl(i){const s=i.itemURL||i.layerURL||i.url;if(!s)return null;return s.replace('{level}','{z}').replace('{row}','{y}').replace('{col}','{x}').replace('{TileMatrix}','{z}').replace('{TileRow}','{y}').replace('{TileCol}','{x}').replace('{TileMatrixSet}','default028mm')}async function getWayback(){if(!waybackCatalogPromise)waybackCatalogPromise=fetch(WAYBACK_CONFIG_URL).then(r=>r.json()).then(d=>Object.values(d).map(i=>({...i,__date:waybackDate(i)})).filter(i=>i.__date&&waybackUrl(i)));return waybackCatalogPromise}async function selectHistory(v){const badge=document.getElementById('historyBadge'),status=document.getElementById('historyStatus');if(v==='current'){activeImageryLayer=satelliteLayer;badge.textContent='Actual';status.textContent='World Imagery actual. La versión Wayback no equivale necesariamente a la fecha exacta de captura local.';applyBase();return}try{const y=Number(v),c=await getWayback(),r=c.filter(i=>Number(i.__date.slice(0,4))===y).sort((a,b)=>a.__date.localeCompare(b.__date)).at(-1);if(!r)throw new Error('sin release');activeImageryLayer=L.tileLayer(waybackUrl(r),{maxZoom:19,attribution:`World Imagery Wayback © Esri · ${r.__date}`});badge.textContent=String(y);status.textContent=`Wayback publicado ${r.__date}; fecha de publicación ≠ fecha exacta de captura local.`;if(currentBasemap==='street')currentBasemap='satellite';applyBase()}catch(e){activeImageryLayer=satelliteLayer;badge.textContent='Actual';status.textContent='No se pudo cargar esa versión histórica; se mantiene la imagen actual.';applyBase()}}document.getElementById('historyYear').addEventListener('change',e=>selectHistory(e.target.value));
+function fitAll(){if(casesGroup.getLayers().length)map.fitBounds(casesGroup.getBounds().pad(.12),{maxZoom:15})}document.getElementById('fitAll').addEventListener('click',fitAll);
+Promise.all([fetchJsonResource(STATE_URL),fetchJsonResource(AUDIT_URL),fetchJsonResource(COMMERCIAL_URL)]).then(([s,a,c])=>{renderState(s);renderAudit(a);renderCommercial(c);loadZoning()}).catch(e=>{console.error(e);document.getElementById('caseList').innerHTML='<div class="error">No se pudieron cargar todos los datos de auditoría.</div>';loadZoning()});
 </script>
 </body>
 </html>
