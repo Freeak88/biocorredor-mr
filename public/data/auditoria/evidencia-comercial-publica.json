@@ -1,0 +1,110 @@
+{
+  "updated_at": "2026-09-08",
+  "evidentiary_rule": "Las publicaciones inmobiliarias y páginas de desarrolladores prueban oferta/comercialización pública y sus afirmaciones. No prueban venta consumada, aprobación administrativa, subdivisión catastral, cumplimiento, irregularidad ni ilegalidad.",
+  "projects": [
+    {
+      "id": "saint-henri-aero-country-club",
+      "name": "Saint Henri Aero & Country Club",
+      "zoning_context": "Uso Específico",
+      "main_productivo_scope": false,
+      "status": "contexto_normativo_fuera_scope_productivo",
+      "location_claim": "Av. Estanislao San Zeballos 1320, Ministro Rivadavia / Longchamps",
+      "claims": ["55 ha", "349 lotes", "16 manzanas", "lotes de 545 a 1.175 m²", "64 lotes con acceso a pista", "pista de 748 m"],
+      "sources": [
+        {"label":"Díaz Mayer & Brie","url":"https://www.diazmayerbrie.com/d/102505-Saint-Henri---Aero--en-Longchamps"},
+        {"label":"ZonaProp · lote 284","url":"https://www.zonaprop.com.ar/propiedades/emprendimiento/veuntrin-lote-284-central-600-m-sup2--saint-henri-aero-59994941.html"},
+        {"label":"ZonaProp · lote 11","url":"https://www.zonaprop.com.ar/propiedades/clasificado/vecltrin-lote-11-interior-640-m-sup2--saint-henri-aero-59994800.html"},
+        {"label":"MercadoLibre · lote 48","url":"https://terreno.mercadolibre.com.ar/MLA-3875795850-lote-en-venta-saint-henri-aero-_JM"}
+      ],
+      "note": "El pin comercial extraído de una publicación cae sobre una parcela Productivo cercana, pero no representa el polígono real del emprendimiento. Saint Henri se trata como Uso Específico y queda fuera del indicador físico Productivo principal."
+    },
+    {
+      "id": "barrio-don-vicente",
+      "name": "Barrio Don Vicente",
+      "zoning_context": "Productivo: ancla puntual; polígono real pendiente",
+      "main_productivo_scope": "pending_polygon",
+      "status": "ancla_comercial_productivo_para_qa",
+      "location_claim": "Gral. Brig. Manuel Calderón 3422 / 3400, Ministro Rivadavia",
+      "claims": ["lotes de 360 m²", "12 x 30 m", "publicación menciona 14 lotes en preventa", "otra inmobiliaria menciona 3 disponibles"],
+      "sources": [
+        {"label":"MercadoLibre","url":"https://terreno.mercadolibre.com.ar/MLA-3127548780-venta-de-lote-en-barrio-don-vicente-en-ministro-rivadavia-_JM"},
+        {"label":"Fogola Propiedades","url":"https://www.fogolaweb.com.ar/fogola-1165"}
+      ],
+      "note": "La coordenada comercial cae dentro de una parcela Productivo actual. Eso no convierte la parcela completa en el emprendimiento ni permite inferir ventas."
+    },
+    {
+      "id": "estancias-del-sur",
+      "name": "Estancias del Sur",
+      "zoning_context": "pendiente de geolocalización catastral robusta",
+      "main_productivo_scope": "unresolved",
+      "status": "evidencia_comercial_sin_poligono",
+      "location_claim": "Av. Chivilcoy y Gral. Brig. Manuel Calderón, Ministro Rivadavia",
+      "claims": ["lotes de 300–320 m²", "10 x 32 m", "apertura de calles", "tendido de servicios", "biodigestores", "pilar Edesur", "posesión inmediata"],
+      "sources": [
+        {"label":"ZonaProp · búsqueda/listado","url":"https://www.zonaprop.com.ar/terrenos-venta-ministro-rivadavia-con-apto-credito-hasta-2-ambientes.html"},
+        {"label":"Argenprop · búsqueda/listado","url":"https://www.argenprop.com/campos-o-terrenos/venta/ministro-rivadavia"}
+      ],
+      "note": "Las coordenadas extraídas de páginas agregadas resultaron ambiguas. No se asigna silenciosamente un polígono ni una categoría normativa."
+    },
+    {
+      "id": "barrio-parque-america",
+      "name": "Barrio Parque América",
+      "zoning_context": "pendiente",
+      "main_productivo_scope": "unresolved",
+      "status": "evidencia_comercial",
+      "location_claim": "Brigadier Calderón 1101, Ministro Rivadavia",
+      "claims": ["venta de lotes", "financiación hasta 84 cuotas", "lotes publicitados de 324, 396 y 552 m²"],
+      "sources": [{"label":"Sitio comercial","url":"https://barrioparqueamerica.com.ar/"}]
+    },
+    {
+      "id": "la-ramona",
+      "name": "Barrio Cerrado La Ramona",
+      "zoning_context": "pendiente",
+      "main_productivo_scope": "unresolved",
+      "status": "evidencia_comercial",
+      "location_claim": "Rivera 800, Ministro Rivadavia / Longchamps",
+      "claims": ["lotes de 300 m²", "10 x 30 m", "seguridad 24 hs"],
+      "sources": [{"label":"ZonaProp","url":"https://www.zonaprop.com.ar/propiedades/clasificado/vecltrin-terreno-en-venta-barrio-cerrado-la-ramona-58826028.html"}]
+    },
+    {
+      "id": "portal-del-sol-i",
+      "name": "Condominio Portal del Sol I",
+      "zoning_context": "pendiente",
+      "main_productivo_scope": "unresolved",
+      "status": "evidencia_comercial",
+      "location_claim": "Av. Chivilcoy 578, Ministro Rivadavia",
+      "claims": ["lotes de ~680 m²", "20 x 33 m", "publicación: últimos 6 lotes"],
+      "sources": [{"label":"MercadoLibre","url":"https://terreno.mercadolibre.com.ar/MLA-1513345362-lotes-condominio-portal-del-sol-escritura-financiacion-exclusiva-venta-ramayo-propiedades-_JM"}]
+    },
+    {
+      "id": "calderon-487-barrio-perimetrado",
+      "name": "Barrio perimetrado · Calderón 487",
+      "zoning_context": "pendiente",
+      "main_productivo_scope": "unresolved",
+      "status": "evidencia_comercial",
+      "location_claim": "Gral. Brig. Manuel Calderón 487, Ministro Rivadavia",
+      "claims": ["lotes publicitados desde 324 m²", "calles mejoradas", "luminaria", "cámaras", "muro perimetral"],
+      "sources": [{"label":"ZonaProp / Ramayo","url":"https://www.zonaprop.com.ar/propiedades/clasificado/vecltrin-terrenos-con-titulo-barrio-privado-calle-manuel-56968382.html"}]
+    },
+    {
+      "id": "condominio-lezica-juan-b-justo",
+      "name": "Condominio Lezica y Juan B. Justo",
+      "zoning_context": "pendiente",
+      "main_productivo_scope": "unresolved",
+      "status": "lead_comercial",
+      "location_claim": "Lezica y Juan B. Justo, Ministro Rivadavia",
+      "claims": ["lote/publicación de ~340 m²", "referencia a condominio privado"],
+      "sources": [{"label":"MercadoLibre · inventario de búsqueda","url":"https://inmuebles.mercadolibre.com.ar/terrenos-lotes/bsas-gba-sur/almirante-brown/ministro-rivadavia/terrenos-en-ministro-rivadavia-lotes"}]
+    },
+    {
+      "id": "altos-de-espora",
+      "name": "Altos de Espora",
+      "zoning_context": "fuera del scope Productivo salvo prueba parcelaria específica",
+      "main_productivo_scope": false,
+      "status": "contexto_externo",
+      "location_claim": "Av. Espora / Glew, contexto inmediato",
+      "claims": ["lotes de 300–350 m²", "publicaciones con financiación"],
+      "sources": [{"label":"ZonaProp · inventario de búsqueda","url":"https://www.zonaprop.com.ar/terrenos-ministro-rivadavia-con-apto-credito-orden-precio-ascendente.html"}]
+    }
+  ]
+}
