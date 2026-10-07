@@ -1,6 +1,6 @@
 # Denominador operativo del cupo ordinario de Clubes de Campo (10%)
 
-Estado: **CERRADO para el modelo GIS de BioCorredor; pendiente contraste con la memoria administrativa histórica municipal**.
+Estado: **CERRADO como denominador físico Productivo de BioCorredor; el denominador jurídico exacto del artículo 3.1 sigue pendiente de reconstrucción histórica de exclusiones residenciales y contraste municipal**.
 
 Fecha de revisión: 2026-10-07.
 
@@ -29,7 +29,13 @@ La Ordenanza 11.819/20, luego convalidada por Resolución provincial 560/2021, m
 
 ## Cierre operativo del denominador
 
-BioCorredor fija como denominador GIS del cupo ordinario exclusivamente la superficie **Productiva confirmada**:
+BioCorredor fija como **denominador físico Productivo** la superficie Productiva confirmada. Este valor sirve para medir qué porcentaje del suelo Productivo fue transformado por candidatos a Club de Campo, que es el objetivo territorial del proyecto:
+
+**DENOMINADOR_PRODUCTIVO_GIS = 1303.584699 ha**
+
+No debe confundirse con el denominador jurídico literal del artículo 3.1, que es la superficie bruta rural menos las exclusiones allí enumeradas. La reconstrucción jurídica requiere además establecer, a la fecha normativa, cuáles fraccionamientos residenciales menores a 10.000 m² estaban excluidos.
+
+Para el indicador físico Productivo:
 
 **DENOMINADOR_GIS_10 = 1303.584699 ha**
 
@@ -41,7 +47,18 @@ Por lo tanto:
 
 Redondeo para comunicación pública: **130.36 ha**.
 
-Este número es exacto dentro de la reconstrucción geoespacial versionada del proyecto. Una conclusión jurídica final deberá contrastarlo con la memoria de cálculo/ledger administrativo histórico del Municipio y resolver temporalmente los 16 fragmentos.
+Este número es exacto dentro de la reconstrucción geoespacial versionada para el **scope Productivo**. No constituye todavía la memoria de cálculo jurídica del Municipio.
+
+### Pendiente para el denominador jurídico
+
+El artículo 3.1 exige excluir también fraccionamientos residenciales con parcelas menores a 10.000 m². La cartografía actual muestra 184 parcelas hoy tipificadas como `Urbano` dentro de la reconstrucción Productiva, que suman aproximadamente 122.535 ha. Su condición actual no permite saber si ya eran fraccionamientos residenciales excluibles en 2018–2020 o si surgieron después.
+
+Por eso se mantienen dos variables separadas:
+
+- `denominator_productivo_gis_ha = 1303.584699`;
+- `denominator_legal_quota_ha = pending_historical_reconstruction`.
+
+Una conclusión jurídica final deberá contrastarse con la memoria de cálculo/ledger administrativo histórico del Municipio.
 
 ## Tratamiento de los fragmentos ambiguos
 
