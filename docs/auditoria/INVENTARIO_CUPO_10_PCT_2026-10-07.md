@@ -5,8 +5,11 @@ Estado: **inventario nominal v1 + candidatos físicos ML**.
 
 ## Resumen ejecutivo
 
-- Denominador GIS ordinario: **1303.584699 ha**.
-- Umbral GIS del 10%: **130.3584699 ha**.
+**Lectura obligatoria:** el proyecto mantiene separados el indicador físico Productivo y el cálculo jurídico del cupo. El primero ya tiene denominador cerrado; el segundo no se cerrará hasta reconstruir las exclusiones históricas del artículo 3.1 y contrastarlas con el ledger municipal.
+
+- Denominador físico Productivo GIS: **1303.584699 ha**.
+- Benchmark territorial del 10% sobre Productivo: **130.3584699 ha**.
+- Denominador jurídico literal del art. 3.1: **pendiente de reconstrucción histórica de exclusiones**.
 - Hectáreas ordinarias documentalmente confirmadas en el dataset actual: **0.000 ha**; consistente con el RPUC provincial publicado, que no registra ningún tipo `CC` en Almirante Brown.
 - Hectáreas de candidatos físicos positivos/strong dentro de Productivo observados por ML: **45.596832 ha**.
 - Cobertura ML actual: parcial; Cluster 2 observa 74 de 520 parcelas Productivo, por lo que **todavía no existe base para concluir cumplimiento/incumplimiento del cupo**.
@@ -65,7 +68,7 @@ El ML temporal detectó un cluster meridional coherente de transformación físi
 
 **Área bruta conjunta de parcelas candidatas: 45.596832 ha.**
 
-Si, sólo como stress test, toda esa superficie terminara perteneciendo a Clubes de Campo imputables al cupo, equivaldría al **34.98% del cupo de 130.3584699 ha**. No se usa como numerador real hasta identificar proyecto, polígono y expediente.
+Si, sólo como stress test, toda esa superficie terminara perteneciendo a Clubes de Campo imputables al régimen ordinario, equivaldría al **34.98% del benchmark Productivo de 130.3584699 ha**. No se usa como numerador real hasta identificar proyecto, polígono y expediente.
 
 El caso `003143929` se excluye del conjunto positivo: la validación humana muestra invernaderos/cubiertas productivas y no una red interna compatible con loteo.
 
