@@ -2,17 +2,25 @@
   "updated_at": "2026-10-07",
   "methodology_version": "quota-audit-v1",
   "denominator": {
-    "status": "gis_closed_admin_crosscheck_pending",
-    "productive_confirmed_ha": 1303.584699,
-    "ordinary_quota_pct": 10,
-    "ordinary_quota_ha": 130.3584699,
+    "status": "productivo_gis_closed_legal_denominator_pending",
+    "productivo_gis_ha": 1303.584699,
+    "productivo_benchmark_10pct_ha": 130.3584699,
+    "legal_denominator_ha": null,
+    "legal_quota_10pct_ha": null,
+    "legal_denominator_rule": "superficie bruta total del área rural menos las exclusiones del art. 3.1 / Ord. 11.366-18",
     "unresolved_boundary_fragments_ha": 4.856971,
-    "unresolved_fragments_in_denominator": false
+    "unresolved_fragments_in_productivo_gis_denominator": false,
+    "current_urban_parcels_inside_reconstructed_productivo": {
+      "parcel_count": 184,
+      "area_ha_approx": 122.535,
+      "historical_exclusion_status": "pending"
+    }
   },
   "numerator": {
     "status": "incomplete",
     "documented_confirmed_ordinary_quota_ha": 0,
-    "interpretation": "No project in the currently assembled dataset is yet linked with sufficient evidence to an administrative Club de Campo act consuming the ordinary Productivo quota.",
+    "legal_numerator_ha": null,
+    "interpretation": "No project in the currently assembled evidence is yet linked with sufficient proof to a final administrative Club de Campo act consuming the ordinary quota. This is not equivalent to zero real occupation or zero projects in process.",
     "conclusion_allowed": false
   },
   "known_cases": {
@@ -83,10 +91,10 @@
       }
     ],
     "positive_candidate_envelope_ha": 45.596832,
-    "stress_test_share_of_quota_pct": 34.98,
-    "counts_as_legal_numerator": false
+    "counts_as_legal_numerator": false,
+    "stress_test_share_of_productivo_benchmark_10pct": 34.98
   },
-  "next_gate": "identify_ml_cluster_projects_and_expand_vhr_ml_coverage_to_remaining_productivo",
+  "next_gate": "expand ML/VHR from 74 observed Productivo parcels to the remaining Productivo coverage while linking six positive candidates to project/expediente and reconstructing historical legal exclusions",
   "administrative_control": {
     "rpuc_checked_at": "2026-10-07",
     "rpuc_print_date": "2026-05-07",
