@@ -86,5 +86,33 @@
     "stress_test_share_of_quota_pct": 34.98,
     "counts_as_legal_numerator": false
   },
-  "next_gate": "identify_ml_cluster_projects_and_expand_vhr_ml_coverage_to_remaining_productivo"
+  "next_gate": "identify_ml_cluster_projects_and_expand_vhr_ml_coverage_to_remaining_productivo",
+  "administrative_control": {
+    "rpuc_checked_at": "2026-10-07",
+    "rpuc_print_date": "2026-05-07",
+    "almirante_brown_records": [
+      {
+        "registration": "3-297",
+        "date": "2015-12-03",
+        "name": "Brisas de Adrogué",
+        "type": "BC"
+      },
+      {
+        "registration": "3-298",
+        "date": "2015-12-03",
+        "name": "Adrogué Chico",
+        "type": "BC"
+      }
+    ],
+    "registered_club_de_campo_count": 0,
+    "interpretation": "No CC appears in the published provincial RPUC for Almirante Brown; projects in process or unregistered physical developments may still exist.",
+    "source": "https://urbasig.mgob.gba.gob.ar/rpuc/pdf.php?partido="
+  },
+  "external_enforcement_context": {
+    "municipality_reported_2026_09": {
+      "penal_cases_related_to_irregular_subdivisions_and_closure_violations": 18,
+      "administrative_actions_more_than": 20
+    },
+    "counts_as_quota_numerator": false
+  }
 }
