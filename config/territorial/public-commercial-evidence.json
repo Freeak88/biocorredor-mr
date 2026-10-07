@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "scope": "Public commercial/real-estate evidence relevant to territorial audit in Ministro Rivadavia and immediate context",
+  "observed_at": "2026-09-08",
+  "evidentiary_rule": "Listings and developer pages are evidence of public commercialization/marketing claims only. They do not prove consummated sales, cadastral subdivision, administrative approval, zoning compliance, ownership, legality or illegality.",
+  "projects": [
+    {
+      "id": "saint-henri-aero-country-club",
+      "name": "Saint Henri Aero & Country Club",
+      "location_claim": "Av. Estanislao San Zeballos 1320, Ministro Rivadavia / Longchamps, Almirante Brown",
+      "project_claims": {
+        "gross_area_ha": 55,
+        "lots": 349,
+        "blocks": 16,
+        "lot_area_range_m2": [545, 1175],
+        "runway_length_m": 748,
+        "lots_with_runway_access_claimed": 64,
+        "delivery_claim": "Octubre 2026"
+      },
+      "sources": [
+        {
+          "source": "Diaz Mayer & Brie Propiedades",
+          "type": "developer/commercializer page",
+          "url": "https://www.diazmayerbrie.com/d/102505-Saint-Henri---Aero--en-Longchamps",
+          "claims": ["55 ha", "349 lotes", "16 manzanas", "545 a 1.175 m2", "64 lotes a pista", "pista 748 m"]
+        },
+        {
+          "source": "ZonaProp",
+          "type": "listing",
+          "url": "https://www.zonaprop.com.ar/propiedades/emprendimiento/veuntrin-lote-284-central-600-m-sup2--saint-henri-aero-59994941.html",
+          "listing_claims": {"lot": 284, "block": "M14", "area_m2": 600, "price_usd": 45000, "financing": "boleto 25% + hasta 48 cuotas"}
+        },
+        {
+          "source": "ZonaProp",
+          "type": "listing",
+          "url": "https://www.zonaprop.com.ar/propiedades/clasificado/vecltrin-lote-11-interior-640-m-sup2--saint-henri-aero-59994800.html",
+          "listing_claims": {"lot": 11, "block": "M1", "area_m2": 640, "price_usd": 25600, "status_claim": "disponible"}
+        },
+        {
+          "source": "ZonaProp",
+          "type": "listing",
+          "url": "https://www.zonaprop.com.ar/propiedades/emprendimiento/veuntrin-lote-146-a-pista-con-hangar-propio-900-m-sup2--59994944.html",
+          "listing_claims": {"lot": 146, "area_m2": 900, "price_usd": 82800, "runway_access": true}
+        },
+        {
+          "source": "MercadoLibre Inmuebles",
+          "type": "listing",
+          "url": "https://terreno.mercadolibre.com.ar/MLA-3875795850-lote-en-venta-saint-henri-aero-_JM",
+          "listing_claims": {"lot": 48, "block": "M2", "area_m2": 600, "publication_id": "3875795850", "commercializer": "Diaz Mayer & Brie Propiedades"}
+        },
+        {
+          "source": "Argenprop",
+          "type": "listing",
+          "url": "https://www.argenprop.com/23460736--terreno-en-venta-en-longchamps--20332061",
+          "listing_claims": {"lot": 11, "area_m2": 640, "price_usd": 25600}
+        }
+      ],
+      "project_notes": [
+        "Project dossier previously reconstructed a probable cadastral envelope near 55 ha; that geometric hypothesis remains separate from these commercial claims.",
+        "Commercial listings demonstrate active public marketing and inventory references, not number of completed sales."
+      ]
+    },
+    {
+      "id": "estancias-del-sur",
+      "name": "Estancias del Sur",
+      "location_claim": "Av. Chivilcoy y Gral. Brig. Manuel Calderón, Ministro Rivadavia, Almirante Brown",
+      "project_claims": {
+        "lot_area_range_m2": [300, 320],
+        "typical_dimensions_m": "10 x 32",
+        "project_type_claim": "barrio abierto con urbanización protegida",
+        "infrastructure_claims": ["apertura de calles", "tendido de servicios", "biodigestores", "pilar de luz Edesur", "cerco perimetral"],
+        "documentation_claim": "boleto de compraventa certificado ante escribano",
+        "possession_claim": "inmediata"
+      },
+      "sources": [
+        {
+          "source": "ZonaProp",
+          "type": "listing/search result",
+          "url": "https://www.zonaprop.com.ar/terrenos-venta-ministro-rivadavia-con-apto-credito-hasta-2-ambientes.html",
+          "listing_claims": {"area_m2": 320, "price_usd_observed": 10500, "financing_claim": "anticipo USD 500 + 40 cuotas fijas de USD 500"}
+        },
+        {
+          "source": "Argenprop",
+          "type": "listing/search result",
+          "url": "https://www.argenprop.com/campos-o-terrenos/venta/ministro-rivadavia",
+          "listing_claims": {"area_range_m2": [300, 320], "financing_claim": "100%", "possession_claim": "inmediata"}
+        }
+      ],
+      "project_notes": [
+        "Street-corridor location is a search anchor; the legal/cadastral development polygon has not been established from the listing alone.",
+        "An earlier independent reference to a 16,122 m2 listing was used only as a search anchor and did not establish the Estancias del Sur polygon."
+      ]
+    },
+    {
+      "id": "barrio-parque-america",
+      "name": "Barrio Parque América",
+      "location_claim": "Brigadier Calderón 1101, Ministro Rivadavia",
+      "project_claims": {
+        "lot_examples_m2": [324, 396, 552],
+        "marketing_claims": ["barrio cerrado con seguridad", "cámaras", "zona wifi", "muro/perímetro"]
+      },
+      "sources": [
+        {
+          "source": "Sitio oficial/comercial Barrio Parque América",
+          "type": "developer/commercial page",
+          "url": "https://barrioparqueamerica.com.ar/",
+          "claims": ["venta de lotes", "financiación hasta 84 cuotas", "dirección Brigadier Calderón 1101"]
+        }
+      ]
+    },
+    {
+      "id": "la-ramona",
+      "name": "Barrio Cerrado La Ramona",
+      "location_claim": "Rivera 800, Ministro Rivadavia / Longchamps",
+      "project_claims": {"lot_area_m2": 300, "dimensions_m": "10 x 30", "security_claim": "24 hs"},
+      "sources": [
+        {
+          "source": "ZonaProp",
+          "type": "listing",
+          "url": "https://www.zonaprop.com.ar/propiedades/clasificado/vecltrin-terreno-en-venta-barrio-cerrado-la-ramona-58826028.html",
+          "listing_claims": {"area_m2": 300, "price_usd": 11500}
+        },
+        {
+          "source": "Inmuebles Clarín",
+          "type": "listing",
+          "url": "https://www.inmuebles.clarin.com/terreno-en-venta-en-longchamps--19209102",
+          "listing_claims": {"area_m2": 300, "price_usd": 11500}
+        }
+      ]
+    },
+    {
+      "id": "barrio-don-vicente",
+      "name": "Barrio Don Vicente",
+      "location_claim": "Gral. Brig. Manuel Calderón 3422 / 3400, Ministro Rivadavia",
+      "project_claims": {"lot_area_m2": 360, "dimensions_m": "12 x 30"},
+      "sources": [
+        {
+          "source": "MercadoLibre Inmuebles",
+          "type": "listing",
+          "url": "https://terreno.mercadolibre.com.ar/MLA-3127548780-venta-de-lote-en-barrio-don-vicente-en-ministro-rivadavia-_JM",
+          "listing_claims": {"price_usd": 12000, "area_m2": 360, "lots_claimed_in_preventa": 14, "publisher": "Laguna Inmobiliaria"}
+        },
+        {
+          "source": "Fogola Propiedades",
+          "type": "listing",
+          "url": "https://www.fogolaweb.com.ar/fogola-1165",
+          "listing_claims": {"price_usd": 12000, "area_m2": 360, "available_lots_claimed": 3, "zoning_claim": "Suburbana"}
+        }
+      ],
+      "project_notes": ["Different listings make different inventory claims; preserve each claim independently rather than treating them as a sales count."]
+    },
+    {
+      "id": "portal-del-sol-i",
+      "name": "Condominio Portal del Sol I",
+      "location_claim": "Av. Chivilcoy 578, Ministro Rivadavia",
+      "sources": [
+        {
+          "source": "MercadoLibre Inmuebles",
+          "type": "listing",
+          "url": "https://terreno.mercadolibre.com.ar/MLA-1513345362-lotes-condominio-portal-del-sol-escritura-financiacion-exclusiva-venta-ramayo-propiedades-_JM",
+          "listing_claims": {"area_m2": 680, "dimensions_m": "20 x 33", "inventory_claim": "últimos 6 lotes", "commercializer": "Ramayo Propiedades"}
+        }
+      ]
+    },
+    {
+      "id": "calderon-487-barrio-perimetrado",
+      "name": "Barrio perimetrado - Gral. Brig. Manuel Calderón 487",
+      "location_claim": "Gral. Brig. Manuel Calderón 487, Ministro Rivadavia",
+      "sources": [
+        {
+          "source": "ZonaProp / Ramayo Propiedades",
+          "type": "listing",
+          "url": "https://www.zonaprop.com.ar/propiedades/clasificado/vecltrin-terrenos-con-titulo-barrio-privado-calle-manuel-56968382.html",
+          "listing_claims": {"headline_area_m2": 324, "headline_price_usd": 13000, "specific_sites_claimed": ["Mza 4 Sitio 21 12x52", "Mza 4 Sitio 22 12x52"], "infrastructure_claims": ["calles mejoradas", "luminaria", "cámaras", "muro perimetral"]}
+        }
+      ]
+    },
+    {
+      "id": "condominio-lezica-juan-b-justo",
+      "name": "Condominio privado Lezica y Juan B. Justo",
+      "location_claim": "Lezica y Juan B. Justo, Ministro Rivadavia",
+      "sources": [
+        {
+          "source": "MercadoLibre / Ramayo search inventory",
+          "type": "listing/search result",
+          "url": "https://inmuebles.mercadolibre.com.ar/terrenos-lotes/bsas-gba-sur/almirante-brown/ministro-rivadavia/terrenos-en-ministro-rivadavia-lotes",
+          "listing_claims": {"area_m2": 340, "price_ars_observed": 32000000, "title_claim": "Construcción a terminar, Condominio Privado"}
+        }
+      ]
+    },
+    {
+      "id": "altos-de-espora",
+      "name": "Altos de Espora",
+      "location_claim": "Av. Espora / Glew, immediate context south of Ministro Rivadavia",
+      "scope_note": "Contextual neighboring development; must not be counted in Productivo unless cadastral intersection proves membership.",
+      "sources": [
+        {
+          "source": "ZonaProp search inventory",
+          "type": "listing/search result",
+          "url": "https://www.zonaprop.com.ar/terrenos-ministro-rivadavia-con-apto-credito-orden-precio-ascendente.html",
+          "listing_claims": {"area_range_m2": [300, 350], "financing_claim": "70% financiación", "delivery_claim": "inmediata"}
+        }
+      ]
+    }
+  ],
+  "open_leads": [
+    {
+      "lead": "Venta de 9 lotes premium en Ministro Rivadavia",
+      "location_claim": "Lezica & General Brigadier Manuel Calderón",
+      "area_m2_claim": 720,
+      "source": "MercadoLibre search inventory",
+      "status": "needs direct listing capture and cadastral geocoding"
+    },
+    {
+      "lead": "Historic/independent 16,122 m2 listing near Estancias del Sur search corridor",
+      "status": "search anchor only; exact listing capture not yet persisted"
+    }
+  ]
+}

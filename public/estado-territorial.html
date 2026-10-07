@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Estado actual de la auditoría territorial de BioCorredor MR: alcance Productivo, resultados, decisiones, pendientes y límites de interpretación." />
+  <title>Estado territorial · BioCorredor MR</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--paper:#f4f0e7;--panel:#fffdf8;--ink:#20211d;--muted:#69685f;--line:#bdb6aa;--green:#315f49;--greenSoft:#dde9df;--amber:#9a6a1f;--amberSoft:#f3e7c7;--red:#98483b;--redSoft:#eed8d3;--violet:#6f5a8a;--gray:#ece8df}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink)}a{color:inherit}.wrap{max-width:1180px;margin:0 auto;padding:22px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#75654f}h1{font:700 38px/1.02 Georgia,serif;margin:6px 0 8px}.lead{max-width:850px;color:var(--muted);font-size:14px;line-height:1.55}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}.btn{border:1px solid var(--ink);padding:9px 11px;background:#fff;text-decoration:none;font-size:11px;font-weight:850;box-shadow:2px 2px 0 rgba(0,0,0,.08)}.btn.primary{background:var(--ink);color:#fff}.banner{border:1px solid var(--ink);border-left:7px solid var(--green);background:var(--greenSoft);padding:14px;margin:14px 0}.banner strong{display:block;font:700 19px/1.2 Georgia,serif}.banner p{font-size:11px;line-height:1.5;margin:6px 0 0}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.card{grid-column:span 6;border:1px solid var(--ink);background:var(--panel);padding:14px;box-shadow:3px 3px 0 rgba(0,0,0,.08)}.card.full{grid-column:1/-1}.card.third{grid-column:span 4}.card h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px}.card h3{font-size:12px;margin:12px 0 6px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kpi{background:#f0ece3;border:1px solid #d6d0c4;padding:10px}.kpi b{display:block;font-size:21px}.kpi span{font-size:8.5px;line-height:1.35;text-transform:uppercase;color:#666257;display:block;margin-top:3px}.list{margin:0;padding-left:18px}.list li{font-size:11px;line-height:1.5;margin:5px 0}.decision{padding:8px 9px;border-left:4px solid var(--violet);background:#f1ebf4;margin:6px 0;font-size:10.5px;line-height:1.45}.pending{padding:8px 9px;border-left:4px solid var(--amber);background:var(--amberSoft);margin:6px 0;font-size:10.5px;line-height:1.45}.warning{padding:10px;border-left:5px solid var(--red);background:var(--redSoft);font-size:10.5px;line-height:1.5}.phase{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dotted #c8c1b5}.phase:last-child{border-bottom:0}.phase-code{font-weight:900}.status{font-size:8px;font-weight:900;text-transform:uppercase;padding:3px 6px;border-radius:12px;background:#e8e4db}.status.ok{background:var(--greenSoft);color:#224a35}.status.active{background:var(--amberSoft);color:#755016}.status.pending{background:#e7e5df;color:#555}.small{font-size:9.5px;line-height:1.45;color:var(--muted)}footer{font-size:9px;color:var(--muted);padding:18px 0 4px}@media(max-width:850px){.wrap{padding:14px}.card,.card.third{grid-column:1/-1}.kpis{grid-template-columns:1fr 1fr}h1{font-size:31px}}@media(max-width:520px){.kpis{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">BioCorredor MR · auditoría territorial</div>
+  <h1>Estado actual del análisis</h1>
+  <p class="lead">Este panel separa lo que ya está validado, lo que todavía es provisional y lo que falta construir. El objetivo es detectar transformación física observable y señales de preparación para loteo dentro de la Zona Productiva, sin convertir automáticamente esas señales en conclusiones administrativas o legales.</p>
+  <div class="actions">
+    <a class="btn primary" href="/auditoria-territorial.html">Abrir mapa de auditoría</a>
+    <a class="btn" href="/validacion-territorial.html">Abrir validación humana</a>
+    <a class="btn" href="/documentos/solicitud-informacion-territorial-municipio-2026-09.pdf" target="_blank" rel="noreferrer">Pedido al Municipio</a>
+  </div>
+  <div id="root"><div class="banner"><strong>Cargando estado…</strong><p>Consultando la versión publicada del análisis.</p></div></div>
+  <footer>Fuente de estado: <code>/data/auditoria/estado-actual.json</code>. Actualización técnica y documental separada del despliegue de artefactos experimentales.</footer>
+</div>
+<script>
+const STATUS_URL='/data/auditoria/estado-actual.json';
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmt=n=>Number(n).toLocaleString('es-AR',{maximumFractionDigits:2});
+function phaseClass(s){if(['completa','cerrada_con_qa','operativa_cluster_2'].includes(s))return'ok';if(['activa','mvp_existente_a_ampliar'].includes(s))return'active';return'pending'}
+function phaseLabel(s){return ({completa:'completa',cerrada_con_qa:'cerrada con QA',operativa_cluster_2:'operativa Cluster 2',activa:'activa',mvp_existente_a_ampliar:'MVP · ampliar',pendiente:'pendiente'})[s]||s}
+function render(d){
+  const f=d.current_findings,s=d.scope,l=d.legal_status;
+  document.getElementById('root').innerHTML=`
+    <div class="banner"><strong>Scope bloqueado: ${esc(s.label)}</strong><p>${s.parcel_count} parcelas. La unidad espacial efectiva usa la intersección entre membresía Productivo, GeoARBA y la máscara reconstruida del Anexo I. Otras zonas quedan sólo como contexto.</p></div>
+    <div class="grid">
+      <section class="card full"><h2>Qué tenemos hoy</h2><div class="kpis">
+        <div class="kpi"><b>${fmt(s.parcel_count)}</b><span>parcelas Productivo</span></div>
+        <div class="kpi"><b>${fmt(s.effective_area_ha)} ha</b><span>área geométrica efectiva del pipeline</span></div>
+        <div class="kpi"><b>${fmt(f.detected_surface_m2_provisional)} m²</b><span>superficie cubierta detectada · provisional</span></div>
+        <div class="kpi"><b>${fmt(f.parcels_with_detected_surface)}</b><span>parcelas con detección 2023</span></div>
+        <div class="kpi"><b>${f.overture_any_overlap.pct}%</b><span>objetos V3 con algún apoyo Overture</span></div>
+        <div class="kpi"><b>${f.overture_overlap_ge_50.pct}%</b><span>objetos V3 con overlap Overture ≥50%</span></div>
+      </div><p class="small">Referencia de imagen: ${esc(f.reference_date)} · georreferencia ${esc(f.georeference_status)} · threshold V3 ${f.building_threshold}. Los ${f.vector_objects} objetos vectorizados y ${f.raw_instance_labels} labels no son un conteo validado de edificios.</p></section>
+      <section class="card"><h2>Decisiones ya tomadas</h2>${d.decisions.map(x=>`<div class="decision">${esc(x)}</div>`).join('')}</section>
+      <section class="card"><h2>Qué falta</h2>${d.pending.map(x=>`<div class="pending">${esc(x)}</div>`).join('')}</section>
+      <section class="card"><h2>Trabajo completado</h2><ul class="list">${d.completed.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></section>
+      <section class="card"><h2>Fases</h2>${d.phase_status.map(p=>`<div class="phase"><div class="phase-code">${esc(p.phase)}</div><div>${esc(p.name)}</div><span class="status ${phaseClass(p.status)}">${esc(phaseLabel(p.status))}</span></div>`).join('')}</section>
+      <section class="card full"><h2>Límite jurídico y administrativo</h2><div class="warning"><b>Cupo: todavía no cerrado.</b><br>${esc(l.warning)} El denominador oficial continúa ${esc(l.official_denominator)} y el umbral aplicable sigue ${esc(l.threshold.replaceAll('_',' '))}. La diferencia entre el área administrativa de referencia (${fmt(s.administrative_area_reference_ha)} ha) y el área geométrica efectiva (${fmt(s.effective_area_ha)} ha) se conserva explícita para no mezclar denominadores.</div></section>
+    </div>`;
+}
+fetch(STATUS_URL,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json()}).then(render).catch(err=>{console.error(err);document.getElementById('root').innerHTML='<div class="warning"><b>No se pudo cargar el estado publicado.</b><br>El mapa principal sigue disponible desde el botón superior.</div>'});
+</script>
+</body>
+</html>

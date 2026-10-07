@@ -1,0 +1,15 @@
+{
+  "cluster_id": 2,
+  "bbox_wgs84": [
+    -58.34573983010086,
+    -34.882246399467945,
+    -58.33009294873659,
+    -34.86837586219111
+  ],
+  "zoom": 18,
+  "reference_capture_date": "2023-04-19",
+  "reference_raster_width_px": 2917,
+  "reference_raster_height_px": 3152,
+  "source": "Recovered from tmp/territorial-analysis/cluster-02-history/metadata.json on the analysis VPS; same bbox used by the historical backcast pipeline.",
+  "scope_note": "This georeference does not define analytic scope. Final analysis remains restricted to Productivo under TERRITORIAL_SCOPE_PRODUCTIVO.md."
+}

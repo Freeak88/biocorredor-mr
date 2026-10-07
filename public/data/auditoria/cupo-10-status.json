@@ -1,0 +1,126 @@
+{
+  "updated_at": "2026-10-07",
+  "methodology_version": "quota-audit-v1",
+  "denominator": {
+    "status": "productivo_gis_closed_legal_denominator_pending",
+    "productivo_gis_ha": 1303.584699,
+    "productivo_benchmark_10pct_ha": 130.3584699,
+    "legal_denominator_ha": null,
+    "legal_quota_10pct_ha": null,
+    "legal_denominator_rule": "superficie bruta total del área rural menos las exclusiones del art. 3.1 / Ord. 11.366-18",
+    "unresolved_boundary_fragments_ha": 4.856971,
+    "unresolved_fragments_in_productivo_gis_denominator": false,
+    "current_urban_parcels_inside_reconstructed_productivo": {
+      "parcel_count": 184,
+      "area_ha_approx": 122.535,
+      "historical_exclusion_status": "pending"
+    }
+  },
+  "numerator": {
+    "status": "incomplete",
+    "documented_confirmed_ordinary_quota_ha": 0,
+    "legal_numerator_ha": null,
+    "interpretation": "No project in the currently assembled evidence is yet linked with sufficient proof to a final administrative Club de Campo act consuming the ordinary quota. This is not equivalent to zero real occupation or zero projects in process.",
+    "conclusion_allowed": false
+  },
+  "known_cases": {
+    "excluded_or_probably_exception": [
+      {
+        "id": "urban-green",
+        "declared_area_ha": 23.9,
+        "geoarba_area_ha": 23.736661,
+        "zone": "recuperacion",
+        "ordinary_quota_treatment": "exclude_operationally_admin_act_pending"
+      },
+      {
+        "id": "saint-henri-aero-country-club",
+        "candidate_area_ha": 56.600442,
+        "zone": "uso_especifico_plus_recuperacion",
+        "ordinary_quota_treatment": "do_not_count_pending_polygon_and_admin"
+      }
+    ],
+    "pending_classification": [
+      "barrio-parque-america",
+      "estancias-del-sur",
+      "la-ramona",
+      "barrio-don-vicente",
+      "portal-del-sol-i",
+      "calderon-487-barrio-perimetrado",
+      "condominio-25-de-mayo-2100",
+      "condominio-lezica-juan-b-justo",
+      "altos-de-espora"
+    ]
+  },
+  "ml_control": {
+    "coverage": {
+      "productivo_total_parcels": 520,
+      "observed_cluster02": 74,
+      "full_coverage": 67,
+      "partial_coverage": 7
+    },
+    "positive_candidate_parcels": [
+      {
+        "partida": "003017527",
+        "area_ha": 10.059549,
+        "human_label": "positive_strong"
+      },
+      {
+        "partida": "003017519",
+        "area_ha": 10.107831,
+        "human_label": "positive_strong"
+      },
+      {
+        "partida": "003143927",
+        "area_ha": 3.191975,
+        "human_label": "positive_intermediate"
+      },
+      {
+        "partida": "003076135",
+        "area_ha": 3.099944,
+        "human_label": "strong_temporal_candidate"
+      },
+      {
+        "partida": "003017516",
+        "area_ha": 10.10424,
+        "human_label": "strong_temporal_candidate"
+      },
+      {
+        "partida": "003139476",
+        "area_ha": 9.033293,
+        "human_label": "strong_temporal_candidate"
+      }
+    ],
+    "positive_candidate_envelope_ha": 45.596832,
+    "counts_as_legal_numerator": false,
+    "stress_test_share_of_productivo_benchmark_10pct": 34.98
+  },
+  "next_gate": "expand ML/VHR from 74 observed Productivo parcels to the remaining Productivo coverage while linking six positive candidates to project/expediente and reconstructing historical legal exclusions",
+  "administrative_control": {
+    "rpuc_checked_at": "2026-10-07",
+    "rpuc_print_date": "2026-05-07",
+    "almirante_brown_records": [
+      {
+        "registration": "3-297",
+        "date": "2015-12-03",
+        "name": "Brisas de Adrogué",
+        "type": "BC"
+      },
+      {
+        "registration": "3-298",
+        "date": "2015-12-03",
+        "name": "Adrogué Chico",
+        "type": "BC"
+      }
+    ],
+    "registered_club_de_campo_count": 0,
+    "interpretation": "No CC appears in the published provincial RPUC for Almirante Brown; projects in process or unregistered physical developments may still exist.",
+    "source": "https://urbasig.mgob.gba.gob.ar/rpuc/pdf.php?partido="
+  },
+  "external_enforcement_context": {
+    "municipality_reported_2026_09": {
+      "penal_cases_related_to_irregular_subdivisions_and_closure_violations": 18,
+      "administrative_actions_more_than": 20
+    },
+    "counts_as_quota_numerator": false
+  }
+}
