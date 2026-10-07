@@ -1,0 +1,90 @@
+{
+  "updated_at": "2026-10-07",
+  "methodology_version": "quota-audit-v1",
+  "denominator": {
+    "status": "gis_closed_admin_crosscheck_pending",
+    "productive_confirmed_ha": 1303.584699,
+    "ordinary_quota_pct": 10,
+    "ordinary_quota_ha": 130.3584699,
+    "unresolved_boundary_fragments_ha": 4.856971,
+    "unresolved_fragments_in_denominator": false
+  },
+  "numerator": {
+    "status": "incomplete",
+    "documented_confirmed_ordinary_quota_ha": 0,
+    "interpretation": "No project in the currently assembled dataset is yet linked with sufficient evidence to an administrative Club de Campo act consuming the ordinary Productivo quota.",
+    "conclusion_allowed": false
+  },
+  "known_cases": {
+    "excluded_or_probably_exception": [
+      {
+        "id": "urban-green",
+        "declared_area_ha": 23.9,
+        "geoarba_area_ha": 23.736661,
+        "zone": "recuperacion",
+        "ordinary_quota_treatment": "exclude_operationally_admin_act_pending"
+      },
+      {
+        "id": "saint-henri-aero-country-club",
+        "candidate_area_ha": 56.600442,
+        "zone": "uso_especifico_plus_recuperacion",
+        "ordinary_quota_treatment": "do_not_count_pending_polygon_and_admin"
+      }
+    ],
+    "pending_classification": [
+      "barrio-parque-america",
+      "estancias-del-sur",
+      "la-ramona",
+      "barrio-don-vicente",
+      "portal-del-sol-i",
+      "calderon-487-barrio-perimetrado",
+      "condominio-25-de-mayo-2100",
+      "condominio-lezica-juan-b-justo",
+      "altos-de-espora"
+    ]
+  },
+  "ml_control": {
+    "coverage": {
+      "productivo_total_parcels": 520,
+      "observed_cluster02": 74,
+      "full_coverage": 67,
+      "partial_coverage": 7
+    },
+    "positive_candidate_parcels": [
+      {
+        "partida": "003017527",
+        "area_ha": 10.059549,
+        "human_label": "positive_strong"
+      },
+      {
+        "partida": "003017519",
+        "area_ha": 10.107831,
+        "human_label": "positive_strong"
+      },
+      {
+        "partida": "003143927",
+        "area_ha": 3.191975,
+        "human_label": "positive_intermediate"
+      },
+      {
+        "partida": "003076135",
+        "area_ha": 3.099944,
+        "human_label": "strong_temporal_candidate"
+      },
+      {
+        "partida": "003017516",
+        "area_ha": 10.10424,
+        "human_label": "strong_temporal_candidate"
+      },
+      {
+        "partida": "003139476",
+        "area_ha": 9.033293,
+        "human_label": "strong_temporal_candidate"
+      }
+    ],
+    "positive_candidate_envelope_ha": 45.596832,
+    "stress_test_share_of_quota_pct": 34.98,
+    "counts_as_legal_numerator": false
+  },
+  "next_gate": "identify_ml_cluster_projects_and_expand_vhr_ml_coverage_to_remaining_productivo"
+}
