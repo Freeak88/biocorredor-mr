@@ -7,11 +7,26 @@ Estado: **inventario nominal v1 + candidatos físicos ML**.
 
 - Denominador GIS ordinario: **1303.584699 ha**.
 - Umbral GIS del 10%: **130.3584699 ha**.
-- Hectáreas ordinarias documentalmente confirmadas en el dataset actual: **0.000 ha**.
+- Hectáreas ordinarias documentalmente confirmadas en el dataset actual: **0.000 ha**; consistente con el RPUC provincial publicado, que no registra ningún tipo `CC` en Almirante Brown.
 - Hectáreas de candidatos físicos positivos/strong dentro de Productivo observados por ML: **45.596832 ha**.
 - Cobertura ML actual: parcial; Cluster 2 observa 74 de 520 parcelas Productivo, por lo que **todavía no existe base para concluir cumplimiento/incumplimiento del cupo**.
 
 `0.000 ha confirmado` significa únicamente que, entre los casos con documentación actualmente incorporada, todavía no hay un proyecto vinculado de forma suficiente a un acto de Club de Campo que consuma el cupo ordinario. No significa que el Municipio no haya aprobado ninguno.
+
+## Control administrativo provincial
+
+El Registro Provincial de Urbanizaciones Cerradas (RPUC) de la Provincia de Buenos Aires, con impresión oficial 07-05-2026, registra para **Almirante Brown** solamente:
+
+| Registro | Fecha | Emprendimiento | Tipo |
+| --- | --- | --- | --- |
+| 3-297 | 03/12/2015 | Brisas de Adrogué | BC |
+| 3-298 | 03/12/2015 | Adrogué Chico | BC |
+
+No aparece ningún registro tipo `CC` (Club de Campo) para Almirante Brown en el RPUC publicado. Esto es un control administrativo fuerte, pero no permite concluir que no existan proyectos de Club de Campo en trámite, con aprobación incompleta, ni urbanizaciones físicas/comerciales no inscriptas.
+
+Consecuencia para el indicador: **no se incorpora ninguna hectárea al numerador ordinario sólo por publicidad o transformación física**. Todo candidato debe vincularse a expediente/acto y verificarse contra RPUC o su estado de trámite.
+
+Fuente oficial: https://urbasig.mgob.gba.gob.ar/rpuc/pdf.php?partido=
 
 ## Inventario nominal
 
@@ -53,6 +68,15 @@ El ML temporal detectó un cluster meridional coherente de transformación físi
 Si, sólo como stress test, toda esa superficie terminara perteneciendo a Clubes de Campo imputables al cupo, equivaldría al **34.98% del cupo de 130.3584699 ha**. No se usa como numerador real hasta identificar proyecto, polígono y expediente.
 
 El caso `003143929` se excluye del conjunto positivo: la validación humana muestra invernaderos/cubiertas productivas y no una red interna compatible con loteo.
+
+## Control externo sobre loteos no registrados como Club de Campo
+
+En septiembre de 2026 el Municipio informó públicamente que existían **18 causas penales vinculadas con loteos irregulares y violaciones de clausuras** y más de 20 actuaciones administrativas. Esto refuerza la necesidad de mantener dos indicadores separados:
+
+- `club_campo_quota_10`: sólo Clubes de Campo imputables al régimen del cupo;
+- `physical_residential_transformation`: loteos/urbanizaciones observables, aunque no sean Club de Campo o carezcan de registro.
+
+La capa ML pertenece al segundo indicador hasta que el cruce administrativo demuestre lo contrario.
 
 ## Gap crítico
 
